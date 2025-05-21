@@ -1,4 +1,4 @@
-.txt
-.nc
+*.txt
+*.nc
 data/
-outputs/
+Outputs/

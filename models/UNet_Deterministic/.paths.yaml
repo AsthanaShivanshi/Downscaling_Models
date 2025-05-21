@@ -1,0 +1,40 @@
+root: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling/
+
+train:
+  inputs: 
+    precip: data/Features/Split_Data_Normalised/Train/SCALED_rhiresd_features_train.nc
+    temp: data/Features/Split_Data_Normalised/Train/SCALED_tabsd_features_train.nc
+    temp_min: data/Features/Split_Data_Normalised/Train/SCALED_tmin_features_train.nc
+    temp_max: data/Features/Split_Data_Normalised/Train/SCALED_tmax_features_train.nc
+
+  targets:
+    precip: data/Targets/Split_Data_Normalised/Train/SCALED_rhiresd_targets_train.nc
+    temp: data/Targets/Split_Data_Normalised/Train/SCALED_tabsd_targets_train.nc
+    temp_min: data/Targets/Split_Data_Normalised/Train/SCALED_tmin_targets_train.nc
+    temp_max: data/Targets/Split_Data_Normalised/Train/SCALED_tmax_targets_train.nc
+
+val:
+  inputs: 
+    precip: data/Features/Split_Data_Normalised/Val/SCALED_rhiresd_features_val.nc
+    temp: data/Features/Split_Data_Normalised/Val/SCALED_tabsd_features_val.nc
+    temp_min: data/Features/Split_Data_Normalised/Val/SCALED_tmin_features_val.nc
+    temp_max: data/Features/Split_Data_Normalised/Val/SCALED_tmax_features_val.nc
+
+  targets:
+    precip: data/Targets/Split_Data_Normalised/Val/SCALED_rhiresd_targets_val.nc
+    temp: data/Targets/Split_Data_Normalised/Val/SCALED_tabsd_targets_val.nc
+    temp_min: data/Targets/Split_Data_Normalised/Val/SCALED_tmin_targets_val.nc
+    temp_max: data/Targets/Split_Data_Normalised/Val/SCALED_tmax_targets_val.nc
+
+test:
+  inputs:
+    precip: data/Features/Split_Data_Normalised/Test/SCALED_rhiresd_features_test.nc
+    temp: data/Features/Split_Data_Normalised/Test/SCALED_tabsd_features_test.nc
+    temp_min: data/Features/Split_Data_Normalised/Test/SCALED_tmin_features_test.nc
+    temp_max: data/Features/Split_Data_Normalised/Test/SCALED_tmax_features_test.nc
+  targets:
+    precip: data/Targets/Split_Data_Normalised/Test/SCALED_rhiresd_targets_test.nc
+    temp: data/Targets/Split_Data_Normalised/Test/SCALED_tabsd_targets_test.nc
+    temp_min: data/Targets/Split_Data_Normalised/Test/SCALED_tmax_targets_test.nc
+    temp_max: data/Targets/Split_Data_Normalised/Test/SCALED_tmin_targets_test.nc
+
