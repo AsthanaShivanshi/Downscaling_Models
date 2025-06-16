@@ -2,3 +2,5 @@
 *.nc
 data/
 Outputs/
+*.json
+*.csv
