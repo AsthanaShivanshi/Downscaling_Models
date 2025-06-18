@@ -1,0 +1,59 @@
+experiment:
+  batch_size: 32
+  num_workers: 4
+  quick_test: true
+
+variables:
+  input:
+    precip: precip
+    temp: temp
+    temp_min: tmin
+    temp_max: tmax
+  target:
+    precip: precip
+    temp: temp
+    temp_min: tmin
+    temp_max: tmax
+
+preprocessing:
+  nan_to_num: true
+  nan_value : 0.0
+
+split:
+  method: "by_decade"
+  seed: 42
+  train_frac: 0.7
+  val_frac: 0.2
+  #Above code Will be later customised for spatial cross val ewtcc
+
+train:
+  num_epochs: 20
+  checkpoint_path: checkpoints/best_model_20epochs_100samples.pth
+  in_channels: 4
+  out_channels: 4
+  optimizer: "Adam"
+  loss_fn: "MSE"
+  scheduler: "CyclicLR"
+  scheduler_mode: "triangular2"
+  base_lr: 1e-4
+  max_lr: 1e-3
+  step_size_up: 208
+
+  #scheduler: "StepLR"
+  #gamma: 0.1
+  #step_size: 2 #Every 2 epochs, it is reducing the learning rate by 10 percent. Customisable and overridable
+  
+  #scheduler: "ReduceLROnPlateau"
+  #scheduler_mode: "min"
+   #Can be changed to triangular2 or triangular depending on requirements
+
+  #scheduler_factor: 0.5 #Halving the lr upon plateauing only for ReduceLR On plateau
+  #scheduler_patience: 3 #Waiting for N epochs for no improvement
+  #How was step size chosen? Numer of iterations(training batches) per epoch= len(training_set)/batch_size
+  #So following from above, step size up= Number iter per epoch/2
+
+  wandb_project: "Pretraining_UNet_Deterministic"
+  wandb_run_name: "Exp_01_Pretraining_UNet_Deterministic"
+
+# Placeholder for the paths in the untracked .paths.yaml file
+data: {}
