@@ -23,7 +23,7 @@ def load_dataset(file_group: dict, config: dict, section: str) -> xr.Dataset:
 
     for var_key, var_name in var_mapping.items():
         file_path = Path(file_group[var_key])
-        ds = xr.open_dataset(file_path)[[var_name]]  # Select only the needed variable
+        ds = xr.open_dataset(file_path)[[var_name]] 
         datasets.append(ds)
 
     merged_ds = xr.merge(datasets)

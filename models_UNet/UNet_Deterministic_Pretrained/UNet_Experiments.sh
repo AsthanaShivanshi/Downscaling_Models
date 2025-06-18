@@ -15,13 +15,13 @@ module load python
 source environment.sh
 
 #Directory containing the pipeline
-cd ML_models/UNet_Deterministic
+cd models_UNet/UNet_Deterministic_Pretrained
 
 export WANDB_MODE="online"
 
 #For quick test module uncomment
 python Main.py --quick_test
 
-#For full training modzle utilisattion uncomment
+#For full training module utilisation uncomment
 
 #python Main.py
