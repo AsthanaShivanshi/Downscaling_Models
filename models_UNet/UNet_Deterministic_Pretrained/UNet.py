@@ -97,8 +97,6 @@ class UNet(nn.Module):
         inputs= F.pad(inputs, (0, padding_width, 0, padding_height))
 
 
-
-
         ###Encoder###
         s1,p1= self.Encoder1(inputs)
         s2,p2= self.Encoder2(p1)
@@ -125,9 +123,11 @@ class UNet(nn.Module):
         inputs_cropped = inputs[:, :, :original_height, :original_width]
 
         final_outputs = outputs + inputs_cropped
+        # Apply mask only to precip channel (channel ==0) only during training, not at inference
+        if self.training:
+            mask = (inputs_cropped[:, 0, :, :] >= 0.1).float()
+            final_outputs[:,0:1,:,:]=final_outputs[:,0:1,:,:] * mask
 
         return final_outputs
-
-
 
 
