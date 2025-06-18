@@ -75,6 +75,16 @@ class UNet(nn.Module):
 
         self.outputs= nn.Conv2d(features[0], out_channels, kernel_size=1)
 
+        #He initialisation for the weights of the convolutional layers
+        for m in self.modules():
+            if isinstance(m,nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.ones_(m.weight)
+                nn.init.zeros_(m.bias)
+
     def forward(self,inputs, targets=None):
         #Original size has to be stored
         original_height=inputs.shape[2]
