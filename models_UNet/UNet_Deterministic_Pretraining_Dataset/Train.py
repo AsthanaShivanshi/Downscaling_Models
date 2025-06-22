@@ -97,8 +97,6 @@ def save_model_config(config, path):
         json.dump(config, f, indent=2)
 
 
-import os
-
 def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler=None, config=None):
     import torch.optim.lr_scheduler as lrs
 
@@ -107,24 +105,13 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
     checkpoint_path = train_cfg.get("checkpoint_path", "best_model.pth")
     inference_path = train_cfg.get("inference_weights_path", None)
     model_config_path = train_cfg.get("model_config_path", "model_config.json")
-    early_stopping_patience = train_cfg.get("early_stopping_patience", 5)
 
     history = {"train_loss": [], "val_loss": []}
     best_val_loss = float('inf')
     epochs_no_improve = 0
-    start_epoch = 0
+    early_stopping_patience = train_cfg.get("early_stopping_patience", 5)
 
-    # Has to be resumed froma. checkpoints, accordingly applying the logic
-    if os.path.exists(checkpoint_path):
-        print(f"Resuming from checkpoint: {checkpoint_path}")
-        checkpoint = torch.load(checkpoint_path)
-        model.load_state_dict(checkpoint['model_state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        best_val_loss = checkpoint.get('loss', float('inf'))
-        start_epoch = checkpoint.get('epoch', 0)
-        print(f"Resumed from epoch {start_epoch}, best_val_loss={best_val_loss}")
-
-    for epoch in range(start_epoch, num_epochs):
+    for epoch in range(num_epochs):
         print(f"\nEpoch {epoch+1}/{num_epochs}")
 
         train_loss = train_one_epoch(model, train_loader, optimizer, criterion, scheduler, config)
@@ -148,7 +135,7 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
         # Save best model and inference weights/config
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            epochs_no_improve = 0  # Resetting counter
+            epochs_no_improve = 0  # Reset counter
             checkpoint_save(model, optimizer, epoch+1, val_loss, checkpoint_path, inference_path)
             save_model_config(config, model_config_path)
         else:
