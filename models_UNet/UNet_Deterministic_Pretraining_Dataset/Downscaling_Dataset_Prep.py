@@ -5,13 +5,23 @@ import rasterio
 import skimage.transform
 
 class DownscalingDataset(Dataset):
-    def __init__(self, input_ds, target_ds, config,elevation_path=None):
+    def __init__(self, input_ds, target_ds, config, elevation_path=None):
         """
         input_ds, target_ds: set of four variables
         config: in the config.yaml file
         """
         input_var_names = list(config["variables"]["input"].values())
         target_var_names = list(config["variables"]["target"].values())
+
+        input_channel_names = input_var_names.copy()
+        if elevation_path is not None:
+            input_channel_names.append("elevation")
+
+        # Printing channel index mapping (debugging)
+        #for i, name in enumerate(input_channel_names):
+        #    print(f"Input channel {i}: {name}")
+        #for i, name in enumerate(target_var_names):
+        #    print(f"Output channel {i}: {name}")
 
         self.input_vars = [input_ds[var] for var in input_var_names]
         self.target_vars = [target_ds[var] for var in target_var_names]
@@ -21,7 +31,7 @@ class DownscalingDataset(Dataset):
 
         self.length = len(self.input_vars[0].time)
 
-        # Load elevation 
+        # Loading elevation 
         self.elevation = None
         if elevation_path is not None:
             try:
@@ -48,7 +58,6 @@ class DownscalingDataset(Dataset):
 
         if self.elevation is not None:
             elev = self.elevation
-            # Optionally, resize elevation to match input shape
             if elev.shape != input_slices[0].shape:
                 from skimage.transform import resize
                 elev = resize(elev, input_slices[0].shape, order=1, preserve_range=True, anti_aliasing=True)
@@ -56,6 +65,6 @@ class DownscalingDataset(Dataset):
 
         input_tensor = torch.tensor(np.stack(input_slices)).float()
         target_tensor = torch.tensor(np.stack(target_slices)).float()
-        print(f"Input tensor shape: {input_tensor.shape}, Target tensor shape: {target_tensor.shape}")
+        #print(f"Input tensor shape: {input_tensor.shape}, Target tensor shape: {target_tensor.shape}")
 
         return input_tensor, target_tensor
