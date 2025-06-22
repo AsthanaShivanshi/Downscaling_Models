@@ -16,14 +16,12 @@ class DownscalingDataset(Dataset):
         input_channel_names = input_var_names.copy()
         if elevation_path is not None:
             input_channel_names.append("elevation")
-        print("Input channel names:", input_channel_names)
-        print("Output channel names:", target_var_names)
 
         # Printing channel index mapping (debugging)
-        for i, name in enumerate(input_channel_names):
-            print(f"Input channel {i}: {name}")
-        for i, name in enumerate(target_var_names):
-            print(f"Output channel {i}: {name}")
+        #for i, name in enumerate(input_channel_names):
+        #    print(f"Input channel {i}: {name}")
+        #for i, name in enumerate(target_var_names):
+        #    print(f"Output channel {i}: {name}")
 
         self.input_vars = [input_ds[var] for var in input_var_names]
         self.target_vars = [target_ds[var] for var in target_var_names]
