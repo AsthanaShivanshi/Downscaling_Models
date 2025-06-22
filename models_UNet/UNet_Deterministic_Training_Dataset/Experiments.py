@@ -26,7 +26,7 @@ def run_experiment(train_dataset, val_dataset, config):
         }
     )
 
-    model = UNet(in_channels=train_cfg.get("in_channels", 4), out_channels=train_cfg.get("out_channels", 4))
+    model = UNet(in_channels=train_cfg.get("in_channels", 5), out_channels=train_cfg.get("out_channels", 4))
 
     optimizer = torch.optim.Adam(
         model.parameters(),
