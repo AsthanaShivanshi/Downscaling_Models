@@ -1,9 +1,11 @@
 import torch
 from torch.utils.data import Dataset
 import numpy as np
+import rasterio
+import skimage.transform
 
 class DownscalingDataset(Dataset):
-    def __init__(self, input_ds, target_ds, config):
+    def __init__(self, input_ds, target_ds, config,elevation_path=None):
         """
         input_ds, target_ds: set of four variables
         config: in the config.yaml file
@@ -19,6 +21,19 @@ class DownscalingDataset(Dataset):
 
         self.length = len(self.input_vars[0].time)
 
+        # Load elevation 
+        self.elevation = None
+        if elevation_path is not None:
+            try:
+                with rasterio.open(elevation_path) as src:
+                    elev = src.read(1)
+                    self.elevation = elev.astype(np.float32)
+                print(f"Loaded elevation from {elevation_path}, shape: {self.elevation.shape}")
+            except Exception as e:
+                print(f"Could not load elevation: {e}")
+        else:
+            print("No elevation path provided, elevation will not be used.")
+
     def __len__(self):
         return self.length
 
@@ -31,7 +46,16 @@ class DownscalingDataset(Dataset):
             input_slices = [np.nan_to_num(arr, nan=self.nan_value) for arr in input_slices]
             target_slices = [np.nan_to_num(arr, nan=self.nan_value) for arr in target_slices]
 
+        if self.elevation is not None:
+            elev = self.elevation
+            # Optionally, resize elevation to match input shape
+            if elev.shape != input_slices[0].shape:
+                from skimage.transform import resize
+                elev = resize(elev, input_slices[0].shape, order=1, preserve_range=True, anti_aliasing=True)
+            input_slices.append(elev.astype(np.float32))
+
         input_tensor = torch.tensor(np.stack(input_slices)).float()
         target_tensor = torch.tensor(np.stack(target_slices)).float()
+        print(f"Input tensor shape: {input_tensor.shape}, Target tensor shape: {target_tensor.shape}")
 
         return input_tensor, target_tensor
