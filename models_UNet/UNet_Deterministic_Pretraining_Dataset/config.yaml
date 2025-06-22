@@ -6,15 +6,15 @@ experiment:
 # Output channels: [precip, temp, temp_min, temp_max]
 variables:
   input:
-    precip: RhiresD
-    temp: TabsD
-    temp_min: TminD
-    temp_max: TmaxD
+    precip: precip
+    temp: temp
+    temp_min: temp_min
+    temp_max: temp_max
   target:
-    precip: RhiresD
-    temp: TabsD
-    temp_min: TminD
-    temp_max: TmaxD
+    precip: precip
+    temp: temp
+    temp_min: temp_min
+    temp_max: temp_max
 
 preprocessing:
   nan_to_num: true
@@ -23,9 +23,9 @@ preprocessing:
 
 train:
   num_epochs: 50
-  checkpoint_path: best_model_30epochs_100samples_RLOP.pth
-  inference_weights_path: best_model_weights_30epochs_100samples_RLOP.pth
-  model_config_path: model_config_30epochs_100samples_RLOP.json
+  checkpoint_path: best_model_50epochs_FULL_RLOP.pth
+  inference_weights_path: best_model_weights_50epochs_FULL_RLOP.pth
+  model_config_path: model_config_50epochs_FULL_RLOP.json
   in_channels: 5
   out_channels: 4
   optimizer: "Adam"
@@ -49,8 +49,8 @@ train:
   scheduler_patience: 3 #Waiting for N epochs for no improvement
   early_stopping_patience: 5
 
-  wandb_project: "UNet_Deterministic_Training_Dataset"
-  wandb_run_name: "Exp_02_Training_UNet_Deterministic_FULL"
+  wandb_project: "UNet_Deterministic_Pretraining_Dataset"
+  wandb_run_name: "Exp_01_Pretraining_UNet_Deterministic_FULL"
 
 # Placeholder for the paths in the untracked .paths.yaml file
 data: {}

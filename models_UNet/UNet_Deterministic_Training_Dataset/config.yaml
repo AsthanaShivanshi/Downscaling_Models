@@ -1,7 +1,7 @@
 experiment:
   batch_size: 32
   num_workers: 4
-  quick_test: false
+  quick_test: true
 # Input channels: [precip, temp, temp_min, temp_max, elevation]
 # Output channels: [precip, temp, temp_min, temp_max]
 variables:
@@ -23,9 +23,9 @@ preprocessing:
 
 train:
   num_epochs: 50
-  checkpoint_path: best_model_30epochs_100samples_RLOP.pth
-  inference_weights_path: best_model_weights_30epochs_100samples_RLOP.pth
-  model_config_path: model_config_30epochs_100samples_RLOP.json
+  checkpoint_path: best_model_50epochs_FULL_RLOP.pth
+  inference_weights_path: best_model_weights_50epochs_FULL_RLOP.pth
+  model_config_path: model_config_50epochs_FULL_RLOP.json
   in_channels: 5
   out_channels: 4
   optimizer: "Adam"
@@ -50,7 +50,7 @@ train:
   early_stopping_patience: 5
 
   wandb_project: "UNet_Deterministic_Training_Dataset"
-  wandb_run_name: "Exp_02_Training_UNet_Deterministic_FULL"
+  wandb_run_name: "Exp_01_Training_UNet_Deterministic_100_samples"
 
 # Placeholder for the paths in the untracked .paths.yaml file
 data: {}
