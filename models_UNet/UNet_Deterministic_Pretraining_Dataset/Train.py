@@ -2,15 +2,16 @@
 #In present version of Train.py depemding on the type of learning scheduler used
 
 #If CyclicalLR: per batch stepping, 2 times per cycle 
-#If ReduceLROnPlateau : per epoch stepping using validation loss
-#Gradient norm logging included to wexplore vanishing/exploding gradients
-#Learning rate also logged per every 20 batches for each epoch. 
+#If ReduceLROnPlateau :  epoch stepping using validation loss depending on whether it gets stuck with no improvement
+#Gradient norm logging included to explore vanishing/exploding gradients
+#Learning rate also logged per every 20 batches for each epoch.
 
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm 
 import wandb
+import json
 
 def train_one_epoch(model, dataloader, optimizer, criterion, scheduler=None, config=None):
     import torch.optim.lr_scheduler as lrs
@@ -74,12 +75,36 @@ def validate(model, dataloader, criterion, config=None):
     return running_loss / (j + 1)
 
 
+
+def checkpoint_save(model, optimizer, epoch, loss, path, inference_path=None):
+    checkpoint = {
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss': loss
+    }
+    torch.save(checkpoint, path)
+    print(f"Best model checkpoint saved at: {path}")
+
+    # Save inference weights 
+    if inference_path:
+        torch.save(model.state_dict(), inference_path)
+        print(f"Inference model saved at: {inference_path}")
+
+def save_model_config(config, path):
+    import json
+    with open(path, "w") as f:
+        json.dump(config, f)
+
+
 def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler=None, config=None):
     import torch.optim.lr_scheduler as lrs
 
     train_cfg = config["train"]
     num_epochs = train_cfg.get("num_epochs", 30)
     checkpoint_path = train_cfg.get("checkpoint_path", "best_model.pth")
+    inference_path = train_cfg.get("inference_weights_path", None)
+    model_config_path = train_cfg.get("model_config_path", "model_config.json")
 
     history = {"train_loss": [], "val_loss": []}
     best_val_loss = float('inf')
@@ -105,10 +130,11 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
         else:
             current_lr = optimizer.param_groups[0]["lr"]
 
-        # Save best model
+        # Save best model and inference weights/config
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            checkpoint_save(model, optimizer, epoch+1, val_loss, checkpoint_path)
+            checkpoint_save(model, optimizer, epoch+1, val_loss, checkpoint_path, inference_path)
+            save_model_config(config, model_config_path)
 
         wandb.log({
             "epoch": epoch+1,
@@ -120,12 +146,3 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
     return model, history
 
 
-def checkpoint_save(model, optimizer, epoch, loss, path):
-    checkpoint = {
-        'epoch': epoch,
-        'model_state_dict': model.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
-        'loss': loss
-    }
-    torch.save(checkpoint, path)
-    print(f"Best model checkpoint saved at: {path}")
