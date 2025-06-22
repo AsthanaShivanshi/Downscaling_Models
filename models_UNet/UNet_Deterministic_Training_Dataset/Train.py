@@ -94,7 +94,7 @@ def checkpoint_save(model, optimizer, epoch, loss, path, inference_path=None):
 def save_model_config(config, path):
     import json
     with open(path, "w") as f:
-        json.dump(config, f)
+        json.dump(config, f, indent=2)
 
 
 def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler=None, config=None):
