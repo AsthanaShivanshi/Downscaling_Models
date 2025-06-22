@@ -50,7 +50,7 @@ train:
   early_stopping_patience: 5
 
   wandb_project: "UNet_Deterministic_Training_Dataset"
-  wandb_run_name: "Exp_02_Training_UNet_Deterministic_100_samples"
+  wandb_run_name: "Exp_02_Training_UNet_Deterministic_FULL"
 
 # Placeholder for the paths in the untracked .paths.yaml file
 data: {}

@@ -94,20 +94,22 @@ def checkpoint_save(model, optimizer, epoch, loss, path, inference_path=None):
 def save_model_config(config, path):
     import json
     with open(path, "w") as f:
-        json.dump(config, f)
+        json.dump(config, f, indent=2)
 
 
 def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler=None, config=None):
     import torch.optim.lr_scheduler as lrs
 
     train_cfg = config["train"]
-    num_epochs = train_cfg.get("num_epochs", 30)
+    num_epochs = train_cfg.get("num_epochs", 50)
     checkpoint_path = train_cfg.get("checkpoint_path", "best_model.pth")
     inference_path = train_cfg.get("inference_weights_path", None)
     model_config_path = train_cfg.get("model_config_path", "model_config.json")
 
     history = {"train_loss": [], "val_loss": []}
     best_val_loss = float('inf')
+    epochs_no_improve = 0
+    early_stopping_patience = train_cfg.get("early_stopping_patience", 5)
 
     for epoch in range(num_epochs):
         print(f"\nEpoch {epoch+1}/{num_epochs}")
@@ -133,8 +135,12 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
         # Save best model and inference weights/config
         if val_loss < best_val_loss:
             best_val_loss = val_loss
+            epochs_no_improve = 0  # Reset counter
             checkpoint_save(model, optimizer, epoch+1, val_loss, checkpoint_path, inference_path)
             save_model_config(config, model_config_path)
+        else:
+            epochs_no_improve += 1
+            print(f"No improvement in val loss for {epochs_no_improve} epoch(s).")
 
         wandb.log({
             "epoch": epoch+1,
@@ -143,6 +149,9 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
             "lr_epoch": current_lr
         })
 
+        # Early stopping check
+        if epochs_no_improve >= early_stopping_patience:
+            print(f"Early stopping triggered after {epoch+1} epochs with no improvement in val loss for {early_stopping_patience} epochs.")
+            break
+
     return model, history
-
-
