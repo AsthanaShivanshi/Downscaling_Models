@@ -6,3 +6,4 @@ Outputs/
 *.csv
 .paths.yaml
 *.log
+*.pth

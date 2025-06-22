@@ -2,7 +2,8 @@ experiment:
   batch_size: 32
   num_workers: 4
   quick_test: true
-
+# Input channels: [precip, temp, temp_min, temp_max, elevation]
+# Output channels: [precip, temp, temp_min, temp_max]
 variables:
   input:
     precip: RhiresD

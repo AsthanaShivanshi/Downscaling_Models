@@ -1,5 +1,5 @@
 experiment:
-  batch_size: 16
+  batch_size: 8
   num_workers: 4
   quick_test: true
 
