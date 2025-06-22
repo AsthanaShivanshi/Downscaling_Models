@@ -8,6 +8,7 @@ from config_loader import load_config
 
 import xarray as xr
 from pathlib import Path
+print("Main.py started")
 
 def load_dataset(file_group: dict, config: dict, section: str) -> xr.Dataset:
     """
@@ -31,20 +32,19 @@ def load_dataset(file_group: dict, config: dict, section: str) -> xr.Dataset:
 
 def main(config):
     paths = config["data"]
-    # Load and merge training datasets
+    elevation_path = paths.get("static", {}).get("elevation", None)
+
     input_train_ds = load_dataset(paths["train"]["input"], config, section="input")
     target_train_ds = load_dataset(paths["train"]["target"], config, section="target")
-    train_dataset = DownscalingDataset(input_train_ds, target_train_ds, config)
+    train_dataset = DownscalingDataset(input_train_ds, target_train_ds, config, elevation_path=elevation_path)
 
-    # Load and merge validation datasets
     input_val_ds = load_dataset(paths["val"]["input"], config, section="input")
     target_val_ds = load_dataset(paths["val"]["target"], config, section="target")
-    val_dataset = DownscalingDataset(input_val_ds, target_val_ds, config)
+    val_dataset = DownscalingDataset(input_val_ds, target_val_ds, config, elevation_path=elevation_path)
 
-    # Load and merge test datasets
     input_test_ds = load_dataset(paths["test"]["input"], config, section="input")
     target_test_ds = load_dataset(paths["test"]["target"], config, section="target")
-    test_dataset = DownscalingDataset(input_test_ds, target_test_ds, config)
+    test_dataset = DownscalingDataset(input_test_ds, target_test_ds, config, elevation_path=elevation_path)
 
     print(f"Using learning rate scheduler: {config['train'].get('scheduler', 'CyclicLR')}")
     print(f"Train samples: {len(train_dataset)}, Val: {len(val_dataset)}, Test: {len(test_dataset)}")
@@ -58,5 +58,10 @@ def main(config):
 if __name__ == "__main__":
     print("Main.py started running")
     config = load_config("config.yaml", ".paths.yaml")
-    main(config)
+    try:
+        main(config)
+    except Exception as e:
+        import traceback
+        print("Exception occurred in Main.py:")
+        traceback.print_exc()
     print("Finished running Main")

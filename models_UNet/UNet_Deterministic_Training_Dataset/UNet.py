@@ -122,11 +122,10 @@ class UNet(nn.Module):
         #Adding residuals back the output to produce the final output
         inputs_cropped = inputs[:, :, :original_height, :original_width]
 
-        final_outputs = outputs + inputs_cropped
-        # Apply mask only to precip channel (channel ==0) only during training, not at inference
+        final_outputs = outputs + inputs_cropped[:, :outputs.shape[1], :, :]        
         if self.training:
             mask = (inputs_cropped[:, 0, :, :] >= 0.1).float()
-            final_outputs[:,0:1,:,:]=final_outputs[:,0:1,:,:] * mask
+            final_outputs[:,0:1,:,:]=final_outputs[:,0:1,:,:] * mask.unsqueeze(1)  # Apply mask only to precip channel (channel ==0) only during training, not at inference
 
         return final_outputs
 
