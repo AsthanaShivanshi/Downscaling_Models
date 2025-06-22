@@ -1,7 +1,7 @@
 experiment:
   batch_size: 32
   num_workers: 4
-  quick_test: true
+  quick_test: false
 # Input channels: [precip, temp, temp_min, temp_max, elevation]
 # Output channels: [precip, temp, temp_min, temp_max]
 variables:
@@ -22,10 +22,10 @@ preprocessing:
 
 
 train:
-  num_epochs: 20
-  checkpoint_path: best_model_20epochs_100samples_RLOP.pth
-  inference_weights_path: best_model_weights_20epochs_100samples_RLOP.pth
-  model_config_path: model_config_20epochs_100samples_RLOP.json
+  num_epochs: 50
+  checkpoint_path: best_model_30epochs_100samples_RLOP.pth
+  inference_weights_path: best_model_weights_30epochs_100samples_RLOP.pth
+  model_config_path: model_config_30epochs_100samples_RLOP.json
   in_channels: 5
   out_channels: 4
   optimizer: "Adam"

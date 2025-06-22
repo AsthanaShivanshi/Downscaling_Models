@@ -65,6 +65,6 @@ class DownscalingDataset(Dataset):
 
         input_tensor = torch.tensor(np.stack(input_slices)).float()
         target_tensor = torch.tensor(np.stack(target_slices)).float()
-        print(f"Input tensor shape: {input_tensor.shape}, Target tensor shape: {target_tensor.shape}")
+        #print(f"Input tensor shape: {input_tensor.shape}, Target tensor shape: {target_tensor.shape}")
 
         return input_tensor, target_tensor
