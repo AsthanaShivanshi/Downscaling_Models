@@ -1,4 +1,4 @@
-#This script is being used for merging the yaml configuration file with the dataset paths
+#This script is being used for merging the yaml configuration file (.paths.yaml) with the dataset paths
 
 import yaml
 from collections.abc import Mapping

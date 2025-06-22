@@ -1,11 +1,7 @@
-import sys
-sys.path.append("../ML_models/Cyclical_LR_UNet")
-
 from UNet import UNet
 import torch
 import torch.nn as nn
 from Train import train_model, checkpoint_save
-import os
 import wandb
 from torch.optim.lr_scheduler import CyclicLR
 from learning_scheduler import get_scheduler
@@ -15,7 +11,7 @@ def run_experiment(train_dataset, val_dataset, config):
     train_cfg = config["train"]
     exp_cfg = config["experiment"]
 
-    # Initialize W&B
+    # Initializing W&B
     wandb.init(
         project=train_cfg.get("wandb_project", "unet_downscaling"),
         name=train_cfg.get("wandb_run_name", "CLR_experiment"),
@@ -72,7 +68,7 @@ def run_experiment(train_dataset, val_dataset, config):
 
     final_val_loss = history['val_loss'][-1]
 
-    checkpoint_path = train_cfg.get("checkpoint_path", "../checkpoints/best_model.pth")
+    checkpoint_path = train_cfg.get("checkpoint_path", "best_model.pth")
     checkpoint_save(
         model, optimizer, epoch=train_cfg.get("num_epochs", 20),
         loss=final_val_loss, path=checkpoint_path
