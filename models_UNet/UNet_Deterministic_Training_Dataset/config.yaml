@@ -1,19 +1,19 @@
 experiment:
-  batch_size: 16
+  batch_size: 32
   num_workers: 4
   quick_test: true
 
 variables:
   input:
-    precip: precip
-    temp: temp
-    temp_min: tmin
-    temp_max: tmax
+    precip: RhiresD
+    temp: TabsD
+    temp_min: TminD
+    temp_max: TmaxD
   target:
-    precip: precip
-    temp: temp
-    temp_min: tmin
-    temp_max: tmax
+    precip: RhiresD
+    temp: TabsD
+    temp_min: TminD
+    temp_max: TmaxD
 
 preprocessing:
   nan_to_num: true
@@ -47,8 +47,8 @@ train:
   scheduler_factor: 0.5 #Halving the lr upon plateauing only for ReduceLR On plateau
   scheduler_patience: 3 #Waiting for N epochs for no improvement
 
-  wandb_project: "UNet_Deterministic_Pretraining_Dataset"
-  wandb_run_name: "Exp_01_Pretraining_UNet_Deterministic_100_samples"
+  wandb_project: "UNet_Deterministic_Training_Dataset"
+  wandb_run_name: "Exp_02_Training_UNet_Deterministic_100_samples"
 
 # Placeholder for the paths in the untracked .paths.yaml file
 data: {}

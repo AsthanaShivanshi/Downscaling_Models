@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=UNet_Deterministic_Pretraining_Dataset_100_samples
+#SBATCH --job-name=UNet_Deterministic_Training_Dataset_100_samples
 #SBATCH --output=logs/job_output-%j.txt
 #SBATCH --error=logs/job_error-%j.txt
 #SBATCH --ntasks=1
@@ -18,7 +18,7 @@ echo "Sourcing environment"
 source environment.sh
 echo "Environment sourced."
 
-cd /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Pretraining_Dataset
+cd /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Training_Dataset
 
 export WANDB_MODE="online"
 
