@@ -23,6 +23,8 @@ preprocessing:
 train:
   num_epochs: 20
   checkpoint_path: best_model_20epochs_100samples_RLOP.pth
+  inference_weights_path: best_model_weights_20epochs_100samples_RLOP.pth
+  model_config_path: model_config_20epochs_100samples_RLOP.json
   in_channels: 4
   out_channels: 4
   optimizer: "Adam"
