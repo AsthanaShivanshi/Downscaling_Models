@@ -23,9 +23,9 @@ preprocessing:
 
 train:
   num_epochs: 50
-  checkpoint_path: best_model_50epochs_100_samples_RLOP.pth
-  inference_weights_path: best_model_weights_50epochs_100_samples_RLOP.pth
-  model_config_path: model_config_50epochs_100_samples_RLOP.json
+  checkpoint_path: best_model_50epochs_FULL_RLOP.pth
+  inference_weights_path: best_model_weights_50epochs_FULL_RLOP.pth
+  model_config_path: model_config_50epochs_FULL_RLOP.json
   in_channels: 5
   out_channels: 4
   optimizer: "Adam"
@@ -50,7 +50,7 @@ train:
   early_stopping_patience: 5
 
   wandb_project: "UNet_Deterministic_Pretraining_Dataset"
-  wandb_run_name: "Exp_01_Pretraining_UNet_Deterministic_100_samples"
+  wandb_run_name: "Exp_02_Pretraining_UNet_Deterministic_FULL"
 
 # Placeholder for the paths in the untracked .paths.yaml file
 data: {}

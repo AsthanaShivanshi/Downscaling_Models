@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=UNet_Deterministic_Pretraining_Dataset_100_samples
-#SBATCH --output=logs/100_samples_pretraining/job_output-%j.txt
-#SBATCH --error=logs/100_samples_pretraining/job_error-%j.txt
+#SBATCH --job-name=UNet_Deterministic_Pretraining_Dataset_FULL
+#SBATCH --output=logs/FULL_pretraining/job_output-%j.txt
+#SBATCH --error=logs/FULL_pretraining/job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --time=3-00:00:00
@@ -19,15 +19,15 @@ echo "Sourcing environment"
 source environment.sh
 echo "Environment sourced."
 
-cd models_UNet/UNet_Deterministic_Training_Dataset
+cd models_UNet/UNet_Deterministic_Pretraining_Dataset
 
 export WANDB_MODE="online"
 export PYTHONUNBUFFERED=1
 which python
 python --version
 echo "Starting Main.py..."
-python Main.py --quick_test
+#python Main.py --quick_test
 
 #For full training, remove the --quick_test flag
-#python Main.py
+python Main.py
 echo "Main.py finished."
