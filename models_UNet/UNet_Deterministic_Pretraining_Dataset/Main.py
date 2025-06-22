@@ -30,21 +30,19 @@ def load_dataset(file_group: dict, config: dict, section: str) -> xr.Dataset:
     return merged_ds
 def main(config):
     paths = config["data"]
-    root = Path(paths["root"])
-
     # Load and merge training datasets
-    input_train_ds = load_dataset(paths["train"]["inputs"], config, section="input")
-    target_train_ds = load_dataset(paths["train"]["targets"], config, section="target")
+    input_train_ds = load_dataset(paths["train"]["input"], config, section="input")
+    target_train_ds = load_dataset(paths["train"]["target"], config, section="target")
     train_dataset = DownscalingDataset(input_train_ds, target_train_ds, config)
 
     # Load and merge validation datasets
-    input_val_ds = load_dataset(paths["val"]["inputs"], config, section="input")
-    target_val_ds = load_dataset(paths["val"]["targets"], config, section="target")
+    input_val_ds = load_dataset(paths["val"]["input"], config, section="input")
+    target_val_ds = load_dataset(paths["val"]["target"], config, section="target")
     val_dataset = DownscalingDataset(input_val_ds, target_val_ds, config)
 
     # Load and merge test datasets
-    input_test_ds = load_dataset(paths["test"]["inputs"], config, section="input")
-    target_test_ds = load_dataset(paths["test"]["targets"], config, section="target")
+    input_test_ds = load_dataset(paths["test"]["input"], config, section="input")
+    target_test_ds = load_dataset(paths["test"]["target"], config, section="target")
     test_dataset = DownscalingDataset(input_test_ds, target_test_ds, config)
 
     print(f"Using learning rate scheduler: {config['train'].get('scheduler', 'CyclicLR')}")
