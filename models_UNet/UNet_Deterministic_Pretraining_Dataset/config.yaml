@@ -8,13 +8,13 @@ variables:
   input:
     precip: precip
     temp: temp
-    temp_min: temp_min
-    temp_max: temp_max
+    temp_min: tmin
+    temp_max: tmax
   target:
     precip: precip
     temp: temp
-    temp_min: temp_min
-    temp_max: temp_max
+    temp_min: tmin
+    temp_max: tmax
 
 preprocessing:
   nan_to_num: true
