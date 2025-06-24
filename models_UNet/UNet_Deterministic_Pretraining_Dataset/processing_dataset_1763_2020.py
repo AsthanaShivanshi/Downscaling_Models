@@ -133,74 +133,6 @@ def chronological_split_decade(x, y, train_ratio=0.8):
     )
 
 
-#EXAMPLE 2 : taking the first and last year of each decade as validation set
-
-def split_first_last_year_of_decade(x, y):
-    years = x['time'].dt.year.values
-    decades = (years // 10) * 10
-    val_mask = np.zeros_like(years, dtype=bool)
-    unique_decades = np.unique(decades)
-    for dec in unique_decades:
-        decade_years = years[decades == dec]
-        if len(decade_years) == 0:
-            continue
-        first = decade_years.min()
-        last = decade_years.max()
-        val_mask |= (years == first) | (years == last)
-    train_mask = ~val_mask
-    return (
-        x.isel(time=train_mask),
-        x.isel(time=val_mask),
-        y.isel(time=train_mask),
-        y.isel(time=val_mask),
-        sorted(set(years[val_mask].tolist()))
-    )
-
-#EXAMPLE 3: taking a random yet reproducible split of middle selection of decades as validation set
-
-def split_by_decade(x, y, val_ratio=0.2, seed=42):
-    years = x['time'].dt.year.values
-    decades = (years // 10) * 10
-    unique_decades = np.sort(np.unique(decades))
-
-    n_val_decades = max(1, int(val_ratio * len(unique_decades)))
-    quarter = len(unique_decades) // 4
-    mid_decades = unique_decades[quarter:-quarter]
-
-    np.random.seed(seed)
-    val_decades = np.random.choice(mid_decades, size=n_val_decades, replace=False)
-
-    val_mask = np.isin(decades, val_decades)
-    train_mask = ~val_mask
-
-    return (
-        x.isel(time=train_mask),
-        x.isel(time=val_mask),
-        y.isel(time=train_mask),
-        y.isel(time=val_mask),
-        sorted(val_decades.tolist())
-    )
-
-#Example 4: Every fourth decade as validation set
-
-def split_every_fourth_decade(x, y):
-    years = x['time'].dt.year.values
-    first_year = years.min()
-    decade_indices = (years - first_year) // 10 # Decades starting from 1771, not 1770
-    val_decade_idx = 3
-    val_mask = (decade_indices % 4 == val_decade_idx)
-    train_mask = ~val_mask
-    val_years = years[val_mask]
-    val_decades = np.unique(years[val_mask] // 10) * 10  # Get the decade of the validation years
-    return (
-        x.isel(time=train_mask),
-        x.isel(time=val_mask),
-        y.isel(time=train_mask),
-        y.isel(time=val_mask),
-        val_decades.tolist()
-    )
-
-
 #We can use other splitting strategies as well. But above two for now. For starters I have chosen to go with the first and last year of each decade as validation set.
 
 def get_cdo_stats(file_path, method):
@@ -313,10 +245,10 @@ def main():
     y_train_scaled = apply_cdo_scaling(y_train, stats, scale_type)
     y_val_scaled = apply_cdo_scaling(y_val, stats, scale_type)
 
-    x_train_scaled.to_netcdf(OUTPUT_DIR / f"{varname}_input_train_scaled_chronological_split_decade.nc")
-    x_val_scaled.to_netcdf(OUTPUT_DIR / f"{varname}_input_val_scaled_chronological_split_decade.nc")
-    y_train_scaled.to_netcdf(OUTPUT_DIR / f"{varname}_target_train_scaled_chronological_split_decade.nc")
-    y_val_scaled.to_netcdf(OUTPUT_DIR / f"{varname}_target_val_scaled_chronological_split_decade.nc")
+    x_train_scaled.to_netcdf(OUTPUT_DIR / f"{varname}_input_train_scaled_chronological_split.nc")
+    x_val_scaled.to_netcdf(OUTPUT_DIR / f"{varname}_input_val_scaled_chronological_split.nc")
+    y_train_scaled.to_netcdf(OUTPUT_DIR / f"{varname}_target_train_scaled_chronological_split.nc")
+    y_val_scaled.to_netcdf(OUTPUT_DIR / f"{varname}_target_val_scaled_chronological_split.nc")
 
 
     #Preparing and scaling the test set (2011-2020)
@@ -331,11 +263,11 @@ def main():
 
     x_test_scaled = apply_cdo_scaling(upsampled_test, stats, scale_type)
     y_test_scaled = apply_cdo_scaling(highres_test, stats, scale_type)
-    x_test_scaled.to_netcdf(OUTPUT_DIR / f"{varname}_input_test_scaled_chronological_split_decade.nc")
-    y_test_scaled.to_netcdf(OUTPUT_DIR / f"{varname}_target_test_scaled_chronological_split_decade.nc")
+    x_test_scaled.to_netcdf(OUTPUT_DIR / f"{varname}_input_test_scaled_chronological_split.nc")
+    y_test_scaled.to_netcdf(OUTPUT_DIR / f"{varname}_target_test_scaled_chronological_split.nc")
 
 
-    with open(OUTPUT_DIR / f"{varname}_scaling_params_chronological_split_decade.json", "w") as f:
+    with open(OUTPUT_DIR / f"{varname}_scaling_params_chronological_split.json", "w") as f:
         json.dump(stats, f, indent=2)
 
     for step_path in [step1_path, step2_path, step3_path]:
