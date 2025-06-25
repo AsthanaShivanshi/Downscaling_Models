@@ -7,7 +7,7 @@
 #SBATCH --time=3-00:00:00
 #SBATCH --mem=500G
 #SBATCH --partition=gpu
-#SBATCH --gres=gpu:2
+#SBATCH --gres=gpu:1
 
 set -x
 mkdir -p logs
