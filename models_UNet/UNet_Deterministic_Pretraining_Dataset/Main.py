@@ -1,6 +1,7 @@
 import argparse
 import torch
 from torch.utils.data import DataLoader
+import torch.nn as nn
 import wandb
 from Downscaling_Dataset_Prep import DownscalingDataset
 from Experiments import run_experiment
@@ -30,6 +31,24 @@ def load_dataset(file_group: dict, config: dict, section: str) -> xr.Dataset:
     merged_ds = xr.merge(datasets)
     return merged_ds
 
+from torch.utils.data import DataLoader
+import torch.nn as nn
+
+def evaluate_test(model, test_dataset, config):
+    batch_size = config["experiment"].get("batch_size", 32)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    model.eval()
+    criterion = nn.MSELoss()
+    total_loss = 0.0
+    with torch.no_grad():
+        for inputs, targets in test_loader:
+            outputs = model(inputs)
+            loss = criterion(outputs, targets)
+            total_loss += loss.item()
+    avg_loss = total_loss / len(test_loader)
+    print(f"Test Loss: {avg_loss}")
+    return avg_loss
+
 def main(config):
     paths = config["data"]
     elevation_path = paths.get("static", {}).get("elevation", None)
@@ -52,7 +71,12 @@ def main(config):
     model, history, final_val_loss = run_experiment(train_dataset, val_dataset, config=config)
 
     wandb.log({"final_validation_loss": final_val_loss})
+    test_loss = evaluate_test(model, test_dataset, config)
+    wandb.log({"test_loss": test_loss})
+
     wandb.finish()
+
+
 
 
 if __name__ == "__main__":
