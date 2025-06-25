@@ -46,8 +46,8 @@ train:
   scheduler: "ReduceLROnPlateau"
   scheduler_mode: "min"
   scheduler_factor: 0.5 #Halving the lr upon plateauing only for ReduceLR On plateau
-  scheduler_patience: 3 #Waiting for N epochs for no improvement
-  early_stopping_patience: 5
+  scheduler_patience: 1 #Waiting for N epochs for no improvement
+  early_stopping_patience: 3
 
   wandb_project: "UNet_Deterministic_Pretraining_Dataset"
   wandb_run_name: "Exp_01_Pretraining_UNet_Deterministic_chronological_split_FULL"
