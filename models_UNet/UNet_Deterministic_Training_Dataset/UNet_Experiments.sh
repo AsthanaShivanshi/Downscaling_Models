@@ -7,7 +7,7 @@
 #SBATCH --time=3-00:00:00
 #SBATCH --mem=256G
 #SBATCH --partition=gpu
-#SBATCH --gres=gpu:2
+#SBATCH --gres=gpu:1
 
 set -x
 mkdir -p logs
@@ -23,6 +23,7 @@ cd models_UNet/UNet_Deterministic_Training_Dataset
 
 export WANDB_MODE="online"
 export PYTHONUNBUFFERED=1
+nvidia-smi
 which python
 python --version
 echo "Starting Main.py..."

@@ -21,6 +21,9 @@ def train_one_epoch(model, dataloader, optimizer, criterion, scheduler=None, con
     quick_test = config["experiment"].get("quick_test", False)
 
     for i, (inputs, targets) in enumerate(tqdm(dataloader, desc="Training")):
+        device=next(model.parameters()).device
+        inputs = inputs.to(device)
+        targets = targets.to(device)
         optimizer.zero_grad()
         outputs = model(inputs, targets)
         loss = criterion(outputs, targets)
@@ -40,7 +43,7 @@ def train_one_epoch(model, dataloader, optimizer, criterion, scheduler=None, con
 
         running_loss += loss.item()
 
-        # Logging per 20 batches for every epocvh
+        # Logging per 20 batches for every epoch
         if i % 20 == 0:
             log_dict = {
                 "train_loss_batch": loss.item(),
@@ -65,6 +68,11 @@ def validate(model, dataloader, criterion, config=None):
 
     with torch.no_grad():
         for j, (inputs, targets) in enumerate(tqdm(dataloader, desc="Validating")):
+            device = next(model.parameters()).device
+            inputs = inputs.to(device)
+            targets = targets.to(device)
+
+            
             outputs = model(inputs, targets)
             loss = criterion(outputs, targets)
             running_loss += loss.item()
