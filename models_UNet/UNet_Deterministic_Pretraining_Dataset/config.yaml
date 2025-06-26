@@ -50,7 +50,7 @@ train:
   early_stopping_patience: 5 #Early stopping patience, if no improvement in validation loss for N epochs, stop training
 
   wandb_project: "UNet_MSE_Deterministic_Pretraining_Dataset"
-  wandb_run_name: "Exp_01_MSE_Pretraining_UNet_Deterministic_chronological_split_FULL"
+  wandb_run_name: "Exp_01_Pretraining_UNet_Deterministic_chronological_split_FULL"
 
 # Placeholder for the paths in the untracked .paths.yaml file
 data: {}

@@ -25,6 +25,7 @@ export WANDB_MODE="online"
 export PYTHONUNBUFFERED=1
 which python
 python --version
+ncvidia-smi #For GPU logging
 echo "Starting Main.py..."
 #python Main.py --quick_test
 
