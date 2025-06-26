@@ -88,8 +88,6 @@ def main(config):
     wandb.finish()
 
 
-
-
 if __name__ == "__main__":
     import sys
     parser=argparse.ArgumentParser()
