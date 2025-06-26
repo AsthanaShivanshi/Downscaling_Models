@@ -38,7 +38,12 @@ def run_experiment(train_dataset, val_dataset, config):
     scheduler_name = train_cfg.get("scheduler", "CyclicLR")
     scheduler = get_scheduler(scheduler_name, optimizer, train_cfg)
 
-    criterion = nn.MSELoss()
+    # Loss fx selection
+    loss_fn_name = train_cfg.get("loss_fn", "MSE")
+    if loss_fn_name.lower() == "huber":
+        criterion = nn.HuberLoss(delta=train_cfg.get("huber_delta", 1.0))
+    else:
+        criterion = nn.MSELoss()
 
     wandb.watch(model, log="all", log_freq=100)
 
@@ -47,7 +52,7 @@ def run_experiment(train_dataset, val_dataset, config):
 
     if quick_test:
         train_loader = torch.utils.data.DataLoader(
-            torch.utils.data.Subset(train_dataset, range(100)),
+            torch.utils.data.Subset(train_dataset, range(100)), #For smoke test only, not to be used for inference. 
             batch_size=batch_size, shuffle=True
         )
         val_loader = torch.utils.data.DataLoader(
@@ -55,10 +60,10 @@ def run_experiment(train_dataset, val_dataset, config):
             batch_size=batch_size, shuffle=False
         )
     else:
-        train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-        val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+        train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True) #Shiffling for training
+        val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False) #Shuffling not needed for val
 
-    trained_model, history = train_model(
+    trained_model, history, best_val_loss = train_model(
         model,
         train_loader,
         val_loader,
@@ -76,5 +81,5 @@ def run_experiment(train_dataset, val_dataset, config):
         loss=final_val_loss, path=checkpoint_path
     )
 
-    return trained_model, history, final_val_loss
+    return trained_model, history, final_val_loss, best_val_loss
 

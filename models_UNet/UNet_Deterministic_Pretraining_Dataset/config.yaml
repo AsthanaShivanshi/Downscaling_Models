@@ -30,7 +30,9 @@ train:
   out_channels: 4
   optimizer: "Adam"
   loss_fn: "MSE"
-  
+  #loss_fn: "Huber"
+  #huber_delta: 1.0
+
   #scheduler: "CyclicLR"
   #scheduler_mode: "triangular2"
   #base_lr: 1e-4

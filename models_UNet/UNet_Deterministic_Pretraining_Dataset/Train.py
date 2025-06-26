@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm 
 import wandb
 import json
+import time
 
 def train_one_epoch(model, dataloader, optimizer, criterion, scheduler=None, config=None):
     import torch.optim.lr_scheduler as lrs
@@ -42,18 +43,6 @@ def train_one_epoch(model, dataloader, optimizer, criterion, scheduler=None, con
             scheduler.step()
 
         running_loss += loss.item()
-
-        # Logging per 20 batches for every epoch
-        if i % 20 == 0:
-            log_dict = {
-                "train_loss_batch": loss.item(),
-                "grad_norm": grad_norm
-            }
-            if scheduler and not isinstance(scheduler, lrs.ReduceLROnPlateau):
-                log_dict["lr"] = scheduler.get_last_lr()[0]
-            else:
-                log_dict["lr"] = optimizer.param_groups[0]["lr"]
-            wandb.log(log_dict)
 
         if quick_test and i == 2:
             break
@@ -117,9 +106,10 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
     history = {"train_loss": [], "val_loss": []}
     best_val_loss = float('inf')
     epochs_no_improve = 0
-    early_stopping_patience = train_cfg.get("early_stopping_patience", 5)
+    early_stopping_patience = train_cfg.get("early_stopping_patience", 3)
 
     for epoch in range(num_epochs):
+        start_time = time.time()
         print(f"\nEpoch {epoch+1}/{num_epochs}")
 
         train_loss = train_one_epoch(model, train_loader, optimizer, criterion, scheduler, config)
@@ -130,6 +120,8 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
 
         print(f"Train Loss: {train_loss:.3f} | Val Loss: {val_loss:.3f}")
 
+        epoch_duration= time.time()-start_time
+        print(f"Epoch {epoch+1} duration: {epoch_duration:.2f}")
         # Step scheduler
         if scheduler:
             if isinstance(scheduler, lrs.ReduceLROnPlateau):
@@ -154,12 +146,14 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
             "epoch": epoch+1,
             "train_loss_epoch": train_loss,
             "val_loss_epoch": val_loss,
-            "lr_epoch": current_lr
+            "lr_epoch": current_lr,
+            "epoch_time": epoch_duration
         })
 
-        # Early stopping check
+        # Early stopping
         if epochs_no_improve >= early_stopping_patience:
             print(f"Early stopping triggered after {epoch+1} epochs with no improvement in val loss for {early_stopping_patience} epochs.")
             break
+    wandb.log({"best_val_loss": best_val_loss})  # Best val acrross epochs
 
-    return model, history
+    return model, history, best_val_loss
