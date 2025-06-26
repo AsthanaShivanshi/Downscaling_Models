@@ -39,7 +39,14 @@ def evaluate_test(model, test_dataset, config):
     batch_size = config["experiment"].get("batch_size", 32)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     model.eval()
-    criterion = nn.MSELoss()
+    # Loss function selection
+    loss_fn_name = config["train"].get("loss_fn", "MSE")
+    if loss_fn_name.lower() == "huber":
+        delta = config["train"].get("huber_delta", 1.0)
+        criterion = nn.HuberLoss(delta=delta)
+    else:
+        criterion = nn.MSELoss()
+
     total_loss = 0.0
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     with torch.no_grad():
@@ -72,9 +79,9 @@ def main(config):
     print(f"Using learning rate scheduler: {config['train'].get('scheduler', 'CyclicLR')}")
     print(f"Train samples: {len(train_dataset)}, Val: {len(val_dataset)}, Test: {len(test_dataset)}")
 
-    model, history, final_val_loss = run_experiment(train_dataset, val_dataset, config=config)
+    model, history, final_val_loss, best_val_loss = run_experiment(train_dataset, val_dataset, config=config)
 
-    wandb.log({"final_validation_loss": final_val_loss})
+    wandb.log({"final val loss per last epoch": final_val_loss, "best val loss across epochs": best_val_loss})
     test_loss = evaluate_test(model, test_dataset, config)
     wandb.log({"test_loss": test_loss})
 
@@ -84,8 +91,17 @@ def main(config):
 
 
 if __name__ == "__main__":
+    import sys
+    parser=argparse.ArgumentParser()
+    parser.add_argument("--quick_test", action="store_true",help="Run quick for small amount of samples")
+    args=parser.parse_args()
+
     print("Main.py started running")
     config = load_config("config.yaml", ".paths.yaml")
+    if args.quick_test:
+        print("Running in quick test mode")
+        config["experiment"]["quick_test"] = True
+
     try:
         main(config)
     except Exception as e:

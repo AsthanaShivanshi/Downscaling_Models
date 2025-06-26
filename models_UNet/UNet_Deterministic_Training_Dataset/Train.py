@@ -43,18 +43,6 @@ def train_one_epoch(model, dataloader, optimizer, criterion, scheduler=None, con
 
         running_loss += loss.item()
 
-        # Logging per 20 batches for every epoch
-        if i % 20 == 0:
-            log_dict = {
-                "train_loss_batch": loss.item(),
-                "grad_norm": grad_norm
-            }
-            if scheduler and not isinstance(scheduler, lrs.ReduceLROnPlateau):
-                log_dict["lr"] = scheduler.get_last_lr()[0]
-            else:
-                log_dict["lr"] = optimizer.param_groups[0]["lr"]
-            wandb.log(log_dict)
-
         if quick_test and i == 2:
             break
 
@@ -157,9 +145,10 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
             "lr_epoch": current_lr
         })
 
-        # Early stopping check
+        # Early stopping
         if epochs_no_improve >= early_stopping_patience:
             print(f"Early stopping triggered after {epoch+1} epochs with no improvement in val loss for {early_stopping_patience} epochs.")
             break
+    wandb.log({"best_val_loss": best_val_loss})  # Best val
 
-    return model, history
+    return model, history, best_val_loss
