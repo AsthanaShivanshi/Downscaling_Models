@@ -16,8 +16,8 @@ def get_scheduler(name, optimizer, config):
         return ReduceLROnPlateau(
             optimizer,
             mode=config.get("scheduler_mode", "min"),
-            factor=float(config.get("scheduler_factor", 0.5)),
-            patience=int(config.get("scheduler_patience", 3)),
+            factor=float(config.get("scheduler_factor", 0.8)),
+            patience=int(config.get("scheduler_patience", 2)),
             threshold=float(config.get("scheduler_threshold", 1e-4)))
 
     elif name== "StepLR":
