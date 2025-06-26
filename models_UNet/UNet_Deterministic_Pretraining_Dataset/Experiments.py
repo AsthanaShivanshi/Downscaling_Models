@@ -27,6 +27,8 @@ def run_experiment(train_dataset, val_dataset, config):
     )
 
     model = UNet(in_channels=train_cfg.get("in_channels", 5), out_channels=train_cfg.get("out_channels", 4))
+    device= torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
 
     optimizer = torch.optim.Adam(
         model.parameters(),

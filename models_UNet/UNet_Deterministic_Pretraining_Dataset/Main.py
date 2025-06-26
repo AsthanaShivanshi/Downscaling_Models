@@ -9,6 +9,7 @@ from config_loader import load_config
 
 import xarray as xr
 from pathlib import Path
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Main.py started")
 
 def load_dataset(file_group: dict, config: dict, section: str) -> xr.Dataset:
@@ -40,8 +41,11 @@ def evaluate_test(model, test_dataset, config):
     model.eval()
     criterion = nn.MSELoss()
     total_loss = 0.0
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     with torch.no_grad():
         for inputs, targets in test_loader:
+            inputs = inputs.to(device)      
+            targets = targets.to(device) 
             outputs = model(inputs)
             loss = criterion(outputs, targets)
             total_loss += loss.item()
