@@ -26,7 +26,6 @@ export PYTHONUNBUFFERED=1
 which python
 python --version
 echo "Starting Main.py..."
-nvidia-smi
 #python Main.py --quick_test
 
 #For full training, remove the --quick_test flag
