@@ -106,7 +106,7 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
     history = {"train_loss": [], "val_loss": []}
     best_val_loss = float('inf')
     epochs_no_improve = 0
-    early_stopping_patience = train_cfg.get("early_stopping_patience", 3)
+    early_stopping_patience = train_cfg.get("early_stopping_patience", 2)
 
     for epoch in range(num_epochs):
         start_time = time.time()
