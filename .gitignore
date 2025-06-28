@@ -7,4 +7,7 @@ Outputs/
 .paths.yaml
 *.log
 *.pth
+*.pt
+*.wandb
+*.h5
 
