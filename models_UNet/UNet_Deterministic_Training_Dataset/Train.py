@@ -118,10 +118,10 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
         history["train_loss"].append(train_loss)
         history["val_loss"].append(val_loss)
 
-        print(f"Train Loss: {train_loss:.3f} | Val Loss: {val_loss:.3f}")
+        print(f"Train Loss: {train_loss} | Val Loss: {val_loss}")
 
         epoch_duration= time.time()-start_time
-        print(f"Epoch {epoch+1} duration: {epoch_duration:.2f}")
+        print(f"Epoch {epoch+1} duration: {epoch_duration} seconds")
         # Step scheduler
         if scheduler:
             if isinstance(scheduler, lrs.ReduceLROnPlateau):
