@@ -1,14 +1,13 @@
 #!/usr/bin/env python
 #title           :Network.py
 #description     :Architecture file for multivariate bias correction
-#author          :Fang Wang
+#author          :Fang Wang,Di Tian
 #date            :2023/2/22
 #usage           :from Network import Generator
 #python_version  :3.10
 
 #Translated from original tensorflow to pytorch
 
-# Modules
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
