@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class CustomHuberLoss(nn.Module):
-    def __init__(self, mean_pr, std_pr, delta=1.0):
+    def __init__(self, mean_pr, std_pr, delta=0.05):
         super().__init__()
         self.mean_pr = mean_pr
         self.std_pr = std_pr
@@ -20,7 +20,7 @@ class CustomHuberLoss(nn.Module):
         pr_true = y_true[:, 4, :, :] * self.std_pr + self.mean_pr
         weights = torch.clamp(pr_true / 6.0, 0.1, 1.0)
 
-        # Huber loss for precipitation channel, weighted
+        # Huber loss for all channels
         pr_pred = y_pred[:, 4, :, :]
         pr_target = y_true[:, 4, :, :]
         pr_diff = pr_pred - pr_target
@@ -31,7 +31,6 @@ class CustomHuberLoss(nn.Module):
         )
         pr_loss = torch.mean(weights * pr_huber)
 
-        # Huber loss for other channels (channels 0:5, i.e., 0-4)
         other_pred = y_pred[:, 0:5, :, :]
         other_true = y_true[:, 0:5, :, :]
         other_loss = self.huber(other_pred, other_true)
