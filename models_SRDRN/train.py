@@ -5,10 +5,10 @@ from Custom_loss import CustomHuberLoss
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-image_shape_lr = (6, 26, 60)   # PyTorch: (channels, H, W)
-image_shape_hr = (6, 104, 240)
-batch_size = 64
-epochs = 160
+image_shape_lr = (5, 26, 60)   # PyTorch: (channels, H, W)
+image_shape_hr = (5, 104, 240)
+batch_size = 32
+epochs = 30
 
 # Load data (assuming npy files are (N, H, W, C), convert to (N, C, H, W))
 def load_npy(path):
