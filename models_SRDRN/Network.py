@@ -6,75 +6,64 @@
 #usage           :from Network import Generator
 #python_version  :3.10
 
+#Translated from original tensorflow to pytorch
+
 # Modules
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.layers import Activation
-from tensorflow.keras.layers import BatchNormalization
-from tensorflow.keras.layers import UpSampling2D
-from tensorflow.keras.layers import Input
-from tensorflow.keras.layers import Conv2D, SpatialDropout2D
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import LeakyReLU, PReLU
-from tensorflow.keras.layers import add
-from tensorflow.keras.initializers import RandomNormal
-from tensorflow.keras.optimizers import Adam
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
-# Residual block
-def res_block_gen(model, kernal_size, filters, strides, initializer):
-    
-    gen = model
-    
-    model = Conv2D(filters = filters, kernel_size = kernal_size, strides = strides, padding = "same", kernel_initializer=initializer)(model)
-    model = BatchNormalization(momentum = 0.5)(model)
-    # Using Parametric ReLU
-    model = PReLU(alpha_initializer='zeros', alpha_regularizer=None, alpha_constraint=None, shared_axes=[1,2])(model)
-    model = Conv2D(filters = filters, kernel_size = kernal_size, strides = strides, padding = "same", kernel_initializer=initializer)(model)
-    model = BatchNormalization(momentum = 0.5)(model)
-        
-    model = add([gen, model])
-    
-    return model
-    
-class Generator(object):
+class ResidualBlock(nn.Module):
+    def __init__(self, channels, kernel_size=3):
+        super().__init__()
+        self.conv1 = nn.Conv2d(channels, channels, kernel_size, stride=1, padding=kernel_size//2)
+        self.bn1 = nn.BatchNorm2d(channels, momentum=0.5)
+        self.prelu = nn.PReLU(num_parameters=channels)
+        self.conv2 = nn.Conv2d(channels, channels, kernel_size, stride=1, padding=kernel_size//2)
+        self.bn2 = nn.BatchNorm2d(channels, momentum=0.5)
 
-    def __init__(self, noise_shape):
-        
-        self.noise_shape = noise_shape
+    def forward(self, x):
+        residual = x
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.prelu(out)
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out += residual
+        return out
 
-    def generator(self):
-        init = RandomNormal(stddev=0.02)
-        
-        gen_input = Input(shape = self.noise_shape)
-        model = Conv2D(filters = 64, kernel_size = 3, strides = 1, padding = "same", kernel_initializer=init)(gen_input)
-        model = PReLU(alpha_initializer='zeros', alpha_regularizer=None, alpha_constraint=None, shared_axes=[1,2])(model)
-	    
-        gen_model = model
-        
-        # Using 16 Residual Blocks
-        for index in range(16):
-	        model = res_block_gen(model, 3, 64, 1, init)
-  
-        model = Conv2D(filters = 64, kernel_size = 3, strides = 1, padding = "same", kernel_initializer=init)(model)
-        model = BatchNormalization(momentum = 0.5)(model)
-        model = add([gen_model, model])
-	    
-	    # Using 2 UpSampling Blocks
-        model = Conv2D(filters = 512, kernel_size = 3, strides = 1, padding = "same", kernel_initializer=init)(model)
-        model = UpSampling2D(size = 2)(model)
-        model = PReLU(alpha_initializer='zeros', alpha_regularizer=None, alpha_constraint=None, shared_axes=[1,2])(model)
-    
-        model = Conv2D(filters = 512, kernel_size = 3, strides = 1, padding = "same", kernel_initializer=init)(model)
-        model = UpSampling2D(size = 2)(model)
-        model = PReLU(alpha_initializer='zeros', alpha_regularizer=None, alpha_constraint=None, shared_axes=[1,2])(model)
-        model = SpatialDropout2D(rate=0.5)(model, training=True)
-	    
-        model = Conv2D(filters = 6, kernel_size = 9, strides = 1, padding = "same", kernel_initializer=init)(model)
-        #model = Activation(activation='tanh')(model)
-	   
-        generator_model = Model(inputs = gen_input, outputs = model)
-        return generator_model
-     
-#model_gen=Generator((13, 16, 1)).generator()
-#model_gen.summary()
-#from tensorflow.keras.utils import plot_model
-#plot_model(model_gen)
+class Generator(nn.Module):
+    def __init__(self, in_channels=5, out_channels=4, num_res_blocks=16):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_channels, 64, kernel_size=3, stride=1, padding=1)
+        self.prelu1 = nn.PReLU(num_parameters=64)
+        # Residual blocks
+        self.res_blocks = nn.Sequential(*[ResidualBlock(64, 3) for _ in range(num_res_blocks)])
+        self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)
+        self.bn2 = nn.BatchNorm2d(64, momentum=0.5)
+        # Upsampling blocks
+        self.up1 = nn.Conv2d(64, 512, kernel_size=3, stride=1, padding=1)
+        self.upsample1 = nn.Upsample(scale_factor=2, mode='nearest')
+        self.prelu2 = nn.PReLU(num_parameters=512)
+        self.up2 = nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1)
+        self.upsample2 = nn.Upsample(scale_factor=2, mode='nearest')
+        self.prelu3 = nn.PReLU(num_parameters=512)
+        self.dropout = nn.Dropout2d(p=0.5)
+        self.conv3 = nn.Conv2d(512, out_channels, kernel_size=9, stride=1, padding=4)
+
+    def forward(self, x):
+        x1 = self.conv1(x)
+        x1 = self.prelu1(x1)
+        x2 = self.res_blocks(x1)
+        x2 = self.conv2(x2)
+        x2 = self.bn2(x2)
+        x = x1 + x2
+        x = self.up1(x)
+        x = self.upsample1(x)
+        x = self.prelu2(x)
+        x = self.up2(x)
+        x = self.upsample2(x)
+        x = self.prelu3(x)
+        x = self.dropout(x)
+        x = self.conv3(x)
+        return x

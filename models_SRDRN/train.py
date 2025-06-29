@@ -1,73 +1,57 @@
-import tensorflow as tf
-from Network import Generator
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input
-from tensorflow.keras.optimizers import Adam
+import torch
 import numpy as np
-import tensorflow.keras.backend as K
-from Custom_loss import custom_loss
-from numpy.random import randint
+from Network import Generator
+from Custom_loss import CustomHuberLoss
 
-image_shape_hr = (104, 240, 6)
-image_shape_lr=(26, 60, 6)
-downscale_factor = 4
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# select a batch of random samples, returns images and target 
-def generate_batch_samples(data_gcm, data_obs, n_samples):
-	# choose random instances
-	ix = randint(0, data_gcm.shape[0], n_samples)
-	# retrieve selected images
-	gcm = data_gcm[ix]
-	obs = data_obs[ix]   
-	return gcm, obs
+image_shape_lr = (6, 26, 60)   # PyTorch: (channels, H, W)
+image_shape_hr = (6, 104, 240)
+batch_size = 64
+epochs = 160
 
-def save_models(step, model):
-	# save the first generator model
-	filename = 'generator_%03d.h5' % (step)
-	model.save('/save_model/%s' %(filename))
+# Load data (assuming npy files are (N, H, W, C), convert to (N, C, H, W))
+def load_npy(path):
+    arr = np.load(path, mmap_mode='c')
+    if arr.ndim == 4:
+        arr = np.transpose(arr, (0, 3, 1, 2))
+    return arr
 
-generator=Generator(image_shape_lr).generator()
-generator_optimizer = tf.keras.optimizers.Adam(1e-4)
+mean_pr = np.load('/data/ERA5_mean_train.npy', mmap_mode='c')[:, :, 5]
+std_pr = np.load('/data/ERA5_std_train.npy', mmap_mode='c')[:, :, 5]
+predictors = load_npy('/data/predictors_train_mean_std_separate.npy')
+obs = load_npy('/data/obs_train_mean_std.npy')
 
-@tf.function
-def train_step(data_gcm, data_obs,mean_pr, std_pr):
-	# persistent is set to True because the tape is used more than
-	# once to calculate the gradients.
-	with tf.GradientTape(persistent=True) as tape:
-		hr_fake=generator(data_gcm, training=True)
-		loss= custom_loss(mean_pr, std_pr)
-		loss_value=loss(data_obs, hr_fake)
-    # Calculate the gradients for generator
-	generator_gradients = tape.gradient(loss_value, 
-                                        generator.trainable_variables)
-	# Apply the gradients to the optimizer
-	generator_optimizer.apply_gradients(zip(generator_gradients, 
-                                            generator.trainable_variables))
-	return loss_value
+# Convert to torch tensors
+predictors = torch.tensor(predictors, dtype=torch.float32)
+obs = torch.tensor(obs, dtype=torch.float32)
 
-def train(train_gcm, train_obs, epochs, batch_size):
-	# define properties of the training run
-	n_epochs, n_batch, = epochs, batch_size
-	bat_per_epo = int(len(train_gcm) / n_batch)
-	n_steps = bat_per_epo * n_epochs
-	for i in range(n_steps):
-		batch_gcm, batch_obs=generate_batch_samples(train_gcm, train_obs,batch_size)
-		loss_value=train_step(batch_gcm, batch_obs,mean_pr,std_pr)
-        
-		#print('Iteration>%d, loss=%.3f' % (i+1, loss_value))
-		loss_file = open('losses.txt' , 'a')
-		loss_file.write('Iteration>%d, loss=%.3f\n' % (i+1, loss_value))
-		loss_file.close()
-		if (i+1) % 741 == 0:
-			# save the models
-			save_models((i+1) // 741, generator)
+# Dataset and DataLoader
+dataset = torch.utils.data.TensorDataset(predictors, obs)
+dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
+# Model, loss, optimizer
+generator = Generator(in_channels=6, out_channels=6).to(device)
+criterion = CustomHuberLoss(mean_pr=torch.tensor(mean_pr), std_pr=torch.tensor(std_pr), delta=1.0)
+optimizer = torch.optim.Adam(generator.parameters(), lr=1e-4)
 
-mean_pr=np.load('/data/ERA5_mean_train.npy', mmap_mode='c')[:,:,5]
-std_pr=np.load('/data/ERA5_std_train.npy', mmap_mode='c')[:,:,5]
-# load low resolution data for training
-predictors=np.load('/data/predictors_train_mean_std_separate.npy', mmap_mode='c')
-# load high resolution data for training
-obs=np.load('/data/obs_train_mean_std.npy',mmap_mode='c')
+def train():
+    generator.train()
+    step = 0
+    for epoch in range(epochs):
+        for batch_gcm, batch_obs in dataloader:
+            batch_gcm = batch_gcm.to(device)
+            batch_obs = batch_obs.to(device)
+            optimizer.zero_grad()
+            hr_fake = generator(batch_gcm)
+            loss = criterion(hr_fake, batch_obs)
+            loss.backward()
+            optimizer.step()
+            step += 1
+            with open('losses.txt', 'a') as f:
+                f.write(f'Iteration>{step}, loss={loss.item():.6f}\n')
+        # Save model every epoch (or as needed)
+        torch.save(generator.state_dict(), f'generator_epoch_{epoch+1:03d}.pth')
 
-train(predictors, obs,160, 64)
+if __name__ == "__main__":
+    train()
