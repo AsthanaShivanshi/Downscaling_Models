@@ -1,7 +1,11 @@
 *.txt
 *.nc
+environment.sh
+base_dir.sh
 data/
 Outputs/
+logs/
+results/
 *.json
 *.csv
 .paths.yaml
@@ -11,4 +15,5 @@ Outputs/
 *.wandb
 *.h5
 *.pyc
+*.npz
 __pycache__/
