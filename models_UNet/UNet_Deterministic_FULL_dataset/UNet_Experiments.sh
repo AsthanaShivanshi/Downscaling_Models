@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=UNet_Deterministic_Pretraining_Dataset_FULL
-#SBATCH --output=logs/FULL_pretraining/job_output-%j.txt
-#SBATCH --error=logs/FULL_pretraining/job_error-%j.txt
+#SBATCH --output=logs/FULL_concatenated/job_output-%j.txt
+#SBATCH --error=logs/FULL_concatenated/job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --time=3-00:00:00
