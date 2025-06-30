@@ -10,3 +10,4 @@ export PROJ_LIB="/work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/MyPythonEnvN
 micromamba activate "$ENVIRONMENT"
 
 echo $PROJ_LIB
+cd "$BASE_DIR/sasthana/Downscaling/Downscaling_Models/"
