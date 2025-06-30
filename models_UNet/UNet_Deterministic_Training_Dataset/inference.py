@@ -81,7 +81,6 @@ all_targets = np.stack(all_targets)
 print(f"Average test loss: {np.mean(losses)}")
 
 
-
 # Scaling params loading from the .json files
 scaling_dir = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset")
 rhiresd_params = json.load(open(os.path.join(scaling_dir, "RhiresD_scaling_params_chronological.json")))
@@ -117,6 +116,7 @@ for i, var in enumerate(var_names):
         },
         name=var
     )
+
 
 pred_ds = xr.Dataset(pred_vars)
 pred_ds.to_netcdf("downscaled_predictions_2011_2020_ds.nc")
