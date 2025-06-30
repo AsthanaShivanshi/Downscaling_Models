@@ -103,15 +103,20 @@ else:
     lat_1d=inputs_merged.lat.values
     lon_1d=inputs_merged.lon.values
 
-pred_da = xr.DataArray(
-    all_preds_denorm,
-    dims=("time", "channel", "lat", "lon"),
-    coords={
-        "time": inputs_merged.time.values,
-        "channel": ["RhiresD", "TabsD", "TminD", "TmaxD"],
-        "lat": lat_1d,
-        "lon": lon_1d,
-    },
-    name="downscaled"
-)
-pred_da.to_netcdf("downscaled_predictions_2011_2020_ds.nc")
+
+var_names = ["RhiresD", "TabsD", "TminD", "TmaxD"]
+pred_vars = {}
+for i, var in enumerate(var_names):
+    pred_vars[var] = xr.DataArray(
+        all_preds_denorm[:, i, :, :],
+        dims=("time", "lat", "lon"),
+        coords={
+            "time": inputs_merged.time.values,
+            "lat": lat_1d,
+            "lon": lon_1d,
+        },
+        name=var
+    )
+
+pred_ds = xr.Dataset(pred_vars)
+pred_ds.to_netcdf("downscaled_predictions_2011_2020_ds.nc")
