@@ -52,6 +52,9 @@ elevation_path = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models
 #merging datasets for dataloader
 inputs_merged = xr.merge([precip_input, temp_input, tmin_input, tmax_input])
 targets_merged = xr.merge([precip_target, temp_target, tmin_target, tmax_target])
+print(inputs_merged.lat.shape)
+print(inputs_merged.lon.shape)
+
 
 ds = DownscalingDataset(inputs_merged, targets_merged, config, elevation_path)
 
@@ -93,6 +96,12 @@ all_preds_denorm[:, 1, :, :] = descale_temp(all_preds[:, 1, :, :], tabsd_params[
 all_preds_denorm[:, 2, :, :] = descale_temp(all_preds[:, 2, :, :], tmind_params["mean"], tmind_params["std"])
 all_preds_denorm[:, 3, :, :] = descale_temp(all_preds[:, 3, :, :], tmaxd_params["mean"], tmaxd_params["std"])
 
+if inputs_merged.lat.ndim==2:
+    lat_1d=inputs_merged.lat.values[:, 0]
+    lon_1d=inputs_merged.lon.values[0,:]
+else:
+    lat_1d=inputs_merged.lat.values
+    lon_1d=inputs_merged.lon.values
 
 pred_da = xr.DataArray(
     all_preds_denorm,
@@ -100,8 +109,8 @@ pred_da = xr.DataArray(
     coords={
         "time": inputs_merged.time.values,
         "channel": ["RhiresD", "TabsD", "TminD", "TmaxD"],
-        "lat": inputs_merged.lat.values,
-        "lon": inputs_merged.lon.values,
+        "lat": lat_1d,
+        "lon": lon_1d,
     },
     name="downscaled"
 )
