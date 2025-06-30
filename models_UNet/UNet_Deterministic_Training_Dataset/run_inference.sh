@@ -14,6 +14,6 @@ source environment.sh
 
 cd models_UNet/UNet_Deterministic_Training_Dataset
 
-python inference.py
+python Inference.py
 
 echo "Inference has finished, test loss printed"
