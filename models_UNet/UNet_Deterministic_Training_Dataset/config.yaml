@@ -36,7 +36,7 @@ train:
   scheduler_mode: "min"
   scheduler_factor: 0.5
   scheduler_patience: 2  # Waiting for N epochs for no improvement
-  early_stopping_patience: 3
+  early_stopping_patience: 5
   #scheduler: "CyclicLR"
   #scheduler_mode: "triangular2"
   #base_lr: 1e-4
