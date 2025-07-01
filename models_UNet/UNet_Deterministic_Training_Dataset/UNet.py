@@ -126,7 +126,6 @@ class UNet(nn.Module):
         if self.training:
             mask = (inputs_cropped[:, 0, :, :] >= 0.1).float()
             final_outputs[:,0:1,:,:]=final_outputs[:,0:1,:,:] * mask.unsqueeze(1)  # Apply mask only to precip channel (channel ==0) only during training, not at inference
-#This model should only be used for inference for days when precip is >=0.1
         return final_outputs
 
 
