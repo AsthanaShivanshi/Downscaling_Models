@@ -58,6 +58,7 @@ def evaluate_test(model, test_dataset, config):
                 for c in range(pred.shape[1])
             ]
 
+
     total_loss = 0.0
     channel_losses_individual = []
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -104,11 +105,9 @@ def main(config):
 
     model, history, final_val_loss, best_val_loss = run_experiment(train_dataset, val_dataset, config=config)
 
-    wandb.log({"final val loss per last epoch": final_val_loss, "best val loss across epochs": best_val_loss})
+    print({"final val loss per last epoch": final_val_loss, "best val loss across epochs": best_val_loss})
     test_loss = evaluate_test(model, test_dataset, config)
-    wandb.log({"test_loss": test_loss})
-
-    wandb.finish()
+    print({"test_loss": test_loss})
 
 
 if __name__ == "__main__":
