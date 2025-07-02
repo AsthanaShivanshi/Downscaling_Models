@@ -6,6 +6,9 @@ import wandb
 from torch.optim.lr_scheduler import CyclicLR
 from learning_scheduler import get_scheduler
 from torch.optim.lr_scheduler import StepLR
+import torch.nn.functional as F
+from losses import WeightedHuberLoss, WeightedMSELoss
+
 
 def run_experiment(train_dataset, val_dataset, config):
     train_cfg = config["train"]
@@ -22,7 +25,7 @@ def run_experiment(train_dataset, val_dataset, config):
             "max_lr": train_cfg.get("max_lr", 1e-3),
             "scheduler": train_cfg.get("scheduler", "CyclicLR"),
             "mode": train_cfg.get("scheduler_mode", "triangular"),
-            "epochs": train_cfg.get("num_epochs", 50)
+            "epochs": train_cfg.get("num_epochs", 100)
         }
     )
 
@@ -37,26 +40,27 @@ def run_experiment(train_dataset, val_dataset, config):
 
     scheduler_name = train_cfg.get("scheduler", "CyclicLR")
     scheduler = get_scheduler(scheduler_name, optimizer, train_cfg)
-
-    # Loss fx selection
-    loss_fn_name = train_cfg.get("loss_fn", "MSE")
-    if loss_fn_name.lower() == "huber":
-        criterion = nn.HuberLoss(delta=train_cfg.get("huber_delta", 1.0))
+        
+    loss_fn_name = train_cfg.get("loss_fn", "huber").lower()
+    weights = train_cfg.get("loss_weights", [0.25, 0.25, 0.25, 0.25])
+    if loss_fn_name == "huber":
+        criterion = WeightedHuberLoss(weights=weights, delta=train_cfg.get("huber_delta", 0.05))
+    elif loss_fn_name == "mse":
+        criterion = WeightedMSELoss(weights=weights)
     else:
-        criterion = nn.MSELoss()
-
-    wandb.watch(model, log="all", log_freq=100)
+        raise ValueError(f"Unknown loss function: {loss_fn_name}")
+    criterion.to(device)
 
     batch_size = exp_cfg.get("batch_size", 32)
     quick_test = exp_cfg.get("quick_test", False)
 
     if quick_test:
         train_loader = torch.utils.data.DataLoader(
-            torch.utils.data.Subset(train_dataset, range(100)), #For smoke test only, not to be used for inference. 
+            torch.utils.data.Subset(train_dataset, range(1000)), #For smoke test only, not to be used for inference. 
             batch_size=batch_size, shuffle=True
         )
         val_loader = torch.utils.data.DataLoader(
-            torch.utils.data.Subset(val_dataset, range(30)),
+            torch.utils.data.Subset(val_dataset, range(300)),
             batch_size=batch_size, shuffle=False
         )
     else:
@@ -77,7 +81,7 @@ def run_experiment(train_dataset, val_dataset, config):
 
     checkpoint_path = train_cfg.get("checkpoint_path", "best_model.pth")
     checkpoint_save(
-        model, optimizer, epoch=train_cfg.get("num_epochs", 50),
+        model, optimizer, epoch=train_cfg.get("num_epochs", 100),
         loss=final_val_loss, path=checkpoint_path
     )
 
