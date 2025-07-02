@@ -9,6 +9,7 @@ from UNet import UNet
 from Downscaling_Dataset_Prep import DownscalingDataset
 from torch.utils.data import DataLoader
 import torch.nn as nn
+import torch.nn.functional as F
 
 #For later descaling of predicted outputs
 
@@ -60,25 +61,58 @@ ds = DownscalingDataset(inputs_merged, targets_merged, config, elevation_path)
 
 paired_ds = DataLoader(ds, batch_size=1, shuffle=False, num_workers=4)
 
-# looping for inference, also printing the test loss in the end of the inference loop
-loss_fn= nn.HuberLoss(delta=0.05) #Identical as in the config provided at traning time
+# looping for inference
+
+loss_fn_name = config["train"].get("loss_fn", "huber").lower()
+if loss_fn_name == "huber":
+    weights = [0.4, 0.2, 0.2, 0.2]
+    delta = config["train"].get("huber_delta", 0.05)
+
+    def channel_loss_fn(pred, target):
+        # pred/target: (batch, channels, H, W)
+        # Return list of losses for each channel
+        return [
+            F.huber_loss(pred[:, c], target[:, c], delta=delta, reduction='mean').item()
+            for c in range(pred.shape[1])
+        ]
+elif loss_fn_name == "mse":
+    weights = [0.4, 0.2, 0.2, 0.2]
+    def channel_loss_fn(pred, target):
+        return [
+            F.mse_loss(pred[:, c], target[:, c], reduction='mean').item()
+            for c in range(pred.shape[1])
+        ]
+else:
+    raise ValueError(f"Unknown loss function: {loss_fn_name}")
+
+var_names = ["RhiresD", "TabsD", "TminD", "TmaxD"]
+
 all_preds = []
 all_targets = []
 losses=[]
+channel_losses_individual= []
 with torch.no_grad():
     for input_batch, target_batch in paired_ds:
         output_batch = model_instance(input_batch)
         all_preds.append(output_batch.squeeze(0).cpu().numpy())
         all_targets.append(target_batch.squeeze(0).cpu().numpy())
-        #Computing loss
-        loss=loss_fn(output_batch, target_batch)
-        losses.append(loss.item())
+        #Computing weighted loss
+        individual= channel_loss_fn(output_batch, target_batch)
+        channel_losses_individual.append(individual)
+        total_loss=sum([w * l for w, l in zip(weights, individual)])
+        losses.append(total_loss)
 
 all_preds = np.stack(all_preds)
 all_targets = np.stack(all_targets)
 
 #printing average test loss
 print(f"Average test loss: {np.mean(losses)}")
+
+#Average loss per channel
+channel_losses_individual = np.array(channel_losses_individual)
+avg_channel_losses = np.mean(channel_losses_individual, axis=0)
+for i, (var, loss) in enumerate(zip(var_names, avg_channel_losses)):
+    print(f"Average loss for channel {var}: {loss}")
 
 
 # Scaling params loading from the .json files
@@ -103,7 +137,7 @@ else:
     lon_1d=inputs_merged.lon.values
 
 
-var_names = ["RhiresD", "TabsD", "TminD", "TmaxD"]
+
 pred_vars = {}
 for i, var in enumerate(var_names):
     pred_vars[var] = xr.DataArray(

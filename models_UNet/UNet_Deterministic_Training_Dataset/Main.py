@@ -42,10 +42,10 @@ def evaluate_test(model, test_dataset, config):
     # Loss function selection
     loss_fn_name = config["train"].get("loss_fn", "MSE")
     if loss_fn_name.lower() == "huber":
-        delta = config["train"].get("huber_delta", 1.0)
-        criterion = nn.HuberLoss(delta=delta)
+        delta = config["train"].get("huber_delta", 0.05)
+        criterion = nn.WeightedHuberLoss(delta=delta)
     else:
-        criterion = nn.MSELoss()
+        criterion = nn.WeightedMSELoss()
 
     total_loss = 0.0
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
