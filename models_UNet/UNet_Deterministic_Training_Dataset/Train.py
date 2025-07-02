@@ -4,10 +4,8 @@
 #If CyclicalLR: per batch stepping, 2 times per cycle 
 #If ReduceLROnPlateau :  epoch stepping using validation loss depending on whether it gets stuck with no improvement
 #Gradient norm logging included to explore vanishing/exploding gradients
-#Learning rate also logged per every 20 batches for each epoch.
+#Learniugn rate for every epoch : logged
 import torch
-from torch import nn, var
-from torch.utils.data import DataLoader
 from tqdm import tqdm 
 import wandb
 import time
@@ -21,7 +19,6 @@ def train_one_epoch(model, dataloader, optimizer, criterion, scheduler=None, con
     model.train()
     running_loss = 0.0
     per_channel_sum = None
-    quick_test = config["experiment"].get("quick_test", False)
 
     for i, (inputs, targets) in enumerate(tqdm(dataloader, desc="Training")):
         device=next(model.parameters()).device
@@ -52,12 +49,6 @@ def train_one_epoch(model, dataloader, optimizer, criterion, scheduler=None, con
         else:
             per_channel_sum += per_channel
 
-        # Gradient norm (L2) per batch
-        total_norm = 0.0
-        for p in model.parameters():
-            if p.grad is not None:
-                total_norm += p.grad.norm(2).item() ** 2
-
         optimizer.step()
 
         if scheduler and not isinstance(scheduler, lrs.ReduceLROnPlateau):
@@ -74,7 +65,6 @@ def validate(model, dataloader, criterion, config=None):
     model.eval()
     running_loss = 0.0
     per_channel_sum = None
-    quick_test = config["experiment"].get("quick_test", False)
 
     with torch.no_grad():
         for j, (inputs, targets) in enumerate(tqdm(dataloader, desc="Validating")):
@@ -192,7 +182,6 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
         for i, var_name in enumerate(var_names):
             wandb_log_dict[f"{var_name}/train"] = train_per_channel[i]
             wandb_log_dict[f"{var_name}/val"] = val_per_channel[i]
-    # For test, use f"{var_name}/test"
 
         wandb.log(wandb_log_dict)
 

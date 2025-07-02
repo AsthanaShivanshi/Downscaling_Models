@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=Quick_Test_UNet_Deterministic_Training_Dataset_FULL
+#SBATCH --job-name=Quick_Test_UNet_Deterministic_Training_Dataset
 #SBATCH --output=logs/training/quick_test/job_output-%j.txt
 #SBATCH --error=logs/training/quick_test/job_error-%j.txt
 #SBATCH --ntasks=1
@@ -27,6 +27,6 @@ python --version
 echo "Starting Main.py..."
 python Main.py --quick_test
 
-#For full training, remove the --quick_test flag
+#For full training, remove the --quick_test flag, with 1000 samples, a smoke test
 #python Main.py
 echo "Main.py finished."
