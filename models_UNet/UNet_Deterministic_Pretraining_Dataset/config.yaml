@@ -22,15 +22,15 @@ preprocessing:
 
 
 train:
-  num_epochs: 30
-  checkpoint_path: best_model_Huber_pretraining_chronological_split_FULL.pth
-  inference_weights_path: best_model_weights_Huber_pretraining_chronological_split_FULL.pth
-  model_config_path: model_config_Huber_pretraining_chronological_split_FULL.json
+  num_epochs: 100
+  checkpoint_path: full_best_model_huber_pretraining_FULL_RLOP.pth
+  inference_weights_path: full_best_model_weights_huber_pretraining_FULL_RLOP.pth
+  model_config_path: full_model_config_huber_pretraining_FULL_RLOP.json
   in_channels: 5
   out_channels: 4
   optimizer: "Adam"
   #loss_fn: "MSE"
-  loss_fn: "Huber"
+  loss_fn: "huber"
   huber_delta: 0.05
 
   #scheduler: "CyclicLR"
@@ -47,12 +47,12 @@ train:
 
   scheduler: "ReduceLROnPlateau"
   scheduler_mode: "min"
-  scheduler_factor: 0.5 #Reducing the learning rate by 20 percent
-  scheduler_patience: 2 #Waiting for N epochs for no improvement
-  early_stopping_patience: 3 #Early stopping patience, if no improvement in validation loss for N epochs, stop training
+  scheduler_factor: 0.8 #Reducing the learning rate by 20 percent
+  scheduler_patience: 5 #Waiting for N epochs for no improvement
+  early_stopping_patience: 10 #Early stopping patience, if no improvement in validation loss for N epochs, stop training
 
   wandb_project: "UNet_Deterministic_Pretraining_Dataset"
-  wandb_run_name: "Exp_01_Pretraining_Huber_UNet_Deterministic_chronological_split_FULL"
+  wandb_run_name: "Full_Pretraining_Huber_UNet_Deterministic"
 
 # Placeholder for the paths in the untracked .paths.yaml file
 data: {}
