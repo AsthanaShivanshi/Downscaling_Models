@@ -22,10 +22,10 @@ preprocessing:
 
 
 train:
-  num_epochs: 50
-  checkpoint_path: quick_test_best_model_huber_FULL_RLOP.pth
-  inference_weights_path: quick_test_best_model_weights_huber_FULL_RLOP.pth
-  model_config_path: quick_test_model_config_huber_FULL_RLOP.json
+  num_epochs: 100
+  checkpoint_path: full_best_model_huber_FULL_RLOP.pth
+  inference_weights_path: full_best_model_weights_huber_FULL_RLOP.pth
+  model_config_path: full_model_config_huber_FULL_RLOP.json
   in_channels: 5
   out_channels: 4
   optimizer: "Adam"
@@ -35,8 +35,8 @@ train:
   scheduler: "ReduceLROnPlateau"
   scheduler_mode: "min"
   scheduler_factor: 0.8
-  scheduler_patience: 1  # Waiting for N epochs for no improvement
-  early_stopping_patience: 5
+  scheduler_patience: 5  # Waiting for N epochs for no improvement
+  early_stopping_patience: 10
   #scheduler: "CyclicLR"
   #scheduler_mode: "triangular2"
   #base_lr: 1e-4
@@ -49,7 +49,7 @@ train:
    #How was step size chosen? Numer of iterations(training batches) per epoch= len(training_set)/batch_size
   #So following from above, step size up= Number iter per epoch/2
   wandb_project: "UNet_Deterministic_Training_Dataset"
-  wandb_run_name: "Quick_Test_Training_Huber_UNet_Deterministic"
+  wandb_run_name: "Full_Training_Huber_UNet_Deterministic"
 
 # Placeholder for the paths in the untracked .paths.yaml file
 data: {}

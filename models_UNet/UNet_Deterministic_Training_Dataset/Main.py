@@ -36,7 +36,7 @@ def evaluate_test(model, test_dataset, config):
     model.eval()
     loss_fn_name = config["train"].get("loss_fn", "huber").lower()
     if loss_fn_name == "huber":
-        weights = [0.4, 0.2, 0.2, 0.2]
+        weights = [0.25, 0.25, 0.25, 0.25]
         delta = config["train"].get("huber_delta", 0.05)
         criterion = WeightedHuberLoss(weights=weights, delta=delta)
         def channel_loss_fn(pred, target):
@@ -45,7 +45,7 @@ def evaluate_test(model, test_dataset, config):
                 for c in range(pred.shape[1])
             ]
     else:
-        weights = [0.4, 0.2, 0.2, 0.2]
+        weights = [0.25, 0.25, 0.25, 0.25]
         criterion = WeightedMSELoss(weights=weights)
         def channel_loss_fn(pred, target):
             return [

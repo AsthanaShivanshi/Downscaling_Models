@@ -25,7 +25,7 @@ def run_experiment(train_dataset, val_dataset, config):
             "max_lr": train_cfg.get("max_lr", 1e-3),
             "scheduler": train_cfg.get("scheduler", "CyclicLR"),
             "mode": train_cfg.get("scheduler_mode", "triangular"),
-            "epochs": train_cfg.get("num_epochs", 50)
+            "epochs": train_cfg.get("num_epochs", 100)
         }
     )
 
@@ -42,7 +42,7 @@ def run_experiment(train_dataset, val_dataset, config):
     scheduler = get_scheduler(scheduler_name, optimizer, train_cfg)
         
     loss_fn_name = train_cfg.get("loss_fn", "huber").lower()
-    weights = train_cfg.get("loss_weights", [0.4, 0.2, 0.2, 0.2])
+    weights = train_cfg.get("loss_weights", [0.25, 0.25, 0.25, 0.25])
     if loss_fn_name == "huber":
         criterion = WeightedHuberLoss(weights=weights, delta=train_cfg.get("huber_delta", 0.05))
     elif loss_fn_name == "mse":
@@ -81,7 +81,7 @@ def run_experiment(train_dataset, val_dataset, config):
 
     checkpoint_path = train_cfg.get("checkpoint_path", "best_model.pth")
     checkpoint_save(
-        model, optimizer, epoch=train_cfg.get("num_epochs", 50),
+        model, optimizer, epoch=train_cfg.get("num_epochs", 100),
         loss=final_val_loss, path=checkpoint_path
     )
 
