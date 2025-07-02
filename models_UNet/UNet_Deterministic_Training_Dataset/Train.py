@@ -144,9 +144,9 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
 
         wandb.log({
             "epoch": epoch+1,
-            "train_loss_epoch": train_loss,
-            "val_loss_epoch": val_loss,
-            "lr_epoch": current_lr,
+            "loss/train": train_loss,
+            "loss/val": val_loss,
+            "lr": current_lr,
             "epoch_time": epoch_duration
         })
 

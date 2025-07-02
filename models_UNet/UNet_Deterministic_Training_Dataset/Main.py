@@ -6,6 +6,12 @@ import wandb
 from Downscaling_Dataset_Prep import DownscalingDataset
 from Experiments import run_experiment
 from config_loader import load_config
+from Experiments import WeightedMSELoss, WeightedHuberLoss
+import numpy as np
+import pandas as pd
+import os
+from torch.utils.data import DataLoader
+import torch.nn as nn
 
 import xarray as xr
 from pathlib import Path
@@ -32,32 +38,54 @@ def load_dataset(file_group: dict, config: dict, section: str) -> xr.Dataset:
     merged_ds = xr.merge(datasets)
     return merged_ds
 
-from torch.utils.data import DataLoader
-import torch.nn as nn
+
 
 def evaluate_test(model, test_dataset, config):
     batch_size = config["experiment"].get("batch_size", 32)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     model.eval()
-    # Loss function selection
-    loss_fn_name = config["train"].get("loss_fn", "MSE")
-    if loss_fn_name.lower() == "huber":
+    loss_fn_name = config["train"].get("loss_fn", "huber").lower()
+    if loss_fn_name == "huber":
+        weights = [0.4, 0.2, 0.2, 0.2]
         delta = config["train"].get("huber_delta", 0.05)
-        criterion = nn.WeightedHuberLoss(delta=delta)
+        criterion = WeightedHuberLoss(weights=weights, delta=delta)
+        def channel_loss_fn(pred, target):
+            return [
+                nn.functional.huber_loss(pred[:, c], target[:, c], delta=delta, reduction='mean').item()
+                for c in range(pred.shape[1])
+            ]
     else:
-        criterion = nn.WeightedMSELoss()
+        weights = [0.4, 0.2, 0.2, 0.2]
+        criterion = WeightedMSELoss(weights=weights)
+        def channel_loss_fn(pred, target):
+            return [
+                nn.functional.mse_loss(pred[:, c], target[:, c], reduction='mean').item()
+                for c in range(pred.shape[1])
+            ]
 
     total_loss = 0.0
+    channel_losses_individual = []
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     with torch.no_grad():
         for inputs, targets in test_loader:
-            inputs = inputs.to(device)      
-            targets = targets.to(device) 
+            inputs = inputs.to(device)
+            targets = targets.to(device)
             outputs = model(inputs)
             loss = criterion(outputs, targets)
             total_loss += loss.item()
+            # Channel-wise loss
+            individual = channel_loss_fn(outputs, targets)
+            channel_losses_individual.append(individual)
     avg_loss = total_loss / len(test_loader)
     print(f"Test Loss: {avg_loss}")
+
+    # Channel-wise average loss
+    var_names = ["RhiresD", "TabsD", "TminD", "TmaxD"]
+    channel_losses_individual = np.array(channel_losses_individual)
+    avg_channel_losses = np.mean(channel_losses_individual, axis=0)
+    for var, loss in zip(var_names, avg_channel_losses):
+        print(f"Average test loss for channel {var}: {loss}")
+
     return avg_loss
 
 def main(config):
