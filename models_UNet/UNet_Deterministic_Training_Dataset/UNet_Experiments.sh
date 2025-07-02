@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=Quick_Test_UNet_Deterministic_Training_Dataset
-#SBATCH --output=logs/training/quick_test/job_output-%j.txt
-#SBATCH --error=logs/training/quick_test/job_error-%j.txt
+#SBATCH --job-name=Full_UNet_Deterministic_Training_Dataset
+#SBATCH --output=logs/training/full/job_output-%j.txt
+#SBATCH --error=logs/training/full/job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-00:00:00
@@ -25,8 +25,8 @@ export PYTHONUNBUFFERED=1
 which python
 python --version
 echo "Starting Main.py..."
-python Main.py --quick_test
+python #Main.py --quick_test
 
 #For full training, remove the --quick_test flag, with 1000 samples, a smoke test
-#python Main.py
+python Main.py
 echo "Main.py finished."
