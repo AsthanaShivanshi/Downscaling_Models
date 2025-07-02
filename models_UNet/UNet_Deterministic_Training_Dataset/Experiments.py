@@ -42,18 +42,14 @@ def run_experiment(train_dataset, val_dataset, config):
     scheduler = get_scheduler(scheduler_name, optimizer, train_cfg)
         
     loss_fn_name = train_cfg.get("loss_fn", "huber").lower()
-    if loss_fn_name.lower() == "huber":
-        weights= [0.4,0.2,0.2,0.2] #40 percentile priority to precip , which is the first channel
+    weights = train_cfg.get("loss_weights", [0.4, 0.2, 0.2, 0.2])
+    if loss_fn_name == "huber":
         criterion = WeightedHuberLoss(weights=weights, delta=train_cfg.get("huber_delta", 0.05))
-        criterion.to(device)
-
+    elif loss_fn_name == "mse":
+        criterion = WeightedMSELoss(weights=weights)
     else:
-        if loss_fn_name.lower() == "mse":
-            weights= [0.4,0.2,0.2,0.2]
-            criterion = WeightedMSELoss(weights=weights)
-            criterion.to(device)
-
-    wandb.watch(model, log="all", log_freq=100)
+        raise ValueError(f"Unknown loss function: {loss_fn_name}")
+    criterion.to(device)
 
     batch_size = exp_cfg.get("batch_size", 32)
     quick_test = exp_cfg.get("quick_test", False)

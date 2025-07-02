@@ -8,11 +8,6 @@ from Experiments import run_experiment
 from config_loader import load_config
 from losses import WeightedMSELoss, WeightedHuberLoss
 import numpy as np
-import pandas as pd
-import os
-from torch.utils.data import DataLoader
-import torch.nn as nn
-
 import xarray as xr
 from pathlib import Path
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -82,7 +77,14 @@ def evaluate_test(model, test_dataset, config):
     for var, loss in zip(var_names, avg_channel_losses):
         print(f"Average test loss for channel {var}: {loss}")
 
-    return avg_loss
+    # Log total weighted test loss
+    wandb.log({"loss/test": avg_loss})
+
+    # Log per-channel test losses
+    for var, loss in zip(var_names, avg_channel_losses):
+        wandb.log({f"{var}/test": loss})    
+
+    return avg_loss, avg_channel_losses
 
 def main(config):
     paths = config["data"]
