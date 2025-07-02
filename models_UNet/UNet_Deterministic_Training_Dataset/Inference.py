@@ -10,7 +10,7 @@ from Downscaling_Dataset_Prep import DownscalingDataset
 from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
-from Experiments import WeightedHuberLoss,WeightedMSELoss
+from losses import WeightedHuberLoss,WeightedMSELoss
 
 #For later descaling of predicted outputs
 

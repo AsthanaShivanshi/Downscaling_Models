@@ -6,7 +6,7 @@ import wandb
 from Downscaling_Dataset_Prep import DownscalingDataset
 from Experiments import run_experiment
 from config_loader import load_config
-from Experiments import WeightedMSELoss, WeightedHuberLoss
+from losses import WeightedMSELoss, WeightedHuberLoss
 import numpy as np
 import pandas as pd
 import os
@@ -21,11 +21,6 @@ print("Main.py started")
 def load_dataset(file_group: dict, config: dict, section: str) -> xr.Dataset:
     """
     Loading and merging four NetCDF files into one dataset, for features and targets pairs
-    
-    Args:
-        file_group: dict of variable keys -> file paths (from config["data"][split][section])
-        config: merged config containing variable names
-        section: "input" or "target"
     """
     var_mapping = config["variables"][section]
     datasets = []
