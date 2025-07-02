@@ -6,6 +6,7 @@ import wandb
 from torch.optim.lr_scheduler import CyclicLR
 from learning_scheduler import get_scheduler
 from torch.optim.lr_scheduler import StepLR
+import torch.nn.functional as F
 
 def run_experiment(train_dataset, val_dataset, config):
     train_cfg = config["train"]
@@ -38,12 +39,47 @@ def run_experiment(train_dataset, val_dataset, config):
     scheduler_name = train_cfg.get("scheduler", "CyclicLR")
     scheduler = get_scheduler(scheduler_name, optimizer, train_cfg)
 
-    # Loss fx selection
-    loss_fn_name = train_cfg.get("loss_fn", "MSE")
+    # Loss fx selection ,,,weighted Huber or weighted MSE
+    class WeightedHuberLoss(nn.Module):
+        def __init__(self, weights, delta=0.05):
+            super().__init__()
+            self.weights = torch.tensor(weights).float()
+            assert torch.all(self.weights > 0), "Weights must be positive"
+            self.delta = delta
+
+        def forward(self, input, target):
+            # input/target shape: (batch, channels, H, W)
+            losses = []
+            for c in range(input.shape[1]):
+                loss = F.huber_loss(input[:, c], target[:, c], delta=self.delta, reduction='mean')
+                losses.append(loss * self.weights[c])
+            return sum(losses)
+        
+    class WeightedMSELoss(nn.Module):
+        def __init__(self, weights):
+            super().__init__()
+            self.weights = torch.tensor(weights).float()
+            assert torch.all(self.weights > 0), "Weights must be positive"
+
+        def forward(self, input, target):
+            # input/target shape: (batch, channels, H, W)
+            losses = []
+            for c in range(input.shape[1]):
+                loss = F.mse_loss(input[:, c], target[:, c], reduction='mean')
+                losses.append(loss * self.weights[c])
+            return sum(losses)
+        
+    loss_fn_name = train_cfg.get("loss_fn", "huber").lower()
     if loss_fn_name.lower() == "huber":
-        criterion = nn.HuberLoss(delta=train_cfg.get("huber_delta", 1.0))
+        weights= [0.4,0.2,0.2,0.2] #40 percentile priority to precip , which is the first channel
+        criterion = WeightedHuberLoss(weights=weights, delta=train_cfg.get("huber_delta", 0.05))
+        criterion.to(device)
+
     else:
-        criterion = nn.MSELoss()
+        if loss_fn_name.lower() == "mse":
+            weights= [0.4,0.2,0.2,0.2]
+            criterion = WeightedMSELoss(weights=weights)
+            criterion.to(device)
 
     wandb.watch(model, log="all", log_freq=100)
 
@@ -52,11 +88,11 @@ def run_experiment(train_dataset, val_dataset, config):
 
     if quick_test:
         train_loader = torch.utils.data.DataLoader(
-            torch.utils.data.Subset(train_dataset, range(100)), #For smoke test only, not to be used for inference. 
+            torch.utils.data.Subset(train_dataset, range(1000)), #For smoke test only, not to be used for inference. 
             batch_size=batch_size, shuffle=True
         )
         val_loader = torch.utils.data.DataLoader(
-            torch.utils.data.Subset(val_dataset, range(30)),
+            torch.utils.data.Subset(val_dataset, range(300)),
             batch_size=batch_size, shuffle=False
         )
     else:
