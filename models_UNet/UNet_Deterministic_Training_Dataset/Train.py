@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm 
 import wandb
 import time
-from Experiments import WeightedHuberLoss, WeightedMSELoss 
+from losses import WeightedHuberLoss, WeightedMSELoss 
 import torch.optim.lr_scheduler as lrs
 from torch.nn import functional as F
 

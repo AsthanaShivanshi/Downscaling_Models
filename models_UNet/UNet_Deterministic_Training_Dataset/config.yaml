@@ -1,7 +1,7 @@
 experiment:
   batch_size: 32
   num_workers: 4
-  quick_test: false #Alternative true would set it into smoke test mode, not for training or inference, just checking everything is alright
+  quick_test: true #Alternative true would set it into smoke test mode, not for training or inference, just checking everything is alright
 # Input channels: [precip, temp, temp_min, temp_max, elevation]
 # Output channels: [precip, temp, temp_min, temp_max]
 variables:
@@ -22,7 +22,7 @@ preprocessing:
 
 
 train:
-  num_epochs: 30
+  num_epochs: 50
   checkpoint_path: best_model_huber_FULL_RLOP.pth
   inference_weights_path: best_model_weights_huber_FULL_RLOP.pth
   model_config_path: model_config_huber_FULL_RLOP.json
@@ -49,7 +49,7 @@ train:
    #How was step size chosen? Numer of iterations(training batches) per epoch= len(training_set)/batch_size
   #So following from above, step size up= Number iter per epoch/2
   wandb_project: "UNet_Deterministic_Training_Dataset"
-  wandb_run_name: "Exp_01_Training_Huber_UNet_Deterministic_FULL"
+  wandb_run_name: "Exp_01_Quick_Test_Training_Huber_UNet_Deterministic_FULL"
 
 # Placeholder for the paths in the untracked .paths.yaml file
 data: {}
