@@ -5,20 +5,22 @@
 #If ReduceLROnPlateau :  epoch stepping using validation loss depending on whether it gets stuck with no improvement
 #Gradient norm logging included to explore vanishing/exploding gradients
 #Learning rate also logged per every 20 batches for each epoch.
-
 import torch
-from torch import nn
+from torch import nn, var
 from torch.utils.data import DataLoader
 from tqdm import tqdm 
 import wandb
-import json
 import time
+from Experiments import WeightedHuberLoss, WeightedMSELoss 
+import torch.optim.lr_scheduler as lrs
+from torch.nn import functional as F
+
 
 def train_one_epoch(model, dataloader, optimizer, criterion, scheduler=None, config=None):
-    import torch.optim.lr_scheduler as lrs
 
     model.train()
     running_loss = 0.0
+    per_channel_sum = None
     quick_test = config["experiment"].get("quick_test", False)
 
     for i, (inputs, targets) in enumerate(tqdm(dataloader, desc="Training")):
@@ -30,12 +32,31 @@ def train_one_epoch(model, dataloader, optimizer, criterion, scheduler=None, con
         loss = criterion(outputs, targets)
         loss.backward()
 
+        # Per-channel loss
+        if isinstance(criterion, WeightedHuberLoss):
+            delta = criterion.delta
+            per_channel = torch.tensor([
+                F.huber_loss(outputs[:, c], targets[:, c], delta=delta, reduction='mean').item()
+                for c in range(outputs.shape[1])
+            ])
+        elif isinstance(criterion, WeightedMSELoss):
+            per_channel = torch.tensor([
+                F.mse_loss(outputs[:, c], targets[:, c], reduction='mean').item()
+                for c in range(outputs.shape[1])
+            ])
+        else:
+            per_channel = torch.zeros(outputs.shape[1])
+
+        if per_channel_sum is None:
+            per_channel_sum = per_channel
+        else:
+            per_channel_sum += per_channel
+
         # Gradient norm (L2) per batch
         total_norm = 0.0
         for p in model.parameters():
             if p.grad is not None:
                 total_norm += p.grad.norm(2).item() ** 2
-        grad_norm = total_norm ** 0.5
 
         optimizer.step()
 
@@ -47,12 +68,14 @@ def train_one_epoch(model, dataloader, optimizer, criterion, scheduler=None, con
         if quick_test and i == 2:
             break
 
-    return running_loss / (i + 1)
+    avg_per_channel = (per_channel_sum / (i + 1)).tolist()
+    return running_loss / (i + 1), avg_per_channel
 
 
 def validate(model, dataloader, criterion, config=None):
     model.eval()
     running_loss = 0.0
+    per_channel_sum = None
     quick_test = config["experiment"].get("quick_test", False)
 
     with torch.no_grad():
@@ -61,16 +84,35 @@ def validate(model, dataloader, criterion, config=None):
             inputs = inputs.to(device)
             targets = targets.to(device)
 
-            
             outputs = model(inputs, targets)
             loss = criterion(outputs, targets)
             running_loss += loss.item()
 
+            # Per-channel loss
+            if isinstance(criterion, WeightedHuberLoss):
+                delta = criterion.delta
+                per_channel = torch.tensor([
+                    F.huber_loss(outputs[:, c], targets[:, c], delta=delta, reduction='mean').item()
+                    for c in range(outputs.shape[1])
+                ])
+            elif isinstance(criterion, WeightedMSELoss):
+                per_channel = torch.tensor([
+                    F.mse_loss(outputs[:, c], targets[:, c], reduction='mean').item()
+                    for c in range(outputs.shape[1])
+                ])
+            else:
+                per_channel = torch.zeros(outputs.shape[1])
+
+            if per_channel_sum is None:
+                per_channel_sum = per_channel
+            else:
+                per_channel_sum += per_channel
+
             if quick_test and j == 2:
                 break
 
-    return running_loss / (j + 1)
-
+    avg_per_channel = (per_channel_sum / (j + 1)).tolist()
+    return running_loss / (j + 1), avg_per_channel
 
 
 def checkpoint_save(model, optimizer, epoch, loss, path, inference_path=None):
@@ -88,6 +130,8 @@ def checkpoint_save(model, optimizer, epoch, loss, path, inference_path=None):
         torch.save(model.state_dict(), inference_path)
         print(f"Inference model saved at: {inference_path}")
 
+
+
 def save_model_config(config, path):
     import json
     with open(path, "w") as f:
@@ -95,7 +139,6 @@ def save_model_config(config, path):
 
 
 def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler=None, config=None):
-    import torch.optim.lr_scheduler as lrs
 
     train_cfg = config["train"]
     num_epochs = train_cfg.get("num_epochs", 50)
@@ -108,12 +151,14 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
     epochs_no_improve = 0
     early_stopping_patience = train_cfg.get("early_stopping_patience", 3)
 
+    var_names = ["RhiresD", "TabsD", "TminD", "TmaxD"]
+
     for epoch in range(num_epochs):
         start_time = time.time()
         print(f"\nEpoch {epoch+1}/{num_epochs}")
 
-        train_loss = train_one_epoch(model, train_loader, optimizer, criterion, scheduler, config)
-        val_loss = validate(model, val_loader, criterion, config)
+        train_loss, train_per_channel = train_one_epoch(model, train_loader, optimizer, criterion, scheduler, config)
+        val_loss, val_per_channel = validate(model, val_loader, criterion, config)
 
         history["train_loss"].append(train_loss)
         history["val_loss"].append(val_loss)
@@ -132,7 +177,7 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
         else:
             current_lr = optimizer.param_groups[0]["lr"]
 
-        # Save best model and inference weights/config
+        # Saving best model and inference weights/config
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             epochs_no_improve = 0  # Reset counter
@@ -142,18 +187,24 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
             epochs_no_improve += 1
             print(f"No improvement in val loss for {epochs_no_improve} epoch(s).")
 
-        wandb.log({
+        wandb_log_dict = {
             "epoch": epoch+1,
             "loss/train": train_loss,
             "loss/val": val_loss,
             "lr": current_lr,
             "epoch_time": epoch_duration
-        })
+        }
+        for i, var_name in enumerate(var_names):
+            wandb_log_dict[f"loss/train/{var_name}"] = train_per_channel[i]
+            wandb_log_dict[f"loss/val/{var_name}"] = val_per_channel[i]
+
+        wandb.log(wandb_log_dict)
+
 
         # Early stopping
         if epochs_no_improve >= early_stopping_patience:
             print(f"Early stopping triggered after {epoch+1} epochs with no improvement in val loss for {early_stopping_patience} epochs.")
             break
-    wandb.log({"best_val_loss": best_val_loss})  # Best val acrross epochs
+    wandb.log({"best_val_loss": best_val_loss})
 
     return model, history, best_val_loss
