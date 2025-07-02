@@ -65,8 +65,6 @@ def train_one_epoch(model, dataloader, optimizer, criterion, scheduler=None, con
 
         running_loss += loss.item()
 
-        if quick_test and i == 2:
-            break
 
     avg_per_channel = (per_channel_sum / (i + 1)).tolist()
     return running_loss / (i + 1), avg_per_channel
@@ -107,9 +105,6 @@ def validate(model, dataloader, criterion, config=None):
                 per_channel_sum = per_channel
             else:
                 per_channel_sum += per_channel
-
-            if quick_test and j == 2:
-                break
 
     avg_per_channel = (per_channel_sum / (j + 1)).tolist()
     return running_loss / (j + 1), avg_per_channel
@@ -195,8 +190,9 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
             "epoch_time": epoch_duration
         }
         for i, var_name in enumerate(var_names):
-            wandb_log_dict[f"loss/train/{var_name}"] = train_per_channel[i]
-            wandb_log_dict[f"loss/val/{var_name}"] = val_per_channel[i]
+            wandb_log_dict[f"{var_name}/train"] = train_per_channel[i]
+            wandb_log_dict[f"{var_name}/val"] = val_per_channel[i]
+    # For test, use f"{var_name}/test"
 
         wandb.log(wandb_log_dict)
 
@@ -205,6 +201,6 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
         if epochs_no_improve >= early_stopping_patience:
             print(f"Early stopping triggered after {epoch+1} epochs with no improvement in val loss for {early_stopping_patience} epochs.")
             break
-    wandb.log({"best_val_loss": best_val_loss})
+    print(f"best_val_loss: {best_val_loss}")
 
     return model, history, best_val_loss
