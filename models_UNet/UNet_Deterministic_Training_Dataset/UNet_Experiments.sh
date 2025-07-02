@@ -9,7 +9,6 @@
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
 
-set -x
 mkdir -p logs
 
 echo "Loading python module"
