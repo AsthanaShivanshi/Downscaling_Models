@@ -65,11 +65,11 @@ paired_ds = DataLoader(ds, batch_size=1, shuffle=False, num_workers=4)
 # Loss function
 loss_fn_name = config["train"].get("loss_fn", "huber").lower()
 if loss_fn_name == "huber":
-    weights = [0.4, 0.2, 0.2, 0.2]
+    weights = [0.25, 0.25, 0.25, 0.25]
     delta = config["train"].get("huber_delta", 0.05)
     criterion = WeightedHuberLoss(weights=weights, delta=delta)
 elif loss_fn_name == "mse":
-    weights = [0.4, 0.2, 0.2, 0.2]
+    weights = [0.25, 0.25, 0.25, 0.25]
     criterion = WeightedMSELoss(weights=weights)
 else:
     raise ValueError(f"Unknown loss function: {loss_fn_name}")
