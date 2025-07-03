@@ -1,3 +1,5 @@
+
+###Thresh MSe is the MSE computed on the preds above a certain target threshold quantile
 import os
 import yaml
 import torch
@@ -12,8 +14,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from losses import WeightedHuberLoss,WeightedMSELoss
 import matplotlib.pyplot as plt
-
-#For later descaling of predicted outputs
 
 def descale_precip(x, min_val, max_val):
     return x * (max_val - min_val) + min_val
@@ -116,14 +116,13 @@ for var, loss in zip(var_names, avg_channel_losses):
 
 #First naive look at how model did on the tails on the 2011-2020 test set
 #Computing extreme quantiles for checking  tails of the distribution performance
-quantiles=[5,50,95,99] #pctls
+quantiles= list(range(5,100,5)) #All quantiles
 thresholds={}
 for i, var in enumerate(var_names):
     targets_flattened = all_targets[:, i, :, :].flatten()
     preds_flattened = all_preds[:, i, :, :].flatten()
     thresholds[var] = [np.quantile(targets_flattened, q/100) for q in quantiles]
     mses = []
-    plt.figure(figsize=(10, 5))
     for q, thresh in zip(quantiles, thresholds[var]):
         mask = targets_flattened >= thresh
         if np.sum(mask) == 0:
@@ -134,14 +133,15 @@ for i, var in enumerate(var_names):
         mses.append(mse)
         if q == quantiles[-1] and np.sum(mask) > 0:
             plt.scatter(targets_flattened[mask], preds_flattened[mask], alpha=0.5, label=f"{q}th quantile scatter")
-    plt.plot(quantiles, mses, marker='o', label="Thresholded MSE")
+    plt.figure(figsize=(10, 5))
+    plt.plot(quantiles, mses, marker='o', label="Thresholded MSE across different quantiles")
     plt.xlabel("Quantile (%)")
     plt.ylabel("MSE")
     plt.title(f"{var} - Thresholded MSE by Quantile")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(f"{var}_thresholded_mse.png")
+    plt.savefig(f"sasthana/Downscaling/Processing_and_Analysis_Scripts/Outputs/{var}_thresholded_mse.png", dpi=1000)
     plt.close()
 
 
@@ -161,7 +161,7 @@ all_preds_denorm[:, 3, :, :] = descale_temp(all_preds[:, 3, :, :], tmaxd_params[
 
 if inputs_merged.lat.ndim==2:
     lat_1d=inputs_merged.lat.values[:, 0]
-    lon_1d=inputs_merged.lon.values[0,:]
+    lon_1d=inputs_merged.lon.values[0,:] 
 else:
     lat_1d=inputs_merged.lat.values
     lon_1d=inputs_merged.lon.values
@@ -183,4 +183,4 @@ for i, var in enumerate(var_names):
 
 
 pred_ds = xr.Dataset(pred_vars)
-pred_ds.to_netcdf("downscaled_predictions_2011_2020_ds.nc")
+pred_ds.to_netcdf("Training_Dataset_Downscaled_Predictions_2011_2020.nc")
