@@ -141,7 +141,7 @@ for i, var in enumerate(var_names):
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(f"sasthana/Downscaling/Processing_and_Analysis_Scripts/Outputs/{var}_thresholded_mse.png", dpi=1000)
+    plt.savefig(f"{var}_thresholded_mse.png", dpi=1000)
     plt.close()
 
 
