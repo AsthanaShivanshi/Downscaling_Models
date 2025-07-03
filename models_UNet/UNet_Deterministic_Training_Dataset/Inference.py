@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
 from losses import WeightedHuberLoss,WeightedMSELoss
+import matplotlib.pyplot as plt
 
 #For later descaling of predicted outputs
 
@@ -27,7 +28,7 @@ BASE_DIR = os.environ["BASE_DIR"]
 sys.path.append(os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Training_Dataset"))
 
 
-model_path = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Training_Dataset/best_model_Huber_FULL_RLOP.pth")
+model_path = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Training_Dataset/full_best_model_huber_FULL_RLOP.pth")
 training_checkpoint = torch.load(model_path, map_location=torch.device('cpu'))
 
 # Model instanc, weights
@@ -112,6 +113,36 @@ channel_losses_individual = np.array(channel_losses_individual)
 avg_channel_losses = np.mean(channel_losses_individual, axis=0)
 for var, loss in zip(var_names, avg_channel_losses):
     print(f"Average loss for channel {var}: {loss}")
+
+#First naive look at how model did on the tails on the 2011-2020 test set
+#Computing extreme quantiles for checking  tails of the distribution performance
+quantiles=[5,50,95,99] #pctls
+thresholds={}
+for i, var in enumerate(var_names):
+    targets_flattened = all_targets[:, i, :, :].flatten()
+    preds_flattened = all_preds[:, i, :, :].flatten()
+    thresholds[var] = [np.quantile(targets_flattened, q/100) for q in quantiles]
+    mses = []
+    plt.figure(figsize=(10, 5))
+    for q, thresh in zip(quantiles, thresholds[var]):
+        mask = targets_flattened >= thresh
+        if np.sum(mask) == 0:
+            mse = np.nan #Skipping it??
+            continue
+        else:
+            mse = np.mean((targets_flattened[mask] - preds_flattened[mask])**2)
+        mses.append(mse)
+        if q == quantiles[-1] and np.sum(mask) > 0:
+            plt.scatter(targets_flattened[mask], preds_flattened[mask], alpha=0.5, label=f"{q}th quantile scatter")
+    plt.plot(quantiles, mses, marker='o', label="Thresholded MSE")
+    plt.xlabel("Quantile (%)")
+    plt.ylabel("MSE")
+    plt.title(f"{var} - Thresholded MSE by Quantile")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(f"{var}_thresholded_mse.png")
+    plt.close()
 
 
 # Scaling params loading from the .json files

@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
 from losses import WeightedHuberLoss,WeightedMSELoss
+import matplotlib.pyplot as plt
 
 #For later descaling of predicted outputs
 
@@ -115,6 +116,40 @@ for var, loss in zip(var_names, avg_channel_losses):
     print(f"Average loss for channel {var}: {loss}")
 
 
+#Computing and logging extreme quantiles for checking how the model does on the tails of the distribution
+quantiles=[5,50,95,99]
+thresholds={}
+for i, var in enumerate(var_names):
+    targets_flattened = all_targets[:, i, :, :].flatten()
+    preds_flattened = all_preds[:, i, :, :].flatten()
+    thresholds[var] = [np.quantile(targets_flattened, q/100) for q in quantiles]
+    mses = []
+    plt.figure(figsize=(10, 5))
+    for q, thresh in zip(quantiles, thresholds[var]):
+        mask = targets_flattened >= thresh
+        if np.sum(mask) == 0:
+            mse = np.nan #Skipping it??
+            continue
+        else:
+            mse = np.mean((targets_flattened[mask] - preds_flattened[mask])**2)
+        mses.append(mse)
+        # Optionally, scatter for the most extreme quantile only
+        if q == quantiles[-1] and np.sum(mask) > 0:
+            plt.scatter(targets_flattened[mask], preds_flattened[mask], alpha=0.5, label=f"{q}th quantile scatter")
+    plt.plot(quantiles, mses, marker='o', label="Thresholded MSE")
+    plt.xlabel("Quantile (%)")
+    plt.ylabel("MSE")
+    plt.title(f"{var} - Thresholded MSE by Quantile")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(f"{var}_thresholded_mse.png")
+    plt.close()
+
+
+
+
+#Denorming for saving predictions
 # Scaling params loading from the .json files
 scaling_dir = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Pretraining_Chronological_Dataset")
 rhiresd_params = json.load(open(os.path.join(scaling_dir, "precip_scaling_params_chronological.json")))
@@ -135,7 +170,6 @@ if inputs_merged.lat.ndim==2:
 else:
     lat_1d=inputs_merged.lat.values
     lon_1d=inputs_merged.lon.values
-
 
 
 pred_vars = {}
