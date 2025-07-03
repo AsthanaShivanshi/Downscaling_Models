@@ -13,19 +13,70 @@ import torch.nn.functional as F
 from losses import WeightedHuberLoss,WeightedMSELoss
 import matplotlib.pyplot as plt
 
-#For later descaling of predicted outputs
-
+#functions for scaling and descaling
 def descale_precip(x, min_val, max_val):
     return x * (max_val - min_val) + min_val
 
 def descale_temp(x, mean, std):
     return x * std + mean
 
+def scale_precip(x, min_val, max_val):
+    return (x - min_val) / (max_val - min_val)
+
+def scale_temp(x, mean, std):
+    return (x - mean) / std
 
 os.environ["BASE_DIR"] = "/work/FAC/FGSE/IDYST/tbeucler/downscaling"
 BASE_DIR = os.environ["BASE_DIR"]
 
 sys.path.append(os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Pretraining_Dataset"))
+
+# Scaling params loading from the .json files
+scaling_dir = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Pretraining_Chronological_Dataset")
+rhiresd_params = json.load(open(os.path.join(scaling_dir, "precip_scaling_params_chronological.json")))
+tabsd_params   = json.load(open(os.path.join(scaling_dir, "temp_scaling_params_chronological.json")))
+tmind_params   = json.load(open(os.path.join(scaling_dir, "tmin_scaling_params_chronological.json")))
+tmaxd_params   = json.load(open(os.path.join(scaling_dir, "tmax_scaling_params_chronological.json")))
+
+#Test dataset remains the same across configurations trained 
+precip= xr.open_dataset(os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/RhiresD_step3_interp.nc"))
+temp=   xr.open_dataset(os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TabsD_step3_interp.nc"))
+tmin=   xr.open_dataset(os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TminD_step3_interp.nc"))
+tmax=   xr.open_dataset(os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TmaxD_step3_interp.nc"))
+
+
+# Selecting 2011-2020 and scaling using pretraining params from json files
+precip_input = precip.sel(time=slice("2011-01-01", "2020-12-31"))
+precip_input = precip_input.copy()
+precip_input['RhiresD'] = scale_precip(
+    precip_input['RhiresD'],
+    rhiresd_params["min"],
+    rhiresd_params["max"]
+)
+
+temp_input = temp.sel(time=slice("2011-01-01", "2020-12-31"))
+temp_input = temp_input.copy()
+temp_input['TabsD'] = scale_temp(
+    temp_input['TabsD'],
+    tabsd_params["mean"],
+    tabsd_params["std"]
+)
+
+tmin_input = tmin.sel(time=slice("2011-01-01", "2020-12-31"))
+tmin_input = tmin_input.copy()
+tmin_input['TminD'] = scale_temp(
+    tmin_input['TminD'],
+    tmind_params["mean"],
+    tmind_params["std"]
+)
+
+tmax_input = tmax.sel(time=slice("2011-01-01", "2020-12-31"))
+tmax_input = tmax_input.copy()
+tmax_input['TmaxD'] = scale_temp(
+    tmax_input['TmaxD'],
+    tmaxd_params["mean"],
+    tmaxd_params["std"]
+)
 
 
 model_path = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Pretraining_Dataset/full_best_model_huber_pretraining_FULL_RLOP.pth")
@@ -36,16 +87,45 @@ model_instance = UNet(in_channels=5, out_channels=4)
 model_instance.load_state_dict(training_checkpoint["model_state_dict"])
 model_instance.eval()
 
-#Test dataset remains the same across dataset : whether longer or shorter time series is used 
-precip_input = xr.open_dataset(os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/RhiresD_input_test_chronological_scaled.nc"))
-temp_input   = xr.open_dataset(os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TabsD_input_test_chronological_scaled.nc"))
-tmin_input   = xr.open_dataset(os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TminD_input_test_chronological_scaled.nc"))
-tmax_input   = xr.open_dataset(os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TmaxD_input_test_chronological_scaled.nc"))
+# HR target file paths
+hr_dir = os.path.join(BASE_DIR, "sasthana/Downscaling/Processing_and_Analysis_Scripts/data_1971_2023/HR_files_full")
+precip_hr = xr.open_dataset(os.path.join(hr_dir, "RhiresD_1971_2023.nc"))
+temp_hr   = xr.open_dataset(os.path.join(hr_dir, "TabsD_1971_2023.nc"))
+tmin_hr   = xr.open_dataset(os.path.join(hr_dir, "TminD_1971_2023.nc"))
+tmax_hr   = xr.open_dataset(os.path.join(hr_dir, "TmaxD_1971_2023.nc"))
 
-precip_target = xr.open_dataset(os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/RhiresD_target_test_chronological_scaled.nc"))
-temp_target   = xr.open_dataset(os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TabsD_target_test_chronological_scaled.nc"))
-tmin_target   = xr.open_dataset(os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TminD_target_test_chronological_scaled.nc"))
-tmax_target   = xr.open_dataset(os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TmaxD_target_test_chronological_scaled.nc"))
+# Select 2011-2020 and scale
+precip_target = precip_hr.sel(time=slice("2011-01-01", "2020-12-31"))
+precip_target = precip_target.copy()
+precip_target['RhiresD'] = scale_precip(
+    precip_target['RhiresD'],
+    rhiresd_params["min"],
+    rhiresd_params["max"]
+)
+
+temp_target = temp_hr.sel(time=slice("2011-01-01", "2020-12-31"))
+temp_target = temp_target.copy()
+temp_target['TabsD'] = scale_temp(
+    temp_target['TabsD'],
+    tabsd_params["mean"],
+    tabsd_params["std"]
+)
+
+tmin_target = tmin_hr.sel(time=slice("2011-01-01", "2020-12-31"))
+tmin_target = tmin_target.copy()
+tmin_target['TminD'] = scale_temp(
+    tmin_target['TminD'],
+    tmind_params["mean"],
+    tmind_params["std"]
+)
+
+tmax_target = tmax_hr.sel(time=slice("2011-01-01", "2020-12-31"))
+tmax_target = tmax_target.copy()
+tmax_target['TmaxD'] = scale_temp(
+    tmax_target['TmaxD'],
+    tmaxd_params["mean"],
+    tmaxd_params["std"]
+)
 
 config_path = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Pretraining_Dataset/config.yaml")
 with open(config_path, 'r') as f:
@@ -53,7 +133,7 @@ with open(config_path, 'r') as f:
 
 elevation_path = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/elevation.tif")
 
-#merging datasets for dataloader
+#for dataloader
 inputs_merged = xr.merge([precip_input, temp_input, tmin_input, tmax_input])
 targets_merged = xr.merge([precip_target, temp_target, tmin_target, tmax_target])
 print(inputs_merged.lat.shape)
@@ -92,7 +172,7 @@ with torch.no_grad():
         #Weighted total across four channels : using criteria defined in Experiments
         total_loss = criterion(output_batch, target_batch).item()
         losses.append(total_loss)
-        # For per-channel loss, you can use the underlying F.huber_loss or F.mse_loss as before:
+        # For per-channel loss
         if loss_fn_name == "huber":
             individual = [
                 F.huber_loss(output_batch[:, c], target_batch[:, c], delta=delta, reduction='mean').item()
@@ -116,15 +196,15 @@ for var, loss in zip(var_names, avg_channel_losses):
     print(f"Average loss for channel {var}: {loss}")
 
 
-#Computing and logging extreme quantiles for checking how the model does on the tails of the distribution
-quantiles=[5,50,95,99]
+#First naive look at how model did on the tails on the 2011-2020 test set
+#Computing extreme quantiles for checking  tails of the distribution performance
+quantiles= list(range(5,100,5)) #All quantiles
 thresholds={}
 for i, var in enumerate(var_names):
     targets_flattened = all_targets[:, i, :, :].flatten()
     preds_flattened = all_preds[:, i, :, :].flatten()
     thresholds[var] = [np.quantile(targets_flattened, q/100) for q in quantiles]
     mses = []
-    plt.figure(figsize=(10, 5))
     for q, thresh in zip(quantiles, thresholds[var]):
         mask = targets_flattened >= thresh
         if np.sum(mask) == 0:
@@ -133,29 +213,19 @@ for i, var in enumerate(var_names):
         else:
             mse = np.mean((targets_flattened[mask] - preds_flattened[mask])**2)
         mses.append(mse)
-        # Optionally, scatter for the most extreme quantile only
         if q == quantiles[-1] and np.sum(mask) > 0:
             plt.scatter(targets_flattened[mask], preds_flattened[mask], alpha=0.5, label=f"{q}th quantile scatter")
-    plt.plot(quantiles, mses, marker='o', label="Thresholded MSE")
+    plt.figure(figsize=(10, 5))
+    plt.plot(quantiles, mses, marker='o', label="Thresholded MSE across different quantiles")
     plt.xlabel("Quantile (%)")
     plt.ylabel("MSE")
     plt.title(f"{var} - Thresholded MSE by Quantile")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(f"{var}_thresholded_mse.png")
+    plt.savefig(f"{var}_thresholded_mse.png", dpi=1000)
     plt.close()
 
-
-
-
-#Denorming for saving predictions
-# Scaling params loading from the .json files
-scaling_dir = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Pretraining_Chronological_Dataset")
-rhiresd_params = json.load(open(os.path.join(scaling_dir, "precip_scaling_params_chronological.json")))
-tabsd_params   = json.load(open(os.path.join(scaling_dir, "temp_scaling_params_chronological.json")))
-tmind_params   = json.load(open(os.path.join(scaling_dir, "tmin_scaling_params_chronological.json")))
-tmaxd_params   = json.load(open(os.path.join(scaling_dir, "tmax_scaling_params_chronological.json")))
 
 
 all_preds_denorm = np.empty_like(all_preds)
