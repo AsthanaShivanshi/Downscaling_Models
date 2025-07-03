@@ -47,7 +47,7 @@ train:
 
   scheduler: "ReduceLROnPlateau"
   scheduler_mode: "min"
-  scheduler_factor: 0.8 #Reducing the learning rate by 20 percent
+  scheduler_factor: 0.8 #Reducing the learning rate by 20 percent after each patience period
   scheduler_patience: 5 #Waiting for N epochs for no improvement
   early_stopping_patience: 10 #Early stopping patience, if no improvement in validation loss for N epochs, stop training
 
