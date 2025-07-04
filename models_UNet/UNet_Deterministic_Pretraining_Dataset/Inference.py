@@ -210,25 +210,33 @@ for var, loss in zip(var_names, avg_channel_losses):
 
 #First naive look at how model did on the tails on the 2011-2020 test set
 #Computing extreme quantiles for checking  tails of the distribution performance
-quantiles= list(range(5,100,5)) #All quantiles
-thresholds={}
+quantiles = list(range(5, 100, 5))  # All quantiles
+thresholds = {}
+
 for i, var in enumerate(var_names):
     targets_flattened = all_targets[:, i, :, :].flatten()
     preds_flattened = all_preds[:, i, :, :].flatten()
     thresholds[var] = [np.quantile(targets_flattened, q/100) for q in quantiles]
     mses = []
+    extreme_mask = None  # To store mask for the most extreme quantile
+
+    plt.figure(figsize=(10, 5))
     for q, thresh in zip(quantiles, thresholds[var]):
         mask = targets_flattened >= thresh
         if np.sum(mask) == 0:
-            mse = np.nan #Skipping it??
-            continue
+            mses.append(np.nan)
         else:
             mse = np.mean((targets_flattened[mask] - preds_flattened[mask])**2)
-        mses.append(mse)
-        if q == quantiles[-1] and np.sum(mask) > 0:
-            plt.scatter(targets_flattened[mask], preds_flattened[mask], alpha=0.5, label=f"{q}th quantile scatter")
-    plt.figure(figsize=(10, 5))
-    plt.plot(quantiles, mses, marker='o', label="Thresholded MSE across different quantiles")
+            mses.append(mse)
+        # Save mask for the most extreme quantile
+        if q == quantiles[-1]:
+            extreme_mask = mask
+
+    plt.plot(quantiles, mses, marker='o', label="Thresholded MSE across quantiles")
+    # Optionally, add scatter for the most extreme quantile
+    if extreme_mask is not None and np.sum(extreme_mask) > 0:
+        plt.scatter(targets_flattened[extreme_mask], preds_flattened[extreme_mask], 
+                    alpha=0.5, label=f"{quantiles[-1]}th quantile scatter")
     plt.xlabel("Quantile (%)")
     plt.ylabel("MSE")
     plt.title(f"{var} - Thresholded MSE by Quantile")
