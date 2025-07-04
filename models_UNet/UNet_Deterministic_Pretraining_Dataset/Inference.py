@@ -257,4 +257,4 @@ for i, var in enumerate(var_names):
 
 
 pred_ds = xr.Dataset(pred_vars)
-pred_ds.to_netcdf("pretraining_dataset_downscaled_predictions_2011_2020_ds.nc")
+pred_ds.to_netcdf("Pretraining_Dataset_Downscaled_Predictions_2011_2020.nc")
