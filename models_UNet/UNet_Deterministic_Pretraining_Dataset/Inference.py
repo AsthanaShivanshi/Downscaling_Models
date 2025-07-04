@@ -133,6 +133,18 @@ with open(config_path, 'r') as f:
 
 elevation_path = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/elevation.tif")
 
+
+# Renaming vars to match expected config in DownscalingDataset/config
+precip_input = precip_input.rename({'RhiresD': 'precip'})
+temp_input   = temp_input.rename({'TabsD': 'temp'})
+tmin_input   = tmin_input.rename({'TminD': 'tmin'})
+tmax_input   = tmax_input.rename({'TmaxD': 'tmax'})
+
+precip_target = precip_target.rename({'RhiresD': 'precip'})
+temp_target   = temp_target.rename({'TabsD': 'temp'})
+tmin_target   = tmin_target.rename({'TminD': 'tmin'})
+tmax_target   = tmax_target.rename({'TmaxD': 'tmax'})
+
 #for dataloader
 inputs_merged = xr.merge([precip_input, temp_input, tmin_input, tmax_input])
 targets_merged = xr.merge([precip_target, temp_target, tmin_target, tmax_target])
@@ -157,7 +169,7 @@ else:
     raise ValueError(f"Unknown loss function: {loss_fn_name}")
 
 
-var_names = ["RhiresD", "TabsD", "TminD", "TmaxD"]
+var_names = ["precip", "temp", "tmin", "tmax"]
 
 all_preds = []
 all_targets = []
