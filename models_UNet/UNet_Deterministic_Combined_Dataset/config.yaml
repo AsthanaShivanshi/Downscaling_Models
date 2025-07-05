@@ -23,9 +23,9 @@ preprocessing:
 
 train:
   num_epochs: 100
-  checkpoint_path: full_best_model_huber_pretraining_FULL_RLOP.pth
-  inference_weights_path: full_best_model_weights_huber_pretraining_FULL_RLOP.pth
-  model_config_path: full_model_config_huber_pretraining_FULL_RLOP.json
+  checkpoint_path: combined_full_best_model_huber_pretraining_FULL_RLOP.pth
+  inference_weights_path: combined_full_best_model_weights_huber_pretraining_FULL_RLOP.pth
+  model_config_path: combined_full_model_config_huber_pretraining_FULL_RLOP.json
   in_channels: 5
   out_channels: 4
   optimizer: "Adam"
@@ -51,8 +51,8 @@ train:
   scheduler_patience: 5 #Waiting for N epochs for no improvement
   early_stopping_patience: 10 #Early stopping patience, if no improvement in validation loss for N epochs, stop training
 
-  wandb_project: "UNet_Deterministic_Pretraining_Dataset"
-  wandb_run_name: "Full_Pretraining_Huber_UNet_Deterministic"
+  wandb_project: "UNet_Deterministic_Combined_Dataset"
+  wandb_run_name: "Full_Combined_Huber_UNet_Deterministic"
 
 # Placeholder for the paths in the untracked .paths.yaml file
 data: {}

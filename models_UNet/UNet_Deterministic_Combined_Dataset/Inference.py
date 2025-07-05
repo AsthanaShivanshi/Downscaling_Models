@@ -29,14 +29,14 @@ def scale_temp(x, mean, std):
 os.environ["BASE_DIR"] = "/work/FAC/FGSE/IDYST/tbeucler/downscaling"
 BASE_DIR = os.environ["BASE_DIR"]
 
-sys.path.append(os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Pretraining_Dataset"))
+sys.path.append(os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Combined_Dataset"))
 
 # Scaling params loading from the .json files
-scaling_dir = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Pretraining_Chronological_Dataset")
-rhiresd_params = json.load(open(os.path.join(scaling_dir, "precip_scaling_params_chronological.json")))
-tabsd_params   = json.load(open(os.path.join(scaling_dir, "temp_scaling_params_chronological.json")))
-tmind_params   = json.load(open(os.path.join(scaling_dir, "tmin_scaling_params_chronological.json")))
-tmaxd_params   = json.load(open(os.path.join(scaling_dir, "tmax_scaling_params_chronological.json")))
+scaling_dir = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Combined_Chronological_Dataset")
+rhiresd_params = json.load(open(os.path.join(scaling_dir, "combined_precip_scaling_params_chronological.json")))
+tabsd_params   = json.load(open(os.path.join(scaling_dir, "combined_temp_scaling_params_chronological.json")))
+tmind_params   = json.load(open(os.path.join(scaling_dir, "combined_tmin_scaling_params_chronological.json")))
+tmaxd_params   = json.load(open(os.path.join(scaling_dir, "combined_tmax_scaling_params_chronological.json")))
 
 #Test dataset remains the same across configurations trained 
 precip= xr.open_dataset(os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/RhiresD_step3_interp.nc"))
@@ -79,7 +79,7 @@ tmax_input['TmaxD'] = scale_temp(
 )
 
 
-model_path = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Pretraining_Dataset/full_best_model_huber_pretraining_FULL_RLOP.pth")
+model_path = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Pretraining_Dataset/combined_full_best_model_huber_pretraining_FULL_RLOP.pth")
 training_checkpoint = torch.load(model_path, map_location=torch.device('cpu'))
 
 # Model instanc, weights
@@ -127,7 +127,7 @@ tmax_target['TmaxD'] = scale_temp(
     tmaxd_params["std"]
 )
 
-config_path = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Pretraining_Dataset/config.yaml")
+config_path = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Combined_Dataset/config.yaml")
 with open(config_path, 'r') as f:
     config = yaml.safe_load(f)
 
@@ -235,7 +235,7 @@ for i, var in enumerate(var_names):
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(f"Pretraining_{var}_thresholded_mse.png", dpi=1000)
+    plt.savefig(f"Combined_{var}_thresholded_mse.png", dpi=1000)
     plt.close()
 
 
@@ -269,4 +269,4 @@ for i, var in enumerate(var_names):
 
 
 pred_ds = xr.Dataset(pred_vars)
-pred_ds.to_netcdf("Pretraining_Dataset_Downscaled_Predictions_2011_2020.nc")
+pred_ds.to_netcdf("Combined_Dataset_Downscaled_Predictions_2011_2020.nc")
