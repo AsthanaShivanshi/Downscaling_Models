@@ -52,7 +52,7 @@ train:
   early_stopping_patience: 10 #Early stopping patience, if no improvement in validation loss for N epochs, stop training
 
   wandb_project: "UNet_Deterministic_Combined_Dataset"
-  wandb_run_name: "Full_Combined_Huber_UNet_Deterministic"
+  wandb_run_name: "Combined_Full_Huber_UNet_Deterministic"
 
 # Placeholder for the paths in the untracked .paths.yaml file
 data: {}
