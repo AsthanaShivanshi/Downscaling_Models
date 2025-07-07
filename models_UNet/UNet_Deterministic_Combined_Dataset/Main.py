@@ -1,7 +1,7 @@
 import argparse
 import torch
 from torch.utils.data import DataLoader
-import torch.nn as nn
+import torch.nn.functional as F
 import wandb
 from models_UNet.UNet_Deterministic_Combined_Dataset.Downscaling_Dataset_Prep import DownscalingDataset
 from models_UNet.UNet_Deterministic_Combined_Dataset.Experiments import run_experiment
@@ -28,8 +28,7 @@ def load_dataset(file_group: dict, config: dict, section: str) -> xr.Dataset:
     merged_ds = xr.merge(datasets)
     return merged_ds
 
-#Commenting testn evaluet out cz there is a seararte inference script
-"""
+#Commenting testn evaluet out cz there is a seararte inference script :: here if required
 def evaluate_test(model, test_dataset, config):
     batch_size = config["experiment"].get("batch_size", 32)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
@@ -84,7 +83,7 @@ def evaluate_test(model, test_dataset, config):
     for var, loss in zip(var_names, avg_channel_losses):
         wandb.log({f"{var}/test": loss})    
 
-    return avg_loss, avg_channel_losses"""
+    return avg_loss, avg_channel_losses
 
 
 def main(config):
@@ -109,8 +108,8 @@ def main(config):
     model, history, final_val_loss, best_val_loss = run_experiment(train_dataset, val_dataset, config=config)
 
     print({"final val loss per last epoch": final_val_loss, "best val loss across epochs": best_val_loss})
-    #test_loss = evaluate_test(model, test_dataset, config)
-   #print({"test_loss": test_loss})
+    test_loss = evaluate_test(model, test_dataset, config)
+    print({"test_loss": test_loss})
 
 
 if __name__ == "__main__":
