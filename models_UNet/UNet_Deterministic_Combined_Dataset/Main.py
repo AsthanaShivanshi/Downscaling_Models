@@ -3,10 +3,10 @@ import torch
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 import wandb
-from models_UNet.UNet_Deterministic_Combined_Dataset.Downscaling_Dataset_Prep import DownscalingDataset
-from models_UNet.UNet_Deterministic_Combined_Dataset.Experiments import run_experiment
-from models_UNet.UNet_Deterministic_Combined_Dataset.config_loader import load_config
-from models_UNet.UNet_Deterministic_Combined_Dataset.losses import WeightedMSELoss, WeightedHuberLoss
+from Downscaling_Dataset_Prep import DownscalingDataset
+from Experiments import run_experiment
+from config_loader import load_config
+from losses import WeightedMSELoss, WeightedHuberLoss
 import numpy as np
 import xarray as xr
 from pathlib import Path

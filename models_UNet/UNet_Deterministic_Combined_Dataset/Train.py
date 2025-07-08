@@ -9,7 +9,7 @@ import torch
 from tqdm import tqdm 
 import wandb
 import time
-from models_UNet.UNet_Deterministic_Combined_Dataset.losses import WeightedHuberLoss, WeightedMSELoss 
+from losses import WeightedHuberLoss, WeightedMSELoss 
 import torch.optim.lr_scheduler as lrs
 from torch.nn import functional as F
 
