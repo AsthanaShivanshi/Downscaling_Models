@@ -6,7 +6,7 @@ import numpy as np
 import json
 import sys
 from UNet import UNet
-from models_UNet.UNet_Deterministic_Combined_Dataset.Downscaling_Dataset_Prep import DownscalingDataset
+from Downscaling_Dataset_Prep import DownscalingDataset
 from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
