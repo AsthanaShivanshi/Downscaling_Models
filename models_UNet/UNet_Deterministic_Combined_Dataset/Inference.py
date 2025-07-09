@@ -72,7 +72,7 @@ tmax_input['TmaxD'] = scale_temp(
     tmaxd_params["std"]
 )
 
-model_path = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Pretraining_Dataset/combined_full_best_model_huber_pretraining_FULL_RLOP.pth")
+model_path = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Combined_Dataset/combined_full_best_model_huber_pretraining_FULL_RLOP.pth")
 training_checkpoint = torch.load(model_path, map_location=torch.device('cpu'))
 
 # Model instance, weights
