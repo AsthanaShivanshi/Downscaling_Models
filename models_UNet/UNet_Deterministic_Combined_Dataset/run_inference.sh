@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=UNet_inference_combined_dataset
-#SBATCH --output=logs/pretraining/UNet_combined_inference_%j.out
-#SBATCH --error=logs/pretraining/UNet_combined_inference_%j.err
+#SBATCH --output=logs/combined/UNet_combined_inference_%j.out
+#SBATCH --error=logs/combined/UNet_combined_inference_%j.err
 #SBATCH --time=3-00:00:00
 #SBATCH --partition=cpu
 #SBATCH --ntasks=1
