@@ -1,3 +1,5 @@
+
+#This script required to make sure the test set remains scaled with the corresponding scaling parameters of the pretraining dataset. for correct scaling and inference.
 #!/usr/bin/env python3
 import xarray as xr
 import numpy as np
