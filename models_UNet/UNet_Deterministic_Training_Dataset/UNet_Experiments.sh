@@ -28,5 +28,5 @@ echo "Starting Main.py..."
 python #Main.py --quick_test
 
 #For full training, remove the --quick_test flag, with 1000 samples, a smoke test
-python Main.py
-echo "Main.py finished."
+python optuna_optimisation.py         #Main.py
+echo      "Optuna optimisation finished."
