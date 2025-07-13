@@ -31,6 +31,6 @@ def objective(trial):
 
 if __name__ == "__main__":
     study = optuna.create_study(direction="minimize")
-    study.optimize(objective, n_trials=30)
+    study.optimize(objective, n_trials=10)
     print("Best weights:", study.best_params)
     print("Best validation loss:", study.best_value)
