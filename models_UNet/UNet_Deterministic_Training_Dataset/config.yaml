@@ -50,6 +50,7 @@ train:
   #So following from above, step size up= Number iter per epoch/2
   wandb_project: "UNet_Deterministic_Training_Dataset"
   wandb_run_name: "Full_Training_Huber_UNet_Deterministic"
+  loss_weights: [0.25, 0.25, 0.25, 0.25] #Will be overwritten during Optuna Optimisation
 
 # Placeholder for the paths in the untracked .paths.yaml file
 data: {}
