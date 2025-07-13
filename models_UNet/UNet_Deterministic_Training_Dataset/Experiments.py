@@ -9,12 +9,11 @@ from torch.optim.lr_scheduler import StepLR
 import torch.nn.functional as F
 from losses import WeightedHuberLoss, WeightedMSELoss
 
-
-def run_experiment(train_dataset, val_dataset, config):
+def run_experiment(train_dataset, val_dataset, config, trial=None):
     train_cfg = config["train"]
     exp_cfg = config["experiment"]
 
-    # Initializing W&B
+    # W&B logging
     wandb.init(
         project=train_cfg.get("wandb_project", "unet_downscaling"),
         name=train_cfg.get("wandb_run_name", "CLR_experiment"),
@@ -28,6 +27,11 @@ def run_experiment(train_dataset, val_dataset, config):
             "epochs": train_cfg.get("num_epochs", 100)
         }
     )
+
+    # Logging Optuna params
+    if trial is not None:
+        wandb.config.update({"optuna_trial": trial.number})
+    wandb.config.update({"loss_weights": train_cfg.get("loss_weights", [0.25, 0.25, 0.25, 0.25])}) #Igf nothing is set in optuna optim script, 0.25 used for each channel
 
     model = UNet(in_channels=train_cfg.get("in_channels", 5), out_channels=train_cfg.get("out_channels", 4))
     device= torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -79,11 +83,17 @@ def run_experiment(train_dataset, val_dataset, config):
 
     final_val_loss = history['val_loss'][-1]
 
-    checkpoint_path = train_cfg.get("checkpoint_path", "best_model.pth")
+    # Checkpoint per trial
+    if trial is not None:
+        checkpoint_path = f"best_model_trial_{trial.number}.pth"
+    else:
+        checkpoint_path = train_cfg.get("checkpoint_path", "best_model.pth")
     checkpoint_save(
         model, optimizer, epoch=train_cfg.get("num_epochs", 100),
         loss=final_val_loss, path=checkpoint_path
     )
 
-    return trained_model, history, final_val_loss, best_val_loss
+    #Best val loss
+    wandb.log({"best_val_loss": best_val_loss})
 
+    return trained_model, history, final_val_loss, best_val_loss
