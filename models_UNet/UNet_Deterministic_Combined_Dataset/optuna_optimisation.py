@@ -73,7 +73,7 @@ if __name__ == "__main__":
     print("Objectives (precip loss, total loss):", best_tradeoff_trial.values)
 
     # Retrain and save model with best tradeoff weights
-    print("\nRetraining model with best tradeoff weights and saving checkpoint...")
+    print("\nRetraining model with best tradeoff weights and saving ckpt")
     config = load_config("config.yaml", ".paths.yaml")
     config["train"]["loss_weights"] = best_tradeoff_trial.user_attrs["weights"]
     config["train"]["num_epochs"] = 100
