@@ -6,6 +6,8 @@ from losses import WeightedHuberLoss, WeightedMSELoss
 import torch.optim.lr_scheduler as lrs
 from torch.nn import functional as F
 import optuna
+import json
+
 
 
 def train_one_epoch(model, dataloader, optimizer, criterion, scheduler=None, config=None):
@@ -112,7 +114,6 @@ def checkpoint_save(model, optimizer, epoch, loss, path, inference_path=None):
 
 
 def save_model_config(config, path):
-    import json
     with open(path, "w") as f:
         json.dump(config, f, indent=2)
 
@@ -138,14 +139,6 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
 
         train_loss, train_per_channel = train_one_epoch(model, train_loader, optimizer, criterion, scheduler, config)
         val_loss, val_per_channel = validate(model, val_loader, criterion, config)
-
-        #Optuna pruning
-        if trial is not None:
-            trial.report(val_loss, epoch)
-            if trial.should_prune():
-                print(f"Trial {trial.number} pruned at epoch {epoch+1} with validation loss {val_loss}.")
-                wandb.finish()
-                raise optuna.TrialPruned()
 
         history["train_loss"].append(train_loss)
         history["val_loss"].append(val_loss)

@@ -139,14 +139,6 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
         train_loss, train_per_channel = train_one_epoch(model, train_loader, optimizer, criterion, scheduler, config)
         val_loss, val_per_channel = validate(model, val_loader, criterion, config)
 
-        #Optuna pruning
-        if trial is not None:
-            trial.report(val_loss, epoch)
-            if trial.should_prune():
-                print(f"Trial {trial.number} pruned at epoch {epoch+1} with validation loss {val_loss}.")
-                wandb.finish()
-                raise optuna.TrialPruned()
-
         history["train_loss"].append(train_loss)
         history["val_loss"].append(val_loss)
 
