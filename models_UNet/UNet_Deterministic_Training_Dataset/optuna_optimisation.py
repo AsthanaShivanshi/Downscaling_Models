@@ -5,11 +5,9 @@ from Downscaling_Dataset_Prep import DownscalingDataset
 from Main import load_dataset
 
 def objective(trial):
-    # Precip weight: at least 0.25 artificial constraint
     w0 = trial.suggest_float("w0", 0.01, 1.0)
     w_rest = [trial.suggest_float(f"w{i}", 0.01, 1.0) for i in range(1, 4)]
     weights = [w0] + w_rest
-    # Normalize so weights sum to 1
     weights = [w / sum(weights) for w in weights]
 
     config = load_config("config.yaml", ".paths.yaml")
@@ -24,24 +22,21 @@ def objective(trial):
     target_val_ds = load_dataset(paths["val"]["target"], config, section="target")
     val_dataset = DownscalingDataset(input_val_ds, target_val_ds, config, elevation_path=elevation_path)
 
-    config["train"]["num_epochs"] = 10
+    config["train"]["num_epochs"] = 15
     _, _, _, best_val_loss, best_val_loss_per_channel = run_experiment(
         train_dataset, val_dataset, config, trial=trial
     )
 
-    # Log weights and all per-channel losses for this trial
     trial.set_user_attr("weights", weights)
     trial.set_user_attr("val_loss_per_channel", best_val_loss_per_channel)
 
-    # Optimize for precip channel only
-    return best_val_loss_per_channel[0]
+    # Return (precip loss, total loss): Aims for val
+    return best_val_loss_per_channel[0], best_val_loss
 
 if __name__ == "__main__":
-    study = optuna.create_study(direction="minimize")
+    study = optuna.create_study(directions=["minimize", "minimize"])
     study.optimize(objective, n_trials=10)
-    print("Best weights:", study.best_params)
-    print("Best validation loss:", study.best_value)
 
-    print("\nAll trials:")
-    for t in study.trials:
-        print(f"Trial {t.number}: weights={t.user_attrs['weights']}, per_channel_val_loss={t.user_attrs['val_loss_per_channel']}")
+    print("Best trials (Pareto front):")
+    for t in study.best_trials:
+        print(f"Trial {t.number}: weights={t.user_attrs['weights']}, per_channel_val_loss={t.user_attrs['val_loss_per_channel']}, values={t.values}")
