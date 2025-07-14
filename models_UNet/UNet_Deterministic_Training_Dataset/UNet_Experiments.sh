@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=UNet_Optuna_Training_Dataset_Optimisation
-#SBATCH --output=logs/training/full/job_output-%j.txt
-#SBATCH --error=logs/training/full/job_error-%j.txt
+#SBATCH --output=logs/training/job_output-%j.txt
+#SBATCH --error=logs/training/job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-00:00:00
