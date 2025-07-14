@@ -7,10 +7,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 def objective(trial):
-    w0 = trial.suggest_float("w0", 0.25, 1.0)  # for precip
-    w_rest = [trial.suggest_float(f"w{i}", 0.01, 1.0) for i in range(1, 4)]
+    w0 = trial.suggest_float("w0", 0.1, 1.0)  # for precip
+    w_rest = [trial.suggest_float(f"w{i}", 0.1, 1.0) for i in range(1, 4)] #Non zerop weights but not too high
     weights = [w0] + w_rest
-    weights = [w / sum(weights) for w in weights]  # Normalize weights
+    weights = [w / sum(weights) for w in weights]  # Normalising weights
+    #Giving precip channel normalised weight of atleast 0.25, and others atleast 10 percent weights
+    if weights[0] < 0.25 or any(w < 0.10 for w in weights[1:]):
+        raise optuna.TrialPruned()  # Skip the trial to only have precip channel weight >= 0.25 and others have atleast 10 percent weights
     print(f"Trial {trial.number}: Normalized weights used: {weights}, sum={sum(weights)}")
 
     config = load_config("config.yaml", ".paths.yaml")
@@ -25,7 +28,7 @@ def objective(trial):
     target_val_ds = load_dataset(paths["val"]["target"], config, section="target")
     val_dataset = DownscalingDataset(input_val_ds, target_val_ds, config, elevation_path=elevation_path)
 
-    config["train"]["num_epochs"] = 10
+    config["train"]["num_epochs"] = 20
     _, _, _, best_val_loss, best_val_loss_per_channel = run_experiment(
         train_dataset, val_dataset, config, trial=trial
     )
@@ -73,11 +76,11 @@ if __name__ == "__main__":
     print("Objectives (precip loss, total loss):", best_tradeoff_trial.values)
 
     # Retrain and save model with best tradeoff weights
-    print("\nRetraining model with best tradeoff weights and saving ckpt")
+    print("\nRetraining model with best tradeoff weights and saving checkpoint...")
     config = load_config("config.yaml", ".paths.yaml")
     config["train"]["loss_weights"] = best_tradeoff_trial.user_attrs["weights"]
     config["train"]["num_epochs"] = 100
-
+    
     paths = config["data"]
     elevation_path = paths.get("static", {}).get("elevation", None)
     input_train_ds = load_dataset(paths["train"]["input"], config, section="input")
@@ -90,4 +93,5 @@ if __name__ == "__main__":
     model, history, final_val_loss, best_val_loss, best_val_loss_per_channel = run_experiment(
         train_dataset, val_dataset, config, trial=None
     )
+    print(f"Best model checkpoint saved at: {config['train'].get('checkpoint_path', 'best_model.pth')}")
     print("Retraining complete. Best model (trade-off) saved.")
