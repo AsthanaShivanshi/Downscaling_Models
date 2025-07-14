@@ -71,7 +71,7 @@ def evaluate_test(model, test_dataset, config):
     print(f"Test Loss: {avg_loss}")
 
     # Channel-wise average loss
-    var_names = ["precip", "temp", "tmin", "tmax"]
+    var_names = ["RhiresD", "TabsD", "TminD", "TmaxD"]
     channel_losses_individual = np.array(channel_losses_individual)
     avg_channel_losses = np.mean(channel_losses_individual, axis=0)
     for var, loss in zip(var_names, avg_channel_losses):

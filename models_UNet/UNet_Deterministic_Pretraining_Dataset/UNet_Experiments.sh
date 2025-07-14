@@ -25,9 +25,9 @@ export WANDB_MODE="online"
 export PYTHONUNBUFFERED=1
 which python
 python --version
-echo "Starting Main.py..."
+echo "Starting Optuna Optimisation..."
 #python Main.py --quick_test
 
 #For full training, remove the --quick_test flag
-python Main.py
-echo "Main.py finished."
+python optuna_optimisation.py
+echo "optuna_optimisation finished."
