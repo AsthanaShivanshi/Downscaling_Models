@@ -6,6 +6,8 @@ from losses import WeightedHuberLoss, WeightedMSELoss
 import torch.optim.lr_scheduler as lrs
 from torch.nn import functional as F
 import optuna
+import json
+
 
 
 def train_one_epoch(model, dataloader, optimizer, criterion, scheduler=None, config=None):
@@ -112,7 +114,6 @@ def checkpoint_save(model, optimizer, epoch, loss, path, inference_path=None):
 
 
 def save_model_config(config, path):
-    import json
     with open(path, "w") as f:
         json.dump(config, f, indent=2)
 

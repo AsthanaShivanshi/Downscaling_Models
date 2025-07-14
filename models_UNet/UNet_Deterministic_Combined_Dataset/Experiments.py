@@ -99,16 +99,13 @@ def run_experiment(train_dataset, val_dataset, config, trial=None):
 
     final_val_loss = history['val_loss'][-1]
 
-    # Ckpt per trial
-    if trial is not None:
-        #checkpoint_path = f"best_model_trial_{trial.number}.pth"
-        pass
-    else:
+    # Not saving checkpoints during trial and optim phase.
+    if trial is None:
         checkpoint_path = train_cfg.get("checkpoint_path", "best_model.pth")
-    checkpoint_save(
-        model, optimizer, epoch=train_cfg.get("num_epochs", 100),
-        loss=final_val_loss, path=checkpoint_path
-    )
+        checkpoint_save(
+            model, optimizer, epoch=train_cfg.get("num_epochs", 100),
+            loss=final_val_loss, path=checkpoint_path
+        )
 
     wandb.log({"best_val_loss": best_val_loss})
     wandb.log({"best_val_loss_per_channel": best_val_per_channel})
