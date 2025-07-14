@@ -136,7 +136,7 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
     epochs_no_improve = 0
     early_stopping_patience = train_cfg.get("early_stopping_patience", 3)
 
-    var_names = ["precip", "temp", "tmin", "tmax"]
+    var_names = ["RhiresD", "TabsD", "TminD", "TmaxD"]
 
     for epoch in range(num_epochs):
         start_time = time.time()
@@ -165,6 +165,7 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
         # Saving best model and inference weights/config
         if val_loss < best_val_loss:
             best_val_loss = val_loss
+            best_val_loss_per_channel=val_per_channel
             epochs_no_improve = 0  # Reset counter
             checkpoint_save(model, optimizer, epoch+1, val_loss, checkpoint_path, inference_path)
             save_model_config(config, model_config_path)
@@ -192,4 +193,4 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
             break
     print(f"best_val_loss: {best_val_loss}")
 
-    return model, history, best_val_loss
+    return model, history, best_val_loss,best_val_loss_per_channel
