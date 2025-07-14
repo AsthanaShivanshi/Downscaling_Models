@@ -25,7 +25,7 @@ def objective(trial):
     val_dataset = DownscalingDataset(input_val_ds, target_val_ds, config, elevation_path=elevation_path)
 
     config["train"]["num_epochs"] = 10
-    _, _, _, best_val_loss = run_experiment(train_dataset, val_dataset, config, trial_number=trial.number,  
+    _, _, _, best_val_loss = run_experiment(train_dataset, val_dataset, config,  
                                             trial=trial)
     return best_val_loss
 
