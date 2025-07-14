@@ -21,7 +21,7 @@ echo "Environment sourced."
 
 cd models_UNet/UNet_Deterministic_Combined_Dataset
 
-export WANDB_MODE= offline
+export WANDB_MODE=offline
 export PYTHONUNBUFFERED=1
 which python
 python --version
