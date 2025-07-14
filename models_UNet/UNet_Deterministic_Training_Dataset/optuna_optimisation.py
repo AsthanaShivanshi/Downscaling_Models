@@ -4,6 +4,7 @@ from Experiments import run_experiment
 from Downscaling_Dataset_Prep import DownscalingDataset
 from Main import load_dataset
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def objective(trial):
