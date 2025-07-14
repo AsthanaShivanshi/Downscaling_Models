@@ -59,7 +59,7 @@ if __name__ == "__main__":
     plt.savefig("pareto_front.png", dpi=200)
     plt.show()
 
-    # Best weights for each objective
+    # Best weights for each obj
 best_precip_trial = min(study.best_trials, key=lambda t: t.values[0])
 print("\nBest weights for lowest precip loss:", best_precip_trial.user_attrs["weights"])
 print("Per-channel val loss:", best_precip_trial.user_attrs["val_loss_per_channel"])
@@ -70,11 +70,11 @@ print("\nBest weights for lowest total loss:", best_total_trial.user_attrs["weig
 print("Per-channel val loss:", best_total_trial.user_attrs["val_loss_per_channel"])
 print("Objectives (precip loss, total loss):", best_total_trial.values)
 
-# Retrain and save model with best weights for total loss
+# Retraining with best weights
 print("\nRetraining model with best weights for total loss and saving checkpoint...")
 config = load_config("config.yaml", ".paths.yaml")
 config["train"]["loss_weights"] = best_total_trial.user_attrs["weights"]
-config["train"]["num_epochs"] = 100  # or your preferred value
+config["train"]["num_epochs"] = 100 
 
 paths = config["data"]
 elevation_path = paths.get("static", {}).get("elevation", None)
@@ -85,7 +85,6 @@ input_val_ds = load_dataset(paths["val"]["input"], config, section="input")
 target_val_ds = load_dataset(paths["val"]["target"], config, section="target")
 val_dataset = DownscalingDataset(input_val_ds, target_val_ds, config, elevation_path=elevation_path)
 
-from Experiments import run_experiment
 model, history, final_val_loss, best_val_loss, best_val_loss_per_channel = run_experiment(
     train_dataset, val_dataset, config, trial=None
 )
