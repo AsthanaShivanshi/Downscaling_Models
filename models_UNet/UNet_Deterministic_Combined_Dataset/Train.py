@@ -1,10 +1,3 @@
-
-#In present version of Train.py depemding on the type of learning scheduler used
-
-#If CyclicalLR: per batch stepping, 2 times per cycle 
-#If ReduceLROnPlateau :  epoch stepping using validation loss depending on whether it gets stuck with no improvement
-#Gradient norm logging included to explore vanishing/exploding gradients
-#Learniugn rate for every epoch : logged
 import torch
 from tqdm import tqdm 
 import wandb
@@ -12,6 +5,7 @@ import time
 from losses import WeightedHuberLoss, WeightedMSELoss 
 import torch.optim.lr_scheduler as lrs
 from torch.nn import functional as F
+import optuna
 
 
 def train_one_epoch(model, dataloader, optimizer, criterion, scheduler=None, config=None):
@@ -123,7 +117,7 @@ def save_model_config(config, path):
         json.dump(config, f, indent=2)
 
 
-def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler=None, config=None):
+def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler=None, config=None, trial=None):
 
     train_cfg = config["train"]
     num_epochs = train_cfg.get("num_epochs", 100)
@@ -144,6 +138,14 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
 
         train_loss, train_per_channel = train_one_epoch(model, train_loader, optimizer, criterion, scheduler, config)
         val_loss, val_per_channel = validate(model, val_loader, criterion, config)
+
+        #Optuna pruning
+        if trial is not None:
+            trial.report(val_loss, epoch)
+            if trial.should_prune():
+                print(f"Trial {trial.number} pruned at epoch {epoch+1} with validation loss {val_loss}.")
+                wandb.finish()
+                raise optuna.TrialPruned()
 
         history["train_loss"].append(train_loss)
         history["val_loss"].append(val_loss)
