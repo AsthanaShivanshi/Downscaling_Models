@@ -71,7 +71,7 @@ def run_experiment(train_dataset, val_dataset, config, trial=None):
         train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True) #Shiffling for training
         val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False) #Shuffling not needed for val
 
-    trained_model, history, best_val_loss = train_model(
+    trained_model, history, best_val_loss,best_val_per_channel = train_model(
         model,
         train_loader,
         val_loader,
@@ -95,5 +95,6 @@ def run_experiment(train_dataset, val_dataset, config, trial=None):
 
     #Best val loss
     wandb.log({"best_val_loss": best_val_loss})
+    wandb.log({"best_val_loss_per_channel": best_val_per_channel})
 
-    return trained_model, history, final_val_loss, best_val_loss
+    return trained_model, history, final_val_loss, best_val_loss, best_val_per_channel
