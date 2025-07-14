@@ -40,3 +40,18 @@ if __name__ == "__main__":
     print("Best trials (Pareto front):")
     for t in study.best_trials:
         print(f"Trial {t.number}: weights={t.user_attrs['weights']}, per_channel_val_loss={t.user_attrs['val_loss_per_channel']}, values={t.values}")
+        import matplotlib.pyplot as plt
+
+        pareto_precip = [t.values[0] for t in study.best_trials]
+        pareto_total = [t.values[1] for t in study.best_trials]
+
+        plt.figure(figsize=(7,5))
+        plt.scatter(pareto_precip, pareto_total, c='red', label='Pareto front')
+        plt.xlabel("Precip Channel Loss")
+        plt.ylabel("Total Loss")
+        plt.title("Pareto Front: Precip vs Total Loss")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.savefig("pareto_front.png", dpi=150)
+        plt.show()
