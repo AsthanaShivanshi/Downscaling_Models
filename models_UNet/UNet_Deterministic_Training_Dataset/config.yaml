@@ -30,12 +30,12 @@ train:
   out_channels: 4
   optimizer: "Adam"
   loss_fn: "huber"   # or "mse"
-  huber_delta: 0.05  #Modified threshold, default is 1.0
+  huber_delta: 0.005  #Modified threshold, default is 1.0
   #loss_fn: "MSE"
   scheduler: "ReduceLROnPlateau"
   scheduler_mode: "min"
   scheduler_factor: 0.8
-  scheduler_patience: 5  # Waiting for N epochs for no improvement
+  scheduler_patience: 3  # Waiting for N epochs for no improvement
   early_stopping_patience: 10
   #scheduler: "CyclicLR"
   #scheduler_mode: "triangular2"
@@ -50,7 +50,7 @@ train:
   #So following from above, step size up= Number iter per epoch/2
   wandb_project: "UNet_Deterministic_Training_Dataset"
   wandb_run_name: "Full_Training_Huber_UNet_Deterministic"
-  loss_weights: [0.25, 0.25, 0.25, 0.25] #Will be overwritten during Optuna Optimisation
+  loss_weights: [0.25, 0.25, 0.25, 0.25] #Will be overwritten during Optuna Optimisation, if run from Main.py , these weights used, proportionate for each channel
 
 # Placeholder for the paths in the untracked .paths.yaml file
 data: {}
