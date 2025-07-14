@@ -13,7 +13,7 @@ def objective(trial):
     weights = [w / sum(weights) for w in weights]  # Normalising weights
     #Giving precip channel normalised weight of atleast 0.25
     if weights[0] < 0.25:
-        raise optuna.TrialPruned()  # Skip the trial
+        raise optuna.TrialPruned()  # Skip the trial to only have precip channel weight >= 0.25 trials count
     print(f"Trial {trial.number}: Normalized weights used: {weights}, sum={sum(weights)}")
 
     config = load_config("config.yaml", ".paths.yaml")
