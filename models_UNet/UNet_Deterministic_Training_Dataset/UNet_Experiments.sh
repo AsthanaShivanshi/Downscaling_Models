@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=Full_UNet_Deterministic_Training_Dataset
+#SBATCH --job-name=UNet_Optuna_Training_Dataset_Optimisation
 #SBATCH --output=logs/training/full/job_output-%j.txt
 #SBATCH --error=logs/training/full/job_error-%j.txt
 #SBATCH --ntasks=1
