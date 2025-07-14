@@ -13,8 +13,7 @@ def objective(trial):
     weights = [w / sum(weights) for w in weights]  # Normalising weights
     #Giving precip channel normalised weight of atleast 0.25
     if weights[0] < 0.25:
-        weights[0] = 0.25
-        weights = [w / sum(weights) for w in weights]  # Renorming after adjustment
+        raise optuna.TrialPruned()  # Skip the trial
     print(f"Trial {trial.number}: Normalized weights used: {weights}, sum={sum(weights)}")
 
     config = load_config("config.yaml", ".paths.yaml")
