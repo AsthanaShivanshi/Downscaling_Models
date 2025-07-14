@@ -7,13 +7,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 def objective(trial):
-    w0 = trial.suggest_float("w0", 0.01, 1.0)  # for precip
-    w_rest = [trial.suggest_float(f"w{i}", 0.01, 1.0) for i in range(1, 4)] #Non zerop weights but not too high
+    w0 = trial.suggest_float("w0", 0.1, 1.0)  # for precip
+    w_rest = [trial.suggest_float(f"w{i}", 0.1, 1.0) for i in range(1, 4)] #Non zerop weights but not too high
     weights = [w0] + w_rest
     weights = [w / sum(weights) for w in weights]  # Normalising weights
     #Giving precip channel normalised weight of atleast 0.25, and others atleast 10 percent weights
-    if weights[0] < 0.25 or any(w < 0.10 for w in w_rest):
-        raise optuna.TrialPruned()  # Skip the trial to only have precip channel weight >= 0.25 trials count
+    if weights[0] < 0.25 or any(w < 0.10 for w in weights[1:]):
+        raise optuna.TrialPruned()  # Skip the trial to only have precip channel weight >= 0.25 and others have atleast 10 percent weights
     print(f"Trial {trial.number}: Normalized weights used: {weights}, sum={sum(weights)}")
 
     config = load_config("config.yaml", ".paths.yaml")
