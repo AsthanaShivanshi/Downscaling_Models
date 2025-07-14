@@ -136,7 +136,7 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler
     epochs_no_improve = 0
     early_stopping_patience = train_cfg.get("early_stopping_patience", 3)
 
-    var_names = ["precip", "temp", "tmin", "tmax"]
+    var_names = ["RhiresD", "TabsD", "TminD", "TmaxD"]
 
     for epoch in range(num_epochs):
         start_time = time.time()
