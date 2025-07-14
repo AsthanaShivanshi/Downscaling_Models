@@ -1,7 +1,7 @@
 import argparse
 import torch
 from torch.utils.data import DataLoader
-import torch.nn.functional as F
+import torch.nn as nn
 import wandb
 from Downscaling_Dataset_Prep import DownscalingDataset
 from Experiments import run_experiment
@@ -28,7 +28,8 @@ def load_dataset(file_group: dict, config: dict, section: str) -> xr.Dataset:
     merged_ds = xr.merge(datasets)
     return merged_ds
 
-#Commenting testn evaluet out cz there is a seararte inference script :: here if required
+
+
 def evaluate_test(model, test_dataset, config):
     batch_size = config["experiment"].get("batch_size", 32)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
@@ -70,7 +71,7 @@ def evaluate_test(model, test_dataset, config):
     print(f"Test Loss: {avg_loss}")
 
     # Channel-wise average loss
-    var_names = ["precip", "temp", "tmin", "tmax"]
+    var_names = ["RhiresD", "TabsD", "TminD", "TmaxD"]
     channel_losses_individual = np.array(channel_losses_individual)
     avg_channel_losses = np.mean(channel_losses_individual, axis=0)
     for var, loss in zip(var_names, avg_channel_losses):
@@ -84,7 +85,6 @@ def evaluate_test(model, test_dataset, config):
         wandb.log({f"{var}/test": loss})    
 
     return avg_loss, avg_channel_losses
-
 
 def main(config):
     paths = config["data"]

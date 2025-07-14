@@ -53,6 +53,7 @@ train:
 
   wandb_project: "UNet_Deterministic_Combined_Dataset"
   wandb_run_name: "Combined_Full_Huber_UNet_Deterministic"
+  oss_weights: [0.25, 0.25, 0.25, 0.25] #Will be overwritten during Optuna Optimisation
 
 # Placeholder for the paths in the untracked .paths.yaml file
 data: {}
