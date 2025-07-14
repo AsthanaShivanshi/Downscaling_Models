@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 
 def objective(trial):
-    w0 = trial.suggest_float("w0", 0.01, 1.0)
+    w0 = trial.suggest_float("w0", 0.01, 1.0) #for precip
     w_rest = [trial.suggest_float(f"w{i}", 0.01, 1.0) for i in range(1, 4)]
     weights = [w0] + w_rest
     weights = [w / sum(weights) for w in weights] #Normalising weights adding to 1
