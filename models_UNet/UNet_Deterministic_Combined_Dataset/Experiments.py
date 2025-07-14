@@ -13,28 +13,43 @@ def run_experiment(train_dataset, val_dataset, config, trial=None):
     train_cfg = config["train"]
     exp_cfg = config["experiment"]
 
-    # W&B logging
-    wandb.init(
-        project=train_cfg.get("wandb_project", "unet_downscaling"),
-        name=train_cfg.get("wandb_run_name", "CLR_experiment"),
-        config={
-            "optimizer": train_cfg.get("optimizer", "Adam"),
-            "loss": train_cfg.get("loss_fn", "MSE"),
-            "base_lr": train_cfg.get("base_lr", 1e-4),
-            "max_lr": train_cfg.get("max_lr", 1e-3),
-            "scheduler": train_cfg.get("scheduler", "CyclicLR"),
-            "mode": train_cfg.get("scheduler_mode", "triangular"),
-            "epochs": train_cfg.get("num_epochs", 100)
-        }
-    )
-
-    # Logging Optuna params
+    # W&B logging: Start a new run for each trial, set config at init, use reinit=True
     if trial is not None:
-        wandb.config.update({"optuna_trial": trial.number})
-    wandb.config.update({"loss_weights": train_cfg.get("loss_weights", [0.25, 0.25, 0.25, 0.25])}) #Igf nothing is set in optuna optim script, 0.25 used for each channel
+        wandb_run = wandb.init(
+            project=train_cfg.get("wandb_project", "unet_downscaling"),
+            name=f"{train_cfg.get('wandb_run_name', 'CLR_experiment')}_trial_{trial.number}",
+            config={
+                "optimizer": train_cfg.get("optimizer", "Adam"),
+                "loss": train_cfg.get("loss_fn", "MSE"),
+                "base_lr": train_cfg.get("base_lr", 1e-4),
+                "max_lr": train_cfg.get("max_lr", 1e-3),
+                "scheduler": train_cfg.get("scheduler", "CyclicLR"),
+                "mode": train_cfg.get("scheduler_mode", "triangular"),
+                "epochs": train_cfg.get("num_epochs", 100),
+                "optuna_trial": trial.number,
+                "loss_weights": train_cfg.get("loss_weights", [0.25, 0.25, 0.25, 0.25])
+            },
+            reinit=True
+        )
+    else:
+        wandb_run = wandb.init(
+            project=train_cfg.get("wandb_project", "unet_downscaling"),
+            name=train_cfg.get("wandb_run_name", "CLR_experiment"),
+            config={
+                "optimizer": train_cfg.get("optimizer", "Adam"),
+                "loss": train_cfg.get("loss_fn", "MSE"),
+                "base_lr": train_cfg.get("base_lr", 1e-4),
+                "max_lr": train_cfg.get("max_lr", 1e-3),
+                "scheduler": train_cfg.get("scheduler", "CyclicLR"),
+                "mode": train_cfg.get("scheduler_mode", "triangular"),
+                "epochs": train_cfg.get("num_epochs", 100),
+                "loss_weights": train_cfg.get("loss_weights", [0.25, 0.25, 0.25, 0.25])
+            },
+            reinit=True
+        )
 
     model = UNet(in_channels=train_cfg.get("in_channels", 5), out_channels=train_cfg.get("out_channels", 4))
-    device= torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
     optimizer = torch.optim.Adam(
@@ -60,7 +75,7 @@ def run_experiment(train_dataset, val_dataset, config, trial=None):
 
     if quick_test:
         train_loader = torch.utils.data.DataLoader(
-            torch.utils.data.Subset(train_dataset, range(1000)), #For smoke test only, not to be used for inference. 
+            torch.utils.data.Subset(train_dataset, range(1000)),
             batch_size=batch_size, shuffle=True
         )
         val_loader = torch.utils.data.DataLoader(
@@ -68,24 +83,26 @@ def run_experiment(train_dataset, val_dataset, config, trial=None):
             batch_size=batch_size, shuffle=False
         )
     else:
-        train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True) #Shiffling for training
-        val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False) #Shuffling not needed for val
+        train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+        val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
-    trained_model, history, best_val_loss,best_val_per_channel = train_model(
+    trained_model, history, best_val_loss, best_val_per_channel = train_model(
         model,
         train_loader,
         val_loader,
         optimizer,
         criterion,
         scheduler=scheduler,
-        config=config
+        config=config,
+        trial=trial
     )
 
     final_val_loss = history['val_loss'][-1]
 
-    # Checkpoint per trial
+    # Ckpt per trial
     if trial is not None:
-        checkpoint_path = f"best_model_trial_{trial.number}.pth"
+        #checkpoint_path = f"best_model_trial_{trial.number}.pth"
+        pass
     else:
         checkpoint_path = train_cfg.get("checkpoint_path", "best_model.pth")
     checkpoint_save(
@@ -93,8 +110,9 @@ def run_experiment(train_dataset, val_dataset, config, trial=None):
         loss=final_val_loss, path=checkpoint_path
     )
 
-    #Best val loss
     wandb.log({"best_val_loss": best_val_loss})
     wandb.log({"best_val_loss_per_channel": best_val_per_channel})
+
+    wandb.finish()
 
     return trained_model, history, final_val_loss, best_val_loss, best_val_per_channel

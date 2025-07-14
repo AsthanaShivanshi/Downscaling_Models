@@ -48,11 +48,11 @@ train:
   scheduler: "ReduceLROnPlateau"
   scheduler_mode: "min"
   scheduler_factor: 0.8 #Reducing the learning rate by 20 percent after each patience period
-  scheduler_patience: 5 #Waiting for N epochs for no improvement
+  scheduler_patience: 3 #Waiting for N epochs for no improvement
   early_stopping_patience: 10 #Early stopping patience, if no improvement in validation loss for N epochs, stop training
 
   wandb_project: "UNet_Deterministic_Combined_Dataset"
-  wandb_run_name: "Combined_Full_Huber_UNet_Deterministic"
+  wandb_run_name: "Combined_Huber_UNet_Deterministic"
   oss_weights: [0.25, 0.25, 0.25, 0.25] #Will be overwritten during Optuna Optimisation
 
 # Placeholder for the paths in the untracked .paths.yaml file
