@@ -3,6 +3,8 @@ from config_loader import load_config
 from Experiments import run_experiment
 from Downscaling_Dataset_Prep import DownscalingDataset
 from Main import load_dataset
+import matplotlib.pyplot as plt
+
 
 def objective(trial):
     w0 = trial.suggest_float("w0", 0.01, 1.0)
@@ -22,7 +24,7 @@ def objective(trial):
     target_val_ds = load_dataset(paths["val"]["target"], config, section="target")
     val_dataset = DownscalingDataset(input_val_ds, target_val_ds, config, elevation_path=elevation_path)
 
-    config["train"]["num_epochs"] = 15
+    config["train"]["num_epochs"] = 10
     _, _, _, best_val_loss, best_val_loss_per_channel = run_experiment(
         train_dataset, val_dataset, config, trial=trial
     )
@@ -35,23 +37,36 @@ def objective(trial):
 
 if __name__ == "__main__":
     study = optuna.create_study(directions=["minimize", "minimize"])
-    study.optimize(objective, n_trials=10)
+    study.optimize(objective, n_trials=20)
 
     print("Best trials (Pareto front):")
     for t in study.best_trials:
         print(f"Trial {t.number}: weights={t.user_attrs['weights']}, per_channel_val_loss={t.user_attrs['val_loss_per_channel']}, values={t.values}")
-        import matplotlib.pyplot as plt
 
-        pareto_precip = [t.values[0] for t in study.best_trials]
-        pareto_total = [t.values[1] for t in study.best_trials]
+    # Move plotting OUTSIDE the loop
+    pareto_precip = [t.values[0] for t in study.best_trials]
+    pareto_total = [t.values[1] for t in study.best_trials]
 
-        plt.figure(figsize=(7,5))
-        plt.scatter(pareto_precip, pareto_total, c='red', label='Pareto front')
-        plt.xlabel("Precip Channel Loss")
-        plt.ylabel("Total Loss")
-        plt.title("Pareto Front: Precip vs Total Loss")
-        plt.legend()
-        plt.grid(True)
-        plt.tight_layout()
-        plt.savefig("pareto_front.png", dpi=150)
-        plt.show()
+    plt.figure(figsize=(7,5))
+    plt.scatter(pareto_precip, pareto_total, c='red', label='Pareto front')
+    plt.xlabel("Precip Channel Loss")
+    plt.ylabel("Total Loss")
+    plt.title("Pareto Front: Precip vs Total Loss")
+    plt.legend()
+    plt.grid(True)
+    plt.savefig("pareto_front.png")# ...existing code...
+    plt.tight_layout()
+    plt.savefig("pareto_front.png", dpi=150)
+    plt.show()
+
+    # Best for precip loss
+    best_precip_trial = min(study.best_trials, key=lambda t: t.values[0])
+    print("\nBest weights for lowest precip loss:", best_precip_trial.user_attrs["weights"])
+    print("Per-channel val loss:", best_precip_trial.user_attrs["val_loss_per_channel"])
+    print("Objectives (precip loss, total loss):", best_precip_trial.values)
+
+    # Best for total loss
+    best_total_trial = min(study.best_trials, key=lambda t: t.values[1])
+    print("\nBest weights for lowest total loss:", best_total_trial.user_attrs["weights"])
+    print("Per-channel val loss:", best_total_trial.user_attrs["val_loss_per_channel"])
+    print("Objectives (precip loss, total loss):", best_total_trial.values)
