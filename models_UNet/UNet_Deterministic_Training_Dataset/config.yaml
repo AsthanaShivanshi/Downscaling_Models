@@ -23,9 +23,9 @@ preprocessing:
 
 train:
   num_epochs: 100
-  checkpoint_path: full_best_model_huber_FULL_RLOP.pth
-  inference_weights_path: full_best_model_weights_huber_FULL_RLOP.pth
-  model_config_path: full_model_config_huber_FULL_RLOP.json
+  checkpoint_path: training_best_model_huber_FULL_RLOP.pth
+  inference_weights_path: training_best_model_weights_huber_FULL_RLOP.pth
+  model_config_path: training_model_config_huber_FULL_RLOP.json
   in_channels: 5
   out_channels: 4
   optimizer: "Adam"
@@ -35,8 +35,8 @@ train:
   scheduler: "ReduceLROnPlateau"
   scheduler_mode: "min"
   scheduler_factor: 0.8
-  scheduler_patience: 3  # Waiting for N epochs for no improvement
-  early_stopping_patience: 10
+  scheduler_patience: 2 # Waiting for N epochs for no improvement
+  early_stopping_patience: 5
   #scheduler: "CyclicLR"
   #scheduler_mode: "triangular2"
   #base_lr: 1e-4
@@ -48,8 +48,8 @@ train:
   #step_size: 2 #Every 2 epochs, it is reducing the learning rate by 10 percent. Customisable and overridable
    #How was step size chosen? Numer of iterations(training batches) per epoch= len(training_set)/batch_size
   #So following from above, step size up= Number iter per epoch/2
-  wandb_project: "UNet_Deterministic_Training_Dataset"
-  wandb_run_name: "Full_Training_Huber_UNet_Deterministic"
+  wandb_project: "UNet_Deterministic"
+  wandb_run_name: "Training_Dataset"
   loss_weights: [0.25, 0.25, 0.25, 0.25] #Will be overwritten during Optuna Optimisation, if run from Main.py , these weights used, proportionate for each channel
 
 # Placeholder for the paths in the untracked .paths.yaml file
