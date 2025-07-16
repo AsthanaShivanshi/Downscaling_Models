@@ -106,7 +106,7 @@ if __name__ == "__main__":
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig("pareto_front_all.png", dpi=500)
+    plt.savefig("pareto_front_training_dataset.png", dpi=500)
     plt.show()
 
     print("\nRetraining model with best tradeoff weights and saving checkpoint...")
