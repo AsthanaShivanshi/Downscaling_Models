@@ -1,0 +1,55 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    python_version: 3.10.17
+    cli_version: 0.20.1
+    framework: torch
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    start_time: 1752569870
+    t:
+      1:
+      - 1
+      - 35
+      - 54
+      3:
+      - 4
+      - 13
+      - 16
+      - 42
+      - 55
+      4: 3.10.17
+      5: 0.20.1
+      10:
+      - 20
+      13: linux-x86_64
+optimizer:
+  desc: null
+  value: Adam
+loss:
+  desc: null
+  value: huber
+base_lr:
+  desc: null
+  value: 0.0001
+max_lr:
+  desc: null
+  value: 0.001
+scheduler:
+  desc: null
+  value: ReduceLROnPlateau
+mode:
+  desc: null
+  value: min
+epochs:
+  desc: null
+  value: 100
+loss_weights:
+  desc: null
+  value:
+  - 0.46364526483510865
+  - 0.17527617762629688
+  - 0.16111772141098732
+  - 0.1999608361276072
