@@ -22,3 +22,5 @@ __pycache__/
 #zarr files
 *.zarr
 Model_Runs/
+Training_Chronological_Dataset/
+Combined_Chronological_Dataset/
