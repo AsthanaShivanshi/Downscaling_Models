@@ -1,13 +1,18 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 
 class WeightedHuberLoss(nn.Module):
-    def __init__(self, weights, delta=0.05):
+    def __init__(self, config_weights, delta=0.05):
         super().__init__()
-        self.weights = torch.tensor(weights).float()
-        assert torch.all(self.weights > 0), "Weights must be positive"
-        assert torch.all((self.weights >= 0.1) & (self.weights <= 1.0)), "Weights must be in [0.1, 1.0]"
+        # Random initialization between 0.1 and 1.0
+        random_weights = np.random.uniform(0.1, 1.0, size=len(config_weights))
+        # Scale by config weights (relative importance)
+        scaled_weights = random_weights * np.array(config_weights, dtype=np.float32)
+        # Normalize so sum is 1
+        final_weights = scaled_weights / scaled_weights.sum()
+        self.weights = torch.tensor(final_weights).float()
         self.delta = delta
 
     def forward(self, input, target):
@@ -19,11 +24,12 @@ class WeightedHuberLoss(nn.Module):
         return torch.stack(losses).sum()
 
 class WeightedMSELoss(nn.Module):
-    def __init__(self, weights):
+    def __init__(self, config_weights):
         super().__init__()
-        self.weights = torch.tensor(weights).float()
-        assert torch.all(self.weights > 0), "Weights must be positive"
-        assert torch.all((self.weights >= 0.1) & (self.weights <= 1.0)), "Weights must be in [0.1, 1.0]"
+        random_weights = np.random.uniform(0.1, 1.0, size=len(config_weights))
+        scaled_weights = random_weights * np.array(config_weights, dtype=np.float32)
+        final_weights = scaled_weights / scaled_weights.sum()
+        self.weights = torch.tensor(final_weights).float()
 
     def forward(self, input, target):
         weights = self.weights.to(input.device)
