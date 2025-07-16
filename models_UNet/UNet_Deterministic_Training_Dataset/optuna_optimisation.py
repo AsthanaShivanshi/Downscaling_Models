@@ -66,10 +66,10 @@ if __name__ == "__main__":
     plt.figure(figsize=(8,6))
     plt.scatter(df["precip_loss"], df["total_loss"], c='red', label='Pareto front (all valid trials)')
 
-    # Find the elbow (closest to origin)
     df["distance"] = np.sqrt(df["precip_loss"]**2 + df["total_loss"]**2)
     elbow_idx = df["distance"].idxmin()
     elbow_trial = df.iloc[elbow_idx]
+    best_tradeoff_trial = study.trials[df.iloc[elbow_idx]["trial"]]
     plt.scatter(
         elbow_trial["precip_loss"],
         elbow_trial["total_loss"],
