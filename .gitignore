@@ -21,3 +21,4 @@ __pycache__/
 *.jpg
 #zarr files
 *.zarr
+Model_Runs/
