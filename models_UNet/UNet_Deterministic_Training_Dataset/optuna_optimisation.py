@@ -5,6 +5,8 @@ from Downscaling_Dataset_Prep import DownscalingDataset
 from Main import load_dataset
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+
 
 def objective(trial):
     w0 = trial.suggest_float("w0", 0.1, 1.0)  # for precip
@@ -39,41 +41,55 @@ def objective(trial):
     # precip loss, total loss
     return best_val_loss_per_channel[0], best_val_loss
 
+
 if __name__ == "__main__":
     study = optuna.create_study(directions=["minimize", "minimize"])
-    study.optimize(objective, n_trials=20)
+    study.optimize(objective, n_trials=30)
 
-    print("Best trials (Pareto front):")
-    for t in study.best_trials:
-        print(f"Trial {t.number}: weights={t.user_attrs['weights']}, per_channel_val_loss={t.user_attrs['val_loss_per_channel']}, values={t.values}")
+    # Collect all valid trials
+    trial_data = []
+    for t in study.trials:
+        if t.state == optuna.trial.TrialState.COMPLETE:
+            trial_data.append({
+                "trial": t.number,
+                "weights": t.user_attrs.get("weights"),
+                "precip_loss": t.values[0] if t.values else None,
+                "total_loss": t.values[1] if t.values else None,
+                "per_channel_val_loss": t.user_attrs.get("val_loss_per_channel")
+            })
+    df = pd.DataFrame(trial_data)
 
-    pareto_precip = [t.values[0] for t in study.best_trials]
-    pareto_total = [t.values[1] for t in study.best_trials]
+    print("All valid trials:")
+    print(df)
 
-    plt.figure(figsize=(7,5))
-    plt.scatter(pareto_precip, pareto_total, c='red', label='Pareto front')
+    # Pareto front: all valid trials
+    plt.figure(figsize=(8,6))
+    plt.scatter(df["precip_loss"], df["total_loss"], c='red', label='Pareto front (all valid trials)')
 
-    # Highlight best trade-off (closest to 0,0)
-    tradeoff_idx = np.argmin([np.linalg.norm([t.values[0], t.values[1]]) for t in study.best_trials])
-    best_tradeoff_trial = study.best_trials[tradeoff_idx]
+    # Find the elbow (closest to origin)
+    df["distance"] = np.sqrt(df["precip_loss"]**2 + df["total_loss"]**2)
+    elbow_idx = df["distance"].idxmin()
+    elbow_trial = df.iloc[elbow_idx]
     plt.scatter(
-        best_tradeoff_trial.values[0],
-        best_tradeoff_trial.values[1],
-        c='blue', s=120, marker='*', label='Best Trade-off'
+        elbow_trial["precip_loss"],
+        elbow_trial["total_loss"],
+        c='blue', s=120, marker='*', label=f'Elbow (Trial {elbow_trial["trial"]})'
+    )
+    plt.annotate(
+        f'Trial {elbow_trial["trial"]}\n({elbow_trial["precip_loss"]:.5e}, {elbow_trial["total_loss"]:.5e})',
+        (elbow_trial["precip_loss"], elbow_trial["total_loss"]),
+        textcoords="offset points", xytext=(30,-30), ha='center', fontsize=12, color="blue",
+        arrowprops=dict(arrowstyle="->", color="blue")
     )
 
     plt.xlabel("Precip Channel Loss")
     plt.ylabel("Total Loss")
-    plt.title("Pareto Front: Precip vs Total Loss")
+    plt.title("Pareto Front: Precip vs Total Loss (All Valid Trials)")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig("pareto_front.png", dpi=500)
+    plt.savefig("pareto_front_all.png", dpi=500)
     plt.show()
-
-    print("\nBest weights for trade-off (closest to origin):", best_tradeoff_trial.user_attrs["weights"])
-    print("Per-channel val loss:", best_tradeoff_trial.user_attrs["val_loss_per_channel"])
-    print("Objectives (precip loss, total loss):", best_tradeoff_trial.values)
 
     # Retrain and save model with best tradeoff weights
     print("\nRetraining model with best tradeoff weights and saving checkpoint...")
