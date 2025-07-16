@@ -9,44 +9,14 @@ from torch.optim.lr_scheduler import StepLR
 import torch.nn.functional as F
 from losses import WeightedHuberLoss, WeightedMSELoss
 
-def run_experiment(train_dataset, val_dataset, config, trial=None):
+def run_experiment(train_dataset, val_dataset, config):
     train_cfg = config["train"]
     exp_cfg = config["experiment"]
 
-    # W&B logging: Start a new run for each trial, set config at init, use reinit=True
-    if trial is not None:
-        wandb_run = wandb.init(
-            project=train_cfg.get("wandb_project", "unet_downscaling"),
-            name=f"{train_cfg.get('wandb_run_name', 'CLR_experiment')}_trial_{trial.number}",
-            config={
-                "optimizer": train_cfg.get("optimizer", "Adam"),
-                "loss": train_cfg.get("loss_fn", "MSE"),
-                "base_lr": train_cfg.get("base_lr", 1e-4),
-                "max_lr": train_cfg.get("max_lr", 1e-3),
-                "scheduler": train_cfg.get("scheduler", "CyclicLR"),
-                "mode": train_cfg.get("scheduler_mode", "triangular"),
-                "epochs": train_cfg.get("num_epochs", 100),
-                "optuna_trial": trial.number,
-                "loss_weights": train_cfg.get("loss_weights", [0.25, 0.25, 0.25, 0.25])
-            },
-            reinit=True
-        )
-    else:
-        wandb_run = wandb.init(
-            project=train_cfg.get("wandb_project", "unet_downscaling"),
-            name=train_cfg.get("wandb_run_name", "CLR_experiment"),
-            config={
-                "optimizer": train_cfg.get("optimizer", "Adam"),
-                "loss": train_cfg.get("loss_fn", "MSE"),
-                "base_lr": train_cfg.get("base_lr", 1e-4),
-                "max_lr": train_cfg.get("max_lr", 1e-3),
-                "scheduler": train_cfg.get("scheduler", "CyclicLR"),
-                "mode": train_cfg.get("scheduler_mode", "triangular"),
-                "epochs": train_cfg.get("num_epochs", 100),
-                "loss_weights": train_cfg.get("loss_weights", [0.25, 0.25, 0.25, 0.25])
-            },
-            reinit=True
-        )
+    weights = train_cfg.get("loss_weights", [0.25, 0.25, 0.25, 0.25])
+    for w in weights:
+        if not (0.1 <= w <= 1.0):
+            raise ValueError(f"Weight {w} is out of allowed range [0.1, 1.0]")
 
     model = UNet(in_channels=train_cfg.get("in_channels", 5), out_channels=train_cfg.get("out_channels", 4))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -61,7 +31,6 @@ def run_experiment(train_dataset, val_dataset, config, trial=None):
     scheduler = get_scheduler(scheduler_name, optimizer, train_cfg)
         
     loss_fn_name = train_cfg.get("loss_fn", "huber").lower()
-    weights = train_cfg.get("loss_weights", [0.25, 0.25, 0.25, 0.25])
     if loss_fn_name == "huber":
         criterion = WeightedHuberLoss(weights=weights, delta=train_cfg.get("huber_delta", 0.05))
     elif loss_fn_name == "mse":
@@ -93,23 +62,19 @@ def run_experiment(train_dataset, val_dataset, config, trial=None):
         optimizer,
         criterion,
         scheduler=scheduler,
-        config=config,
-        trial=trial
+        config=config
     )
 
     final_val_loss = history['val_loss'][-1]
 
-    # Not saving checkpoints during trial and optim phase.
-    if trial is None:
-        checkpoint_path = train_cfg.get("checkpoint_path", "best_model.pth")
-        checkpoint_save(
-            model, optimizer, epoch=train_cfg.get("num_epochs", 100),
-            loss=final_val_loss, path=checkpoint_path
-        )
+    checkpoint_path = train_cfg.get("checkpoint_path", "best_model.pth")
+    checkpoint_save(
+        model, optimizer, epoch=train_cfg.get("num_epochs", 100),
+        loss=final_val_loss, path=checkpoint_path
+    )
 
     wandb.log({"best_val_loss": best_val_loss})
     wandb.log({"best_val_loss_per_channel": best_val_per_channel})
-
     wandb.finish()
 
     return trained_model, history, final_val_loss, best_val_loss, best_val_per_channel

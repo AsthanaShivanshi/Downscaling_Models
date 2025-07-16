@@ -2,7 +2,6 @@ import torch
 from torch.utils.data import Dataset
 import numpy as np
 import rasterio
-import skimage.transform
 
 class DownscalingDataset(Dataset):
     def __init__(self, input_ds, target_ds, config, elevation_path=None):
