@@ -50,7 +50,7 @@ train:
   #So following from above, step size up= Number iter per epoch/2
   wandb_project: "UNet_Deterministic"
   wandb_run_name: "Combined_Dataset"
-  loss_weights: [0.25, 0.25, 0.25, 0.25] #Will be overwritten during Optuna Optimisation, if run from Main.py , these weights used, proportionate for each channel
+  loss_weights: [0.3963012163092444, 0.21432430554508924, 0.27094190529111545, 0.11843257285455093] #Will be overwritten during Optuna Optimisation, if run from Main.py , these weights used, proportionate for each channel
 
 # Placeholder for the paths in the untracked .paths.yaml file
 data: {}
