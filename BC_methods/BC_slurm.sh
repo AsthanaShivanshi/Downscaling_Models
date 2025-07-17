@@ -13,5 +13,5 @@ source environment.sh
 
 cd BC_methods
 
-python QM.py
+python EQM.py
 echo "Empirical Quantile Mapping finished."
