@@ -3,16 +3,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import config
 
-# --- File paths ---
-model_path = f"{config.BASE_DIR}/sasthana/Downscaling/Downscaling_Models/Model_Runs/precip_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/precip_r01_HR_masked.nc"
-obs_path = f"{config.BASE_DIR}/work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Processing_and_Analysis_Scripts/data_1971_2023/HR_files_full/RhiresD_1971_2023.nc"
-output_path = f"{config.BASE_DIR}/qm_output.nc"
+model_path = f"{config.MODELS_DIR}/precip_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/precip_r01_HR_masked.nc"
+obs_path = f"{config.TARGET_DIR}/RhiresD_1971_2023.nc"
+output_path = f"{config.BC_DIR}/qm_output.nc"
 
-print("Loading data...")
+print("Data")
 model_output = xr.open_dataset(model_path)["precip"]
 obs_output = xr.open_dataset(obs_path)["RhiresD"]
 
-print("Selecting calibration period...")
+print("Calibration period")
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
 calib_mod = model_output.sel(time=slice("1981-01-01", "2010-12-31"))
 
@@ -35,7 +34,7 @@ qm_ds = xr.Dataset(
 qm_ds.to_netcdf(output_path)
 del qm_ds
 
-print("Starting chunked EQM processing")
+print("Chunked EQM")
 with xr.open_dataset(output_path, mode="r+") as ds_out:
     for i_start in range(0, nlat, chunk_size):
         i_end = min(i_start + chunk_size, nlat)
@@ -58,7 +57,7 @@ with xr.open_dataset(output_path, mode="r+") as ds_out:
                     plot_obs_q = obs_q
                     plot_mod_q = mod_q
 
-print("EQM processing complete. Output saved to:", output_path)
+print("Processing complete. Output saved to:", output_path)
 
 # Correction quantile probability function 
 if plot_obs_q is not None and plot_mod_q is not None:
@@ -67,7 +66,7 @@ if plot_obs_q is not None and plot_mod_q is not None:
     plt.plot(plot_mod_q, plot_mod_q, "--", color="gray", label="1:1 line")
     plt.xlabel("Model quantiles (calib period)")
     plt.ylabel("Observed quantiles (calib period)")
-    plt.title(f"Quantile Mapping Correction Function\nZürich (lat={lat_vals[i_zurich]:.2f}, lon={lon_vals[j_zurich]:.2f})")
+    plt.title(f"Quantile Mapping Correction Function\nZürich (lat={lat_vals[i_zurich]:.3f}, lon={lon_vals[j_zurich]:.3f})")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
