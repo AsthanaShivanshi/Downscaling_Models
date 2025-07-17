@@ -24,3 +24,4 @@ __pycache__/
 Model_Runs/
 Training_Chronological_Dataset/
 Combined_Chronological_Dataset/
+BC_methods/config.py
