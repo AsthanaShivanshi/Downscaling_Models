@@ -1,3 +1,4 @@
+# This script performs quantile mapping on model output data using observed data for calibration.
 import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
@@ -71,4 +72,3 @@ if plot_obs_q is not None and plot_mod_q is not None:
     plt.grid(True)
     plt.tight_layout()
     plt.savefig(f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_zurich.png", dpi=500)
-    plt.show()
