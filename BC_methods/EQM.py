@@ -4,13 +4,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import config
 
-model_path = f"{config.MODELS_DIR}/precip_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/precip_r01_HR_masked.nc"
-obs_path = f"{config.TARGET_DIR}/RhiresD_1971_2023.nc"
-output_path = f"{config.BC_DIR}/qm_output.nc"
+model_path = f"{config.MODELS_DIR}/tmin_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/tmin_r01_HR_masked.nc"
+obs_path = f"{config.TARGET_DIR}/TminD_1971_2023.nc"
+output_path = f"{config.BC_DIR}/qm_tmin_r01_output.nc"
 
 print("Data")
-model_output = xr.open_dataset(model_path)["precip"]
-obs_output = xr.open_dataset(obs_path)["RhiresD"]
+model_output = xr.open_dataset(model_path)["tmin"]
+obs_output = xr.open_dataset(obs_path)["TminD"]
 
 print("Calibration period")
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
@@ -29,7 +29,7 @@ j_zurich = np.argmin(np.abs(lon_vals - zurich_lon))
 plot_obs_q = plot_mod_q = None
 
 qm_ds = xr.Dataset(
-    {"precip": (model_output.dims, np.full(model_output.shape, np.nan, dtype=np.float32))},
+    {"tmin": (model_output.dims, np.full(model_output.shape, np.nan, dtype=np.float32))},
     coords=model_output.coords
 )
 qm_ds.to_netcdf(output_path)
@@ -52,7 +52,7 @@ with xr.open_dataset(output_path, mode="r+") as ds_out:
                 mod_q = np.quantile(mod_valid, quantiles)
                 full_mod_series = model_output[:, i, j].values
                 qm_series = np.interp(full_mod_series, mod_q, obs_q)
-                ds_out["precip"][:, i, j] = qm_series.astype(np.float32)
+                ds_out["tmin"][:, i, j] = qm_series.astype(np.float32)
 
                 if i == i_zurich and j == j_zurich:
                     plot_obs_q = obs_q
@@ -67,8 +67,8 @@ if plot_obs_q is not None and plot_mod_q is not None:
     plt.plot(plot_mod_q, plot_mod_q, "--", color="gray", label="1:1 line")
     plt.xlabel("Model quantiles (calib period)")
     plt.ylabel("Observed quantiles (calib period)")
-    plt.title(f"Quantile Mapping Correction Function\nZürich (lat={lat_vals[i_zurich]:.3f}, lon={lon_vals[j_zurich]:.3f})")
+    plt.title(f"Quantile Mapping Correction Function\nZürich for Min daily temperature (lat={lat_vals[i_zurich]:.3f}, lon={lon_vals[j_zurich]:.3f})")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_zurich.png", dpi=500)
+    plt.savefig(f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_tmin_r01_zurich.png", dpi=500)
