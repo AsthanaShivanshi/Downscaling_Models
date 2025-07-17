@@ -12,7 +12,7 @@ print("Data")
 model_output = xr.open_dataset(model_path)["tmax"]
 obs_output = xr.open_dataset(obs_path)["TmaxD"]
 
-print("Calibration period")
+print("Calibration period :1981-2010")
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
 calib_mod = model_output.sel(time=slice("1981-01-01", "2010-12-31"))
 
@@ -27,7 +27,6 @@ i_zurich = np.argmin(np.abs(lat_vals - zurich_lat))
 j_zurich = np.argmin(np.abs(lon_vals - zurich_lon))
 plot_obs_q = plot_mod_q = None
 
-# Prepare output array
 qm_data = np.full(model_output.shape, np.nan, dtype=np.float32)
 
 print("EQM (no chunking, full grid in memory)")
@@ -49,7 +48,6 @@ for i in range(nlat):
             plot_obs_q = obs_q
             plot_mod_q = mod_q
 
-# Save output
 qm_ds = xr.Dataset(
     {"tmax": (model_output.dims, qm_data)},
     coords=model_output.coords
