@@ -5,7 +5,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-00:00:00
-#SBATCH --mem=64G
+#SBATCH --mem=128G
 #SBATCH --partition=cpu
 
 module load python
