@@ -12,7 +12,7 @@ print("Data")
 model_output = xr.open_dataset(model_path)["tmax"]
 obs_output = xr.open_dataset(obs_path)["TmaxD"]
 
-print("Calibration period :1981-2010")
+print("Calibration:1981-2010")
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
 calib_mod = model_output.sel(time=slice("1981-01-01", "2010-12-31"))
 
@@ -29,7 +29,7 @@ plot_obs_q = plot_mod_q = None
 
 qm_data = np.full(model_output.shape, np.nan, dtype=np.float32)
 
-print("EQM (no chunking, full grid in memory)")
+print("EQM")
 for i in range(nlat):
     for j in range(nlon):
         obs_series = calib_obs[:, i, j].values
@@ -55,9 +55,9 @@ qm_ds = xr.Dataset(
 qm_ds.to_netcdf(output_path)
 print("Processing complete. Output saved to:", output_path)
 
-# Correction quantile probability function 
+# Correction quantile prob fx 
 if plot_obs_q is not None and plot_mod_q is not None:
-    plt.figure(figsize=(7,5))
+    plt.figure(figsize=(7, 5))
     plt.plot(plot_mod_q, plot_obs_q, label="Correction function (obs vs model)")
     plt.plot(plot_mod_q, plot_mod_q, "--", color="gray", label="1:1 line")
     plt.xlabel("Model quantiles (calib period)")
