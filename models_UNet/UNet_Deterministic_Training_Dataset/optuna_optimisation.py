@@ -6,19 +6,21 @@ from Main import load_dataset
 import wandb
 import numpy as np
 import pandas as pd
+import json
 
 MAX_VALID_TRIALS = 20
 
 def objective(trial):
-    w0 = trial.suggest_float("w0", 0.1, 1.0) #unnormalized weight for precip constrained.
+    w0 = trial.suggest_float("w0", 0.1, 1.0)  # unnormalized weight for precip
     w_rest = [trial.suggest_float(f"w{i}", 0.1, 1.0) for i in range(1, 4)]
-    weights = [w0] + w_rest
-    weights = [w / sum(weights) for w in weights]
-    # Constraints for other channelés including precip (normalised)
+    initial_weights = [w0] + w_rest
+    weights = [w / sum(initial_weights) for w in initial_weights]
+    # Constraints for channels (normalized)
     if weights[0] < 0.25 or any(w < 0.10 for w in weights[1:]):
         raise optuna.TrialPruned()
     print(f"Trial {trial.number}: Normalized weights used: {weights}, sum={sum(weights)}")
-
+    trial.set_user_attr("normalized_weights", weights)
+    trial.set_user_attr("weights", initial_weights)
     config = load_config("config.yaml", ".paths.yaml")
     config["train"]["loss_weights"] = weights
 
@@ -32,14 +34,16 @@ def objective(trial):
     val_dataset = DownscalingDataset(input_val_ds, target_val_ds, config, elevation_path=elevation_path)
 
     config["train"]["num_epochs"] = 20
-    _, _, _, best_val_loss, best_val_loss_per_channel = run_experiment(
+    model, history, best_val_loss, best_val_loss_per_channel = run_experiment(
         train_dataset, val_dataset, config, trial=trial
     )
 
+    trial.set_user_attr("initial_weights", initial_weights)
     trial.set_user_attr("weights", weights)
     trial.set_user_attr("val_loss_per_channel", best_val_loss_per_channel)
+    trial.set_user_attr("epoch_history", history)
 
-    # Log to wandb for each valid trial
+    # Log to wandb for each valid trial (log at the end of the trial)
     wandb.log({
         "trial": trial.number,
         "weights": weights,
@@ -58,7 +62,7 @@ if __name__ == "__main__":
     valid_trials = 0
     trial_data = []
 
-    for _ in range(500):  # Large upper bound to make uper limit flkexible
+    for _ in range(1000):  # Large upper bound, will break early
         if valid_trials >= MAX_VALID_TRIALS:
             print(f"Reached {MAX_VALID_TRIALS} valid trials. Stopping optimisation.")
             break
@@ -70,10 +74,12 @@ if __name__ == "__main__":
                 valid_trials += 1
                 trial_data.append({
                     "trial": trial.number,
-                    "weights": trial.user_attrs.get("weights"),
+                    "initial_weights": trial.user_attrs.get("initial_weights"),
+                    "normalized_weights": trial.user_attrs.get("weights"),
                     "precip_loss": values[0],
                     "total_loss": values[1],
-                    "per_channel_val_loss": trial.user_attrs.get("val_loss_per_channel")
+                    "per_channel_val_loss": trial.user_attrs.get("val_loss_per_channel"),
+                    "epoch_history": trial.user_attrs.get("epoch_history")
                 })
         except optuna.TrialPruned:
             study.tell(trial, None, state=optuna.trial.TrialState.PRUNED)
@@ -83,3 +89,6 @@ if __name__ == "__main__":
     print("\nAll valid trials:")
     print(df)
     df.to_csv("optuna_trials_table.csv", index=False)
+    # Save all trial info as a JSON table
+    with open("all_trials_summary.json", "w") as f:
+        json.dump(trial_data, f, indent=2)
