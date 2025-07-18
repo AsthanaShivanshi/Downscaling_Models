@@ -8,8 +8,8 @@ obs_path = f"{config.TARGET_DIR}/TabsD_1971_2023.nc"
 output_path = f"{config.BC_DIR}/qm_temp_r01_output.nc"
 
 print("Data")
-model_output = xr.open_dataset(model_path)["temp"]
-obs_output = xr.open_dataset(obs_path)["TabsD"]
+model_output = xr.open_dataset(model_path,chunks={"time":500})["temp"]
+obs_output = xr.open_dataset(obs_path,chunks={"time":500})["TabsD"]
 
 print("Calibration:1981-2010")
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
@@ -47,11 +47,13 @@ for i in range(nlat):
             plot_obs_q = obs_q
             plot_mod_q = mod_q
 
+encoding= {"temp": {"zlib": True, "complevel": 4}} #For accelerated writing
+
 qm_ds = xr.Dataset(
     {"temp": (model_output.dims, qm_data)},
     coords=model_output.coords
 )
-qm_ds.to_netcdf(output_path)
+qm_ds.to_netcdf(output_path,encoding=encoding)
 print("Processing complete. Output saved to:", output_path)
 
 # Correction quantile prob fx 
