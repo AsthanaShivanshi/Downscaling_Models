@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=temp_BC_EQM
-#SBATCH --output=logs/bc/temp_job_output-%j.txt
-#SBATCH --error=logs/bc/temp_job_error-%j.txt
+#SBATCH --job-name=tmax_BC_EQM
+#SBATCH --output=logs/bc/tmax_job_output-%j.txt
+#SBATCH --error=logs/bc/tmax_job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --time=3-00:00:00
@@ -11,9 +11,9 @@
 module load python
 source environment.sh
 
-export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
-export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
-export NUMEXPR_NUM_THREADS=$SLURM_CPUS_PER_TASK
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK #1 in this case
+export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK #1 in this case, no parallelisatn
+export NUMEXPR_NUM_THREADS=$SLURM_CPUS_PER_TASK #1 in this case
 
 cd BC_methods
 
