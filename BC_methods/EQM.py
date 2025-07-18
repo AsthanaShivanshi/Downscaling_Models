@@ -35,8 +35,6 @@ plot_obs_q = plot_mod_q = None
 
 qm_data = np.full(model_output.shape, np.nan, dtype=np.float32)
 
-# Create a placeholder file so you can see it exists
-print("Creating placeholder output file...")
 placeholder_ds = xr.Dataset(
     {"tmax": (model_output.dims, np.full(model_output.shape, np.nan, dtype=np.float32))},
     coords=model_output.coords
@@ -67,11 +65,7 @@ for i in range(nlat):
     qm_data[:, i, :] = row
     if local_plot_obs_q is not None and local_plot_mod_q is not None:
         plot_obs_q = local_plot_obs_q
-        plot_mod_q = local_plot_mod_q
-    
-    # Progress every 5 latitudes
-    if i % 5 == 0 or i == nlat - 1:
-        print(f"Processed latitude {i+1}/{nlat}")
+        plot_mod_q = local_plot_mod_q 
 
 print("Writing actual output with processed data...")
 qm_ds = xr.Dataset(
@@ -81,12 +75,13 @@ qm_ds = xr.Dataset(
 qm_ds.to_netcdf(output_path)
 print(f"Final output saved to {output_path}")
 
-# Clean up placeholder
 try:
     os.remove(output_path.replace('.nc', '_placeholder.nc'))
     print("Placeholder file removed")
-except:
-    print("Could not remove placeholder file")
+except FileNotFoundError:
+    print("Placeholder file not found (already removed)")
+except Exception as e:
+    print(f"Could not remove placeholder file: {e}")
 
 if plot_obs_q is not None and plot_mod_q is not None:
     plt.figure(figsize=(7, 5))
