@@ -7,17 +7,17 @@ from joblib import Parallel, delayed
 import argparse
 import os
 
-model_path = f"{config.SCRATCH_DIR}/tmin_r01_HR_masked.nc"
-obs_path = f"{config.SCRATCH_DIR}/TminD_1971_2023.nc"
-output_path = f"{config.BC_DIR}/qm_tmin_r01_output.nc"
+model_path = f"{config.SCRATCH_DIR}/tmax_r01_HR_masked.nc"
+obs_path = f"{config.SCRATCH_DIR}/TmaxD_1971_2023.nc"
+output_path = f"{config.BC_DIR}/qm_tmax_r01_output.nc"
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--n_jobs', type=int, default=1)
 args = parser.parse_args()
 
 print("Data")
-model_output = xr.open_dataset(model_path)["tmin"]
-obs_output = xr.open_dataset(obs_path)["TminD"]
+model_output = xr.open_dataset(model_path)["tmax"]
+obs_output = xr.open_dataset(obs_path)["TmaxD"]
 
 print("Calibration:1981-2010")
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
@@ -39,7 +39,7 @@ qm_data = np.full(model_output.shape, np.nan, dtype=np.float32)
 # Create a placeholder file so you can see it exists
 print("Creating placeholder output file...")
 placeholder_ds = xr.Dataset(
-    {"tmin": (model_output.dims, np.full(model_output.shape, np.nan, dtype=np.float32))},
+    {"tmax": (model_output.dims, np.full(model_output.shape, np.nan, dtype=np.float32))},
     coords=model_output.coords
 )
 placeholder_ds.to_netcdf(output_path.replace('.nc', '_placeholder.nc'))
@@ -75,7 +75,7 @@ for i, row, local_plot_obs_q, local_plot_mod_q in results:
 
 print("Writing actual output with processed data...")
 qm_ds = xr.Dataset(
-    {"tmin": (model_output.dims, qm_data)},  # Use actual processed data
+    {"tmax": (model_output.dims, qm_data)},  # Use actual processed data
     coords=model_output.coords
 )
 qm_ds.to_netcdf(output_path)
@@ -94,10 +94,10 @@ if plot_obs_q is not None and plot_mod_q is not None:
     plt.plot(plot_mod_q, plot_mod_q, "--", color="gray", label="1:1 line")
     plt.xlabel("Model quantiles")
     plt.ylabel("Observed quantiles")
-    plt.title(f"Quantile Mapping Correction Function\nZürich for Daily Min Temp (lat={lat_vals[i_zurich]:.3f}, lon={lon_vals[j_zurich]:.3f})")
+    plt.title(f"Quantile Mapping Correction Function\nZürich for Daily Max Temp (lat={lat_vals[i_zurich]:.3f}, lon={lon_vals[j_zurich]:.3f})")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_tmin_r01_zurich.png", dpi=300)
+    plt.savefig(f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_tmax_r01_zurich.png", dpi=300)
 
 print("EQM processing complete!")
