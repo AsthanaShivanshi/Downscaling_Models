@@ -3,9 +3,9 @@
 #SBATCH --output=logs/bc/job_output-%j.txt
 #SBATCH --error=logs/bc/job_error-%j.txt
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=8
 #SBATCH --time=3-00:00:00
-#SBATCH --mem=256G
+#SBATCH --mem=500G
 #SBATCH --partition=cpu
 
 module load python
