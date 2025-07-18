@@ -7,9 +7,9 @@ import argparse
 
 #Not using SBCK here, for experimental purpises
 
-model_path = f"{config.MODELS_DIR}/tmax_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/tmax_r01_HR_masked.nc"
-obs_path = f"{config.TARGET_DIR}/TmaxD_1971_2023.nc"
-output_path = f"{config.BC_DIR}/qm_tmax_r01_output.nc"
+model_path = f"{config.MODELS_DIR}/precip_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/precip_r01_HR_masked.nc"
+obs_path = f"{config.TARGET_DIR}/RhiresD_1971_2023.nc"
+output_path = f"{config.BC_DIR}/qm_precip_r01_output.nc"
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--n_jobs', type=int, default=1)
@@ -65,7 +65,7 @@ for i, row, local_plot_obs_q, local_plot_mod_q in results:
 
 print("Writing O/P")
 qm_ds = xr.Dataset(
-    {"tmax": (model_output.dims, qm_data)},
+    {"precip": (model_output.dims, qm_data)},
     coords=model_output.coords
 )
 qm_ds.to_netcdf(output_path)
@@ -78,8 +78,8 @@ if plot_obs_q is not None and plot_mod_q is not None:
     plt.plot(plot_mod_q, plot_mod_q, "--", color="gray", label="1:1 line")
     plt.xlabel("Model quantiles")
     plt.ylabel("Observed quantiles")
-    plt.title(f"Quantile Mapping Correction Function\nZürich for Daily Max Temperature (lat={lat_vals[i_zurich]:.3f}, lon={lon_vals[j_zurich]:.3f})")
+    plt.title(f"Quantile Mapping Correction Function\nZürich for Daily Accumulated Precip (lat={lat_vals[i_zurich]:.3f}, lon={lon_vals[j_zurich]:.3f})")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_tmax_r01_zurich.png", dpi=500)
+    plt.savefig(f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_precip_r01_zurich.png", dpi=500)
