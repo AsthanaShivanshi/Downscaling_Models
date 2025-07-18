@@ -2,14 +2,15 @@ import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
 import config
+from SBCK import QM
 
-model_path = "/scratch/sasthana/temp_r01_HR_masked.nc"
-obs_path = "/scratch/sasthana/TabsD_1971_2023.nc"
-output_path = "/scratch/sasthana/qm_temp_r01_output.nc"
+model_path = f"{config.SCRATCH_DIR}/precip_r01_HR_masked.nc"
+obs_path = f"{config.SCRATCH_DIR}/RhiresD_1971_2023.nc"
+output_path = f"{config.BC_DIR}/qm_precip_r01_output.nc"
 
 print("Data")
-model_output = xr.open_dataset(model_path,chunks={"time":2000})["temp"]
-obs_output = xr.open_dataset(obs_path,chunks={"time":2000})["TabsD"]
+model_output = xr.open_dataset(model_path,chunks={"time":2000})["precip"]
+obs_output = xr.open_dataset(obs_path,chunks={"time":2000})["RhiresD"]
 
 print("Calibration:1981-2010")
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
@@ -31,26 +32,25 @@ qm_data = np.full(model_output.shape, np.nan, dtype=np.float32)
 print("EQM")
 for i in range(nlat):
     for j in range(nlon):
-        obs_series = calib_obs[:, i, j].values
-        mod_series = calib_mod[:, i, j].values
-        obs_valid = obs_series[~np.isnan(obs_series)]
-        mod_valid = mod_series[~np.isnan(mod_series)]
-        if obs_valid.size== 0 or mod_valid.size== 0:
+        obs_valid = calib_obs[:, i, j].values[~np.isnan(calib_obs[:, i, j].values)]
+        mod_valid = calib_mod[:, i, j].values[~np.isnan(calib_mod[:, i, j].values)]
+        if obs_valid.size == 0 or mod_valid.size == 0:
             continue
-        obs_q = np.quantile(obs_valid, quantiles)
-        mod_q = np.quantile(mod_valid, quantiles)
-        full_mod_series = model_output[:, i, j].values
-        qm_series = np.interp(full_mod_series, mod_q, obs_q)
+        # 2D arrays expected by library, else gave an error for reshaping
+        eqm = QM()
+        eqm.fit(mod_valid.reshape(-1, 1), obs_valid.reshape(-1, 1))
+        full_mod_series = model_output[:, i, j].values.reshape(-1, 1)
+        qm_series = eqm.transform(full_mod_series).flatten()
         qm_data[:, i, j] = qm_series.astype(np.float32)
         if i == i_zurich and j == j_zurich:
-            plot_obs_q = obs_q
-            plot_mod_q = mod_q
+            plot_obs_q = np.quantile(obs_valid, quantiles)
+            plot_mod_q = np.quantile(mod_valid, quantiles)
     if i % 10 == 0:
         print(f"Processed latitude {i}/{nlat}")
 
 print("Writing O/P")
 qm_ds = xr.Dataset(
-    {"temp": (model_output.dims, qm_data)},
+    {"precip": (model_output.dims, qm_data)},
     coords=model_output.coords
 )
 qm_ds.to_netcdf(output_path)
@@ -63,8 +63,8 @@ if plot_obs_q is not None and plot_mod_q is not None:
     plt.plot(plot_mod_q, plot_mod_q, "--", color="gray", label="1:1 line")
     plt.xlabel("Model quantiles")
     plt.ylabel("Observed quantiles")
-    plt.title(f"Quantile Mapping Correction Function\nZürich for Daily Avg Temp (lat={lat_vals[i_zurich]:.3f}, lon={lon_vals[j_zurich]:.3f})")
+    plt.title(f"Quantile Mapping Correction Function\nZürich for Daily Accumulated Precipitation (lat={lat_vals[i_zurich]:.3f}, lon={lon_vals[j_zurich]:.3f})")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_temp_r01_zurich.png", dpi=500)
+    plt.savefig(f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_precip_r01_zurich.png", dpi=500)
