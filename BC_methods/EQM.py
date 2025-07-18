@@ -10,14 +10,13 @@ model_path = f"{config.SCRATCH_DIR}/temp_r01_HR_masked.nc"
 obs_path = f"{config.SCRATCH_DIR}/TabsD_1971_2023.nc"
 output_path = f"{config.BC_DIR}/qm_temp_r01_output.nc"
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--n_jobs', type=int, default=1)
 args = parser.parse_args()
 
 print("Data")
-model_output = xr.open_dataset(model_path, chunks={"time":2000})["temp"]
-obs_output = xr.open_dataset(obs_path, chunks={"time":2000})["TabsD"]
+model_output = xr.open_dataset(model_path)["temp"]
+obs_output = xr.open_dataset(obs_path)["TabsD"]
 
 print("Calibration:1981-2010")
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
@@ -71,7 +70,6 @@ qm_ds = xr.Dataset(
 qm_ds.to_netcdf(output_path)
 print(f"Output saved to {output_path}")
 
-# Correction quantile prob fx 
 if plot_obs_q is not None and plot_mod_q is not None:
     plt.figure(figsize=(7, 5))
     plt.plot(plot_mod_q, plot_obs_q, label="Correction function (obs vs model)")
@@ -82,4 +80,4 @@ if plot_obs_q is not None and plot_mod_q is not None:
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_temp_r01_zurich.png", dpi=500)
+    plt.savefig(f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_temp_r01_zurich.png", dpi=300)
