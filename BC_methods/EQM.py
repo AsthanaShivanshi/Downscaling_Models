@@ -35,7 +35,7 @@ for i in range(nlat):
         mod_series = calib_mod[:, i, j].values
         obs_valid = obs_series[~np.isnan(obs_series)]
         mod_valid = mod_series[~np.isnan(mod_series)]
-        if len(obs_valid) < 5 or len(mod_valid) < 5:
+        if obs_valid.size== 0 or mod_valid.size== 0:
             continue
         obs_q = np.quantile(obs_valid, quantiles)
         mod_q = np.quantile(mod_valid, quantiles)
