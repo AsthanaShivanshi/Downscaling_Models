@@ -17,6 +17,6 @@ export NUMEXPR_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 cd BC_methods
 
-echo "Starting EQM"
+echo "Starting EQM Manual"
 python EQM_manual.py --n_jobs $SLURM_CPUS_PER_TASK
-echo "EQM finished"
+echo "EQM Manual finished"
