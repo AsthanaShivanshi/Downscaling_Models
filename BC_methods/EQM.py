@@ -3,13 +3,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import config
 
-model_path = f"{config.MODELS_DIR}/temp_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/temp_r01_HR_masked.nc"
-obs_path = f"{config.TARGET_DIR}/TabsD_1971_2023.nc"
+model_path = f"{config.SCRATCH_DIR}/temp_r01_HR_masked.nc"
+obs_path = f"{config.SCRATCH_DIR}/TabsD_1971_2023.nc"
 output_path = f"{config.BC_DIR}/qm_temp_r01_output.nc"
 
 print("Data")
-model_output = xr.open_dataset(model_path,chunks={"time":2000})["temp"]
-obs_output = xr.open_dataset(obs_path,chunks={"time":2000})["TabsD"]
+model_output = xr.open_dataset(model_path,chunks={"time":100})["temp"]
+obs_output = xr.open_dataset(obs_path,chunks={"time":100})["TabsD"]
 
 print("Calibration:1981-2010")
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
@@ -46,8 +46,10 @@ for i in range(nlat):
         if i == i_zurich and j == j_zurich:
             plot_obs_q = obs_q
             plot_mod_q = mod_q
+        if j % 50 == 0:
+            print(f"Processing lat {i}/{nlat}, lon {j}/{nlon}")
 
-encoding= {"temp": {"zlib": True, "complevel": 4}} #For accelerated writing
+encoding= {"temp": {"zlib": True, "complevel": 4}}
 
 qm_ds = xr.Dataset(
     {"temp": (model_output.dims, qm_data)},

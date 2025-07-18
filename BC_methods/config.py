@@ -11,3 +11,4 @@ OUTPUTS_DIR= os.environ.get("OUTPUTS_DIR", f"{BASE_DIR}/sasthana/Downscaling/Pro
 MODELS_DIR= os.environ.get("MODELS_DIR", f"{BASE_DIR}/sasthana/Downscaling/Downscaling_Models/Model_Runs")
 OUTPUTS_MODELS_DIR= os.environ.get("OUTPUTS_MODELS_DIR", f"{BASE_DIR}/sasthana/Downscaling/Downscaling_Models/Outputs")
 BC_DIR= os.environ.get("BC_DIR", f"{BASE_DIR}/sasthana/Downscaling/Downscaling_Models/BC_methods")
+SCRATCH_DIR= os.environ.get("SCRATCH_DIR", f"{BASE_DIR}/scratch/sasthana")
