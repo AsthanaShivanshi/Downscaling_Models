@@ -1,4 +1,3 @@
-# This script performs quantile mapping on model output data using observed data for calibration.
 import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
