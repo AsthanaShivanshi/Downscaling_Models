@@ -7,17 +7,17 @@ from joblib import Parallel, delayed
 import argparse
 import os
 
-model_path = f"{config.SCRATCH_DIR}/tmax_r01_HR_masked.nc"
-obs_path = f"{config.SCRATCH_DIR}/TmaxD_1971_2023.nc"
-output_path = f"{config.BC_DIR}/qm_tmax_r01_output.nc"
+model_path = f"{config.SCRATCH_DIR}/temp_r01_HR_masked.nc"
+obs_path = f"{config.SCRATCH_DIR}/TabsD_1971_2023.nc"
+output_path = f"{config.BC_DIR}/qm_temp_r01_output.nc"
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--n_jobs', type=int, default=1)
 args = parser.parse_args()
 
 print("Data")
-model_output = xr.open_dataset(model_path)["tmax"]
-obs_output = xr.open_dataset(obs_path)["TmaxD"]
+model_output = xr.open_dataset(model_path)["temp"]
+obs_output = xr.open_dataset(obs_path)["TabsD"]
 
 print("Calibration:1981-2010")
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
@@ -39,7 +39,7 @@ qm_data = np.full(model_output.shape, np.nan, dtype=np.float32)
 # Create a placeholder file so you can see it exists
 print("Creating placeholder output file...")
 placeholder_ds = xr.Dataset(
-    {"tmax": (model_output.dims, np.full(model_output.shape, np.nan, dtype=np.float32))},
+    {"temp": (model_output.dims, np.full(model_output.shape, np.nan, dtype=np.float32))},
     coords=model_output.coords
 )
 placeholder_ds.to_netcdf(output_path.replace('.nc', '_placeholder.nc'))
@@ -56,7 +56,8 @@ def process_lat(i):
         eqm = QM()
         eqm.fit(mod_valid.reshape(-1, 1), obs_valid.reshape(-1, 1))
         full_mod_series = model_output[:, i, j].values.reshape(-1, 1)
-        qm_series = eqm.transform(full_mod_series).flatten()
+        # Change from .transform() to .predict()
+        qm_series = eqm.predict(full_mod_series).flatten()
         row[:, j] = qm_series.astype(np.float32)
         if i == i_zurich and j == j_zurich:
             local_plot_obs_q = np.quantile(obs_valid, quantiles)
@@ -75,7 +76,7 @@ for i, row, local_plot_obs_q, local_plot_mod_q in results:
 
 print("Writing actual output with processed data...")
 qm_ds = xr.Dataset(
-    {"tmax": (model_output.dims, qm_data)},  # Use actual processed data
+    {"temp": (model_output.dims, qm_data)},  # Use actual processed data
     coords=model_output.coords
 )
 qm_ds.to_netcdf(output_path)
@@ -94,10 +95,10 @@ if plot_obs_q is not None and plot_mod_q is not None:
     plt.plot(plot_mod_q, plot_mod_q, "--", color="gray", label="1:1 line")
     plt.xlabel("Model quantiles")
     plt.ylabel("Observed quantiles")
-    plt.title(f"Quantile Mapping Correction Function\nZürich for Daily Max Temp (lat={lat_vals[i_zurich]:.3f}, lon={lon_vals[j_zurich]:.3f})")
+    plt.title(f"Quantile Mapping Correction Function\nZürich for Daily Mean Temp (lat={lat_vals[i_zurich]:.3f}, lon={lon_vals[j_zurich]:.3f})")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_tmax_r01_zurich.png", dpi=300)
+    plt.savefig(f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_temp_r01_zurich.png", dpi=300)
 
 print("EQM processing complete!")
