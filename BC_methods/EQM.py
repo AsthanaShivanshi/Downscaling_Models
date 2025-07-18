@@ -3,9 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import config
 
-model_path = f"{config.SCRATCH_DIR}/temp_r01_HR_masked.nc"
-obs_path = f"{config.SCRATCH_DIR}/TabsD_1971_2023.nc"
-output_path = f"{config.BC_DIR}/qm_temp_r01_output.nc"
+model_path = "/scratch/sasthana/temp_r01_HR_masked.nc"
+obs_path = "/scratch/sasthana/TabsD_1971_2023.nc"
+output_path = "/scratch/sasthana/qm_temp_r01_output.nc"
 
 print("Data")
 model_output = xr.open_dataset(model_path,chunks={"time":2000})["temp"]
@@ -35,6 +35,8 @@ for i in range(nlat):
         mod_series = calib_mod[:, i, j].values
         obs_valid = obs_series[~np.isnan(obs_series)]
         mod_valid = mod_series[~np.isnan(mod_series)]
+        if len(obs_valid) < 5 or len(mod_valid) < 5:
+            continue
         obs_q = np.quantile(obs_valid, quantiles)
         mod_q = np.quantile(mod_valid, quantiles)
         full_mod_series = model_output[:, i, j].values
@@ -46,7 +48,7 @@ for i in range(nlat):
     if i % 10 == 0:
         print(f"Processed latitude {i}/{nlat}")
 
-print("Writing output file...")
+print("Writing O/P")
 qm_ds = xr.Dataset(
     {"temp": (model_output.dims, qm_data)},
     coords=model_output.coords
