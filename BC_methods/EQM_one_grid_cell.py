@@ -55,13 +55,16 @@ print(f"Single-cell output saved to {output_path}")
 quantiles = np.linspace(0, 1, 1001)
 plot_obs_q = np.quantile(obs_valid, quantiles)
 plot_mod_q = np.quantile(mod_valid, quantiles)
+lat_val = lat_vals[i_rand, j_rand]
+lon_val = lon_vals[i_rand, j_rand]
+
 
 plt.figure(figsize=(7, 5))
 plt.plot(plot_mod_q, plot_obs_q, label="Correction function (obs vs model)")
 plt.plot(plot_mod_q, plot_mod_q, "--", color="gray", label="1:1 line")
 plt.xlabel("Model quantiles")
 plt.ylabel("Observed quantiles")
-plt.title(f"Quantile Mapping Correction Function\nRandom Cell (lat={lat_vals[i_rand]:.3f}, lon={lon_vals[j_rand]:.3f})")
+plt.title(f"Quantile Mapping Correction Function\nRandom Cell (lat={lat_val:.3f}, lon={lon_val:.3f})")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
