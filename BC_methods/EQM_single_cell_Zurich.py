@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from SBCK import QM
 import config
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 
 model_path = f"{config.SCRATCH_DIR}/temp_r01_HR_masked.nc"
 obs_path = f"{config.SCRATCH_DIR}/TabsD_1971_2023.nc"
@@ -24,7 +26,6 @@ print("model_output shape:", model_output.shape)
 print("lat_vals shape:", lat_vals.shape)
 print("lon_vals shape:", lon_vals.shape)
 
-# Find grid cell closest to Zurich
 target_lat = 47.3769
 target_lon = 8.5417
 dist = np.sqrt((lat_vals - target_lat)**2 + (lon_vals - target_lon)**2)
@@ -55,7 +56,7 @@ qm_ds = xr.Dataset(
 qm_ds.to_netcdf(output_path)
 print(f"Single-cell output saved to {output_path}")
 
-# Correction function plot: percentiles vs (model - obs)
+# Correction fx with quantiles : (model - obs)
 quantiles = np.linspace(0, 1, 1001)
 plot_obs_q = np.quantile(obs_valid, quantiles)
 plot_mod_q = np.quantile(mod_valid, quantiles)
@@ -64,9 +65,9 @@ lat_val = lat_vals[i_zurich, j_zurich]
 lon_val = lon_vals[i_zurich, j_zurich]
 
 plt.figure(figsize=(7, 5))
-plt.plot(quantiles, correction, label="Correction (model - obs)")
+plt.plot(quantiles * 100, correction, label="Correction (model - obs)")
 plt.axhline(0, color="gray", linestyle="--", label="No correction")
-plt.xlabel("Quantiles")
+plt.xlabel("Percentile")
 plt.ylabel("Correction (Model - Observation)")
 plt.title(f"QM Correction Function\nZurich Cell (lat={lat_val:.3f}, lon={lon_val:.3f})")
 plt.legend()
@@ -92,18 +93,26 @@ plt.tight_layout()
 plt.savefig(cdf_plot_path, dpi=500)
 print(f"CDF plot saved to {cdf_plot_path}")
 
-# CH map
-plt.figure(figsize=(8, 7))
+plt.figure(figsize=(8, 8))
+ax = plt.axes(projection=ccrs.Mercator())
+ax.set_extent([5.5, 10.5, 45.5, 47.9], crs=ccrs.PlateCarree()) 
+
+ax.add_feature(cfeature.BORDERS, linewidth=1)
+ax.add_feature(cfeature.COASTLINE, linewidth=0.5)
+ax.add_feature(cfeature.LAND, facecolor='lightgray')
+ax.add_feature(cfeature.LAKES, alpha=0.5)
+ax.add_feature(cfeature.RIVERS, alpha=0.5)
+
+# Plot the mean tas
 background = np.nanmean(model_output.values, axis=0)
-plt.pcolormesh(lon_vals, lat_vals, background, cmap="coolwarm", shading="auto")
-plt.colorbar(label="Mean Tmax (°C)")
-plt.scatter(lon_val, lat_val, color="black", marker="*", s=400, label="Zurich grid cell")
-plt.xlabel("Longitude")
-plt.ylabel("Latitude")
-plt.title("Zurich Grid Cell on CH")
-plt.legend()
+mesh = ax.pcolormesh(lon_vals, lat_vals, background, cmap="coolwarm", shading="auto", transform=ccrs.PlateCarree())
+plt.colorbar(mesh, ax=ax, orientation='vertical', label="Mean Temp (°C)")
+
+ax.plot(lon_val, lat_val, marker="*", color="black", markersize=18, markeredgewidth=2, label="Zurich grid cell", transform=ccrs.PlateCarree())
+plt.title("Zurich Grid Cell on Switzerland Map", fontsize=15)
+plt.legend(loc="lower left")
 plt.tight_layout()
-plt.savefig(map_plot_path, dpi=500)
+plt.savefig(map_plot_path, dpi=600)
 print(f"Map plot with Zurich grid cell saved to {map_plot_path}")
 
 print("EQM Zurich validation completed successfully.")
