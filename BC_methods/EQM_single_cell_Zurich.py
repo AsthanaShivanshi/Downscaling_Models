@@ -6,16 +6,16 @@ import config
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 
-model_path = f"{config.SCRATCH_DIR}/precip_r01_HR_masked.nc"
-obs_path = f"{config.SCRATCH_DIR}/RhiresD_1971_2023.nc"
-output_path = f"{config.BC_DIR}/qm_precip_r01_singlecell_output.nc"
-plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_precip_r01_zurich.png"
-cdf_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_cdf_precip_r01_zurich.png"
-map_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_selected_gridcell_map_precip_r01_zurich.png"
+model_path = f"{config.SCRATCH_DIR}/tmin_r01_HR_masked.nc"
+obs_path = f"{config.SCRATCH_DIR}/TminD_1971_2023.nc"
+output_path = f"{config.BC_DIR}/qm_tmin_r01_singlecell_output.nc"
+plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_tmin_r01_zurich.png"
+cdf_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_cdf_tmin_r01_zurich.png"
+map_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_selected_gridcell_map_tmin_r01_zurich.png"
 
 print("Loading data")
-model_output = xr.open_dataset(model_path)["precip"]
-obs_output = xr.open_dataset(obs_path)["RhiresD"]
+model_output = xr.open_dataset(model_path)["tmin"]
+obs_output = xr.open_dataset(obs_path)["TminD"]
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
 calib_mod = model_output.sel(time=slice("1981-01-01", "2010-12-31"))
 
@@ -50,7 +50,7 @@ qm_data = np.full(model_output.shape, np.nan, dtype=np.float32)
 qm_data[:, i_zurich, j_zurich] = qm_series.astype(np.float32)
 
 qm_ds = xr.Dataset(
-    {"precip": (model_output.dims, qm_data)},
+    {"tmin": (model_output.dims, qm_data)},
     coords=model_output.coords
 )
 qm_ds.to_netcdf(output_path)
@@ -68,8 +68,8 @@ plt.figure(figsize=(7, 5))
 plt.plot(quantiles, correction, label="Correction (model - obs)")
 plt.axhline(0, color="gray", linestyle="--", label="No correction")
 plt.xlabel("Quantile")
-plt.ylabel("Correction (Model - Observation) in mm/day")
-plt.title(f"Correction Function for Daily Accumulated Precip for \nZurich (lat={lat_val:.3f}, lon={lon_val:.3f})")
+plt.ylabel("Correction (Model - Observation) in degrees C")
+plt.title(f"Correction Function for Daily Min Temp for \nZurich (lat={lat_val:.3f}, lon={lon_val:.3f})")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
@@ -86,7 +86,7 @@ plt.plot(obs_sorted, obs_cdf, label="Obs empirical CDF")
 plt.plot(mod_sorted, mod_cdf, label="Model empirical CDF")
 plt.xlabel("Value")
 plt.ylabel("Cumulative Probability")
-plt.title(f"Empirical CDFs for Daily Accumulated Precip for \nZurich (lat={lat_val:.3f}, lon={lon_val:.3f})")
+plt.title(f"Empirical CDFs for Daily Min Temp for \nZurich (lat={lat_val:.3f}, lon={lon_val:.3f})")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
@@ -101,7 +101,7 @@ ax.add_feature(cfeature.BORDERS, linewidth=1)
 ax.add_feature(cfeature.LAND, facecolor='lightgray')
 background = np.nanmean(model_output.values, axis=0)
 mesh = ax.pcolormesh(lon_vals, lat_vals, background, cmap="coolwarm", shading="auto", transform=ccrs.PlateCarree())
-plt.colorbar(mesh, ax=ax, orientation='vertical', label="mm/day")
+plt.colorbar(mesh, ax=ax, orientation='vertical', label="degrees C")
 
 ax.plot(lon_val, lat_val, marker="*", color="black", markersize=18, markeredgewidth=2, label="Zurich grid cell", transform=ccrs.PlateCarree())
 plt.title("Zurich Grid Cell on Switzerland Map", fontsize=15)
