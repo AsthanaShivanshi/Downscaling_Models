@@ -8,9 +8,9 @@ import config
 model_path = f"{config.SCRATCH_DIR}/temp_r01_HR_masked.nc"
 obs_path = f"{config.SCRATCH_DIR}/TabsD_1971_2023.nc"
 output_path = f"{config.BC_DIR}/qm_temp_r01_singlecell_output.nc"
-plot_path = f"{config.BC_DIR}/qm_correction_function_temp_r01_zurich.png"
-cdf_plot_path = f"{config.BC_DIR}/qm_cdf_temp_r01_zurich.png"
-map_plot_path = f"{config.BC_DIR}/qm_selected_gridcell_map_temp_r01_zurich.png"
+plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_temp_r01_zurich.png"
+cdf_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_cdf_temp_r01_zurich.png"
+map_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_selected_gridcell_map_temp_r01_zurich.png"
 
 print("Loading data")
 model_output = xr.open_dataset(model_path)["temp"]
@@ -39,7 +39,7 @@ if obs_valid.size == 0 or mod_valid.size == 0:
     print("No valid data for Zurich grid cell. Exiting.")
     exit(1)
 
-print("Fitting EQM for Zurich grid cell...")
+print("Fitting EQM for Zurich grid cell")
 eqm = QM()
 eqm.fit(mod_valid.reshape(-1, 1), obs_valid.reshape(-1, 1))
 
@@ -50,7 +50,7 @@ qm_data = np.full(model_output.shape, np.nan, dtype=np.float32)
 qm_data[:, i_zurich, j_zurich] = qm_series.astype(np.float32)
 
 qm_ds = xr.Dataset(
-    {"tmax": (model_output.dims, qm_data)},
+    {"temp": (model_output.dims, qm_data)},
     coords=model_output.coords
 )
 qm_ds.to_netcdf(output_path)
@@ -76,7 +76,7 @@ plt.tight_layout()
 plt.savefig(plot_path, dpi=500)
 print(f"Correction function plot saved to {plot_path}")
 
-# Empirical CDF plot
+# ECDF
 plt.figure(figsize=(7, 5))
 obs_sorted = np.sort(obs_valid)
 mod_sorted = np.sort(mod_valid)
@@ -98,7 +98,7 @@ plt.figure(figsize=(8, 7))
 background = np.nanmean(model_output.values, axis=0)
 plt.pcolormesh(lon_vals, lat_vals, background, cmap="coolwarm", shading="auto")
 plt.colorbar(label="Mean Tmax (°C)")
-plt.scatter(lon_val, lat_val, color="red", marker="*", s=400, label="Zurich grid cell")
+plt.scatter(lon_val, lat_val, color="black", marker="*", s=400, label="Zurich grid cell")
 plt.xlabel("Longitude")
 plt.ylabel("Latitude")
 plt.title("Zurich Grid Cell on Switzerland Map")
