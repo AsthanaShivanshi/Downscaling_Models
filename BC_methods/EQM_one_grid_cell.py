@@ -5,7 +5,7 @@ from SBCK import QM
 import os
 import config
 
-model_path =f"{config.SCRATCH_DIR}/tmax_r01_HR_masked.nc"
+model_path = f"{config.SCRATCH_DIR}/tmax_r01_HR_masked.nc"
 obs_path = f"{config.SCRATCH_DIR}/TmaxD_1971_2023.nc"
 output_path = f"{config.BC_DIR}/qm_tmax_r01_singlecell_output.nc"
 plot_path = f"{config.BC_DIR}/qm_correction_function_tmax_r01_randomcell.png"
@@ -57,17 +57,19 @@ qm_ds = xr.Dataset(
 qm_ds.to_netcdf(output_path)
 print(f"Single-cell output saved to {output_path}")
 
+# Correction function plot: quantiles vs (model - obs)
 quantiles = np.linspace(0, 1, 1001)
 plot_obs_q = np.quantile(obs_valid, quantiles)
 plot_mod_q = np.quantile(mod_valid, quantiles)
+correction = plot_mod_q - plot_obs_q
 lat_val = lat_vals[i_rand, j_rand]
 lon_val = lon_vals[i_rand, j_rand]
 
 plt.figure(figsize=(7, 5))
-plt.plot(plot_mod_q, plot_obs_q, label="Correction function (obs vs model)")
-plt.plot(plot_mod_q, plot_mod_q, "--", color="gray", label="1:1 line")
-plt.xlabel("Model quantiles")
-plt.ylabel("Observed quantiles")
+plt.plot(quantiles, correction, label="Correction (model - obs)")
+plt.axhline(0, color="gray", linestyle="--", label="No correction")
+plt.xlabel("Quantile")
+plt.ylabel("Correction (Model - Observation)")
 plt.title(f"Quantile Mapping Correction Function\nValid Cell (lat={lat_val:.3f}, lon={lon_val:.3f})")
 plt.legend()
 plt.grid(True)
@@ -75,6 +77,7 @@ plt.tight_layout()
 plt.savefig(plot_path, dpi=500)
 print(f"Correction function plot saved to {plot_path}")
 
+# --- Empirical CDF plot ---
 plt.figure(figsize=(7, 5))
 obs_sorted = np.sort(obs_valid)
 mod_sorted = np.sort(mod_valid)
@@ -91,9 +94,11 @@ plt.tight_layout()
 plt.savefig(cdf_plot_path, dpi=500)
 print(f"CDF plot saved to {cdf_plot_path}")
 
-#CH map with highlighted grid cell
-plt.figure(figsize=(7, 7))
-plt.pcolormesh(lon_vals, lat_vals, np.zeros_like(lat_vals), cmap="Greys", shading="auto")
+# --- CH map with highlighted grid cell ---
+plt.figure(figsize=(8, 7))
+background = np.nanmean(model_output.values, axis=0)
+plt.pcolormesh(lon_vals, lat_vals, background, cmap="coolwarm", shading="auto")
+plt.colorbar(label="Mean Tmax (°C)")
 plt.scatter(lon_val, lat_val, color="red", marker="*", s=400, label="Selected grid cell")
 plt.xlabel("Longitude")
 plt.ylabel("Latitude")
@@ -103,4 +108,4 @@ plt.tight_layout()
 plt.savefig(map_plot_path, dpi=500)
 print(f"Map plot with selected grid cell saved to {map_plot_path}")
 
-print("EQM valid-cell test complete!")
+print("EQM validation completed successfully.")
