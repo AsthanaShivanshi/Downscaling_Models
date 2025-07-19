@@ -1,53 +1,31 @@
 import xarray as xr
 import numpy as np
-import matplotlib.pyplot as plt
-import config
 from SBCK import QM
-import argparse
-import os
+import config
 
-model_path = f"{config.SCRATCH_DIR}/tmax_r01_HR_masked.nc"
-obs_path = f"{config.SCRATCH_DIR}/TmaxD_1971_2023.nc"
-output_path = f"{config.BC_DIR}/qm_tmax_r01_output.nc"
+model_path = f"{config.SCRATCH_DIR}/temp_r01_HR_masked.nc"
+obs_path = f"{config.SCRATCH_DIR}/TabsD_1971_2023.nc"
+output_path = f"{config.BC_DIR}/qm_temp_r01_bias_corrected_output.nc"
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--n_jobs', type=int, default=1)
-args = parser.parse_args()
-
-print("Data")
-model_output = xr.open_dataset(model_path)["tmax"]
-obs_output = xr.open_dataset(obs_path)["TmaxD"]
-
-print("Calibration:1981-2010")
+print("Loading data")
+model_output = xr.open_dataset(model_path)["temp"]
+obs_output = xr.open_dataset(obs_path)["TabsD"]
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
 calib_mod = model_output.sel(time=slice("1981-01-01", "2010-12-31"))
 
-quantiles = np.linspace(0, 1, 1001)
-ntime, nlat, nlon = model_output.shape
-
-zurich_lat = 47.3769
-zurich_lon = 8.5417
 lat_vals = model_output['lat'].values
 lon_vals = model_output['lon'].values
-i_zurich = np.argmin(np.abs(lat_vals - zurich_lat))
-j_zurich = np.argmin(np.abs(lon_vals - zurich_lon))
-plot_obs_q = plot_mod_q = None
 
+print("model_output shape:", model_output.shape)
+print("lat_vals shape:", lat_vals.shape)
+print("lon_vals shape:", lon_vals.shape)
+
+# Prepare output array
 qm_data = np.full(model_output.shape, np.nan, dtype=np.float32)
 
-placeholder_ds = xr.Dataset(
-    {"tmax": (model_output.dims, np.full(model_output.shape, np.nan, dtype=np.float32))},
-    coords=model_output.coords
-)
-placeholder_ds.to_netcdf(output_path.replace('.nc', '_placeholder.nc'))
-print(f"Placeholder created: {output_path.replace('.nc', '_placeholder.nc')}")
-
-print("Starting EQM processing...")
-for i in range(nlat):
-    row = np.full((ntime, nlon), np.nan, dtype=np.float32)
-    local_plot_obs_q = local_plot_mod_q = None
-    
-    for j in range(nlon):
+# Loop over all grid cells
+for i in range(lat_vals.shape[0]):
+    for j in range(lon_vals.shape[1]):
         obs_valid = calib_obs[:, i, j].values[~np.isnan(calib_obs[:, i, j].values)]
         mod_valid = calib_mod[:, i, j].values[~np.isnan(calib_mod[:, i, j].values)]
         if obs_valid.size == 0 or mod_valid.size == 0:
@@ -56,43 +34,11 @@ for i in range(nlat):
         eqm.fit(mod_valid.reshape(-1, 1), obs_valid.reshape(-1, 1))
         full_mod_series = model_output[:, i, j].values.reshape(-1, 1)
         qm_series = eqm.predict(full_mod_series).flatten()
-        row[:, j] = qm_series.astype(np.float32)
-        if i == i_zurich and j == j_zurich:
-            local_plot_obs_q = np.quantile(obs_valid, quantiles)
-            local_plot_mod_q = np.quantile(mod_valid, quantiles)
-    
-    # Store the processed row
-    qm_data[:, i, :] = row
-    if local_plot_obs_q is not None and local_plot_mod_q is not None:
-        plot_obs_q = local_plot_obs_q
-        plot_mod_q = local_plot_mod_q 
+        qm_data[:, i, j] = qm_series.astype(np.float32)
 
-print("Writing actual output with processed data...")
 qm_ds = xr.Dataset(
-    {"tmax": (model_output.dims, qm_data)},
+    {"temp": (model_output.dims, qm_data)},
     coords=model_output.coords
 )
 qm_ds.to_netcdf(output_path)
-print(f"Final output saved to {output_path}")
-
-try:
-    os.remove(output_path.replace('.nc', '_placeholder.nc'))
-    print("Placeholder file removed")
-except FileNotFoundError:
-    print("Placeholder file not found (already removed)")
-except Exception as e:
-    print(f"Could not remove placeholder file: {e}")
-
-if plot_obs_q is not None and plot_mod_q is not None:
-    plt.figure(figsize=(7, 5))
-    plt.plot(plot_mod_q, plot_obs_q, label="Correction function (obs vs model)")
-    plt.plot(plot_mod_q, plot_mod_q, "--", color="gray", label="1:1 line")
-    plt.xlabel("Model quantiles")
-    plt.ylabel("Observed quantiles")
-    plt.title(f"Quantile Mapping Correction Function\nZürich for Daily Max Temp  (lat={lat_vals[i_zurich]:.3f}, lon={lon_vals[j_zurich]:.3f})")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.savefig(f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_tmax_r01_zurich.png", dpi=300)
-
-print("EQM processing complete!")
+print(f"Bias-corrected output saved to {output_path}")
