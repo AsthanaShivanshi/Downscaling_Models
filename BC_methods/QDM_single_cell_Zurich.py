@@ -71,7 +71,7 @@ plt.tight_layout()
 plt.savefig(f"{config.OUTPUTS_MODELS_DIR}/qdm_correction_function_temp_r01_zurich.png", dpi=500)
 print("Correction function plot saved.")
 
-# --- Empirical CDF plot ---
+# EXCDF
 plt.figure(figsize=(7, 5))
 obs_sorted = np.sort(obs_valid)
 mod_sorted = np.sort(mod_valid)
