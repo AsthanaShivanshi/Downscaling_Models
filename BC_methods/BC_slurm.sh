@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=temp_EQM_BC_EQM
-#SBATCH --output=logs/bc/EQM_temp_job_output-%j.txt
-#SBATCH --error=logs/bc/EQM_temp_job_error-%j.txt
+#SBATCH --job-name=tmax_EQM_BC_EQM
+#SBATCH --output=logs/bc/EQM_tmax_job_output-%j.txt
+#SBATCH --error=logs/bc/EQM_tmax_job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-00:00:00
-#SBATCH --mem=480G
+#SBATCH --mem=256G
 #SBATCH --partition=cpu
 
 module load python
