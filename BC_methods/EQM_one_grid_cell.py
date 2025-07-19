@@ -77,7 +77,7 @@ plt.tight_layout()
 plt.savefig(plot_path, dpi=500)
 print(f"Correction function plot saved to {plot_path}")
 
-# --- Empirical CDF plot ---
+# Empirical CDF plot
 plt.figure(figsize=(7, 5))
 obs_sorted = np.sort(obs_valid)
 mod_sorted = np.sort(mod_valid)
@@ -94,7 +94,7 @@ plt.tight_layout()
 plt.savefig(cdf_plot_path, dpi=500)
 print(f"CDF plot saved to {cdf_plot_path}")
 
-# --- CH map with highlighted grid cell ---
+#CH map
 plt.figure(figsize=(8, 7))
 background = np.nanmean(model_output.values, axis=0)
 plt.pcolormesh(lon_vals, lat_vals, background, cmap="coolwarm", shading="auto")
