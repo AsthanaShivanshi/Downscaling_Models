@@ -18,6 +18,7 @@ def objective(trial):
     # Constraints for channels (normalized)
     if weights[0] < 0.25 or any(w < 0.10 for w in weights[1:]):
         raise optuna.TrialPruned()
+    print("initial unnormalised weights:", initial_weights)
     print(f"Trial {trial.number}: Normalized weights used: {weights}, sum={sum(weights)}")
     trial.set_user_attr("normalized_weights", weights)
     trial.set_user_attr("weights", initial_weights)
