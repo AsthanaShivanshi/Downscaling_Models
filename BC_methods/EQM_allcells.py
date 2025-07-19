@@ -5,7 +5,7 @@ import config
 
 model_path = f"{config.SCRATCH_DIR}/temp_r01_HR_masked.nc"
 obs_path = f"{config.SCRATCH_DIR}/TabsD_1971_2023.nc"
-output_path = f"{config.BC_DIR}/qm_temp_r01_bias_corrected_output.nc"
+output_path = f"{config.BIAS_CORRECTED_DIR}/EQM/eqm_temp_r01.nc"
 
 print("Loading data")
 model_output = xr.open_dataset(model_path)["temp"]
