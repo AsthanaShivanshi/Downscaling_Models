@@ -2,7 +2,6 @@ import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
 from SBCK import QM
-import os
 import config
 
 model_path = f"{config.SCRATCH_DIR}/temp_r01_HR_masked.nc"
@@ -39,7 +38,7 @@ if obs_valid.size == 0 or mod_valid.size == 0:
     print("No valid data for Zurich grid cell. Exiting.")
     exit(1)
 
-print("Fitting EQM for Zurich grid cell")
+print("Fitting EQM for Zurich (euclidean dist)")
 eqm = QM()
 eqm.fit(mod_valid.reshape(-1, 1), obs_valid.reshape(-1, 1))
 
