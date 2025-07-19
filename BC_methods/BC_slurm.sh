@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=singlecell_precip_BC_EQM
-#SBATCH --output=logs/bc/precip_job_output-%j.txt
-#SBATCH --error=logs/bc/precip_job_error-%j.txt
+#SBATCH --job-name=singlecell_tmin_BC_EQM
+#SBATCH --output=logs/bc/tmin_job_output-%j.txt
+#SBATCH --error=logs/bc/tmin_job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --time=3-00:00:00
