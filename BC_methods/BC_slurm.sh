@@ -5,15 +5,15 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-00:00:00
-#SBATCH --mem=480G
+#SBATCH --mem=256G
 #SBATCH --partition=cpu
 
 module load python
 source environment.sh
 
-export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK #1 in this case
-export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK #1 in this case, no parallelisatn
-export NUMEXPR_NUM_THREADS=$SLURM_CPUS_PER_TASK #1 in this case
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
+export NUMEXPR_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 cd BC_methods
 
