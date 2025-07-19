@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import json
 
-MAX_VALID_TRIALS = 20
+MAX_VALID_TRIALS = 15
 
 def objective(trial):
     w0 = trial.suggest_float("w0", 0.1, 1.0)  # unnormalized weight for precip
@@ -35,7 +35,7 @@ def objective(trial):
     val_dataset = DownscalingDataset(input_val_ds, target_val_ds, config, elevation_path=elevation_path)
 
     config["train"]["num_epochs"] = 20
-    model, history, best_val_loss, best_val_loss_per_channel = run_experiment(
+    model, history, final_val_loss, best_val_loss, best_val_loss_per_channel = run_experiment(
         train_dataset, val_dataset, config, trial=trial
     )
 
