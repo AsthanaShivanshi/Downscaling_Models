@@ -11,6 +11,10 @@ import json
 MAX_VALID_TRIALS = 15
 
 def objective(trial):
+    wandb.init(project="UNet_Deterministic_Training",
+                name=f"trial_{trial.number}",
+                config={},
+                reinit=True)
     w0 = trial.suggest_float("w0", 0.1, 1.0)  # unnormalized weight for precip
     w_rest = [trial.suggest_float(f"w{i}", 0.1, 1.0) for i in range(1, 4)]
     initial_weights = [w0] + w_rest
@@ -54,7 +58,7 @@ def objective(trial):
         "tmin_val_loss": best_val_loss_per_channel[2],
         "tmax_val_loss": best_val_loss_per_channel[3],
     })
-
+    wandb.finish()
     # precip loss, total loss
     return best_val_loss_per_channel[0], best_val_loss
 
