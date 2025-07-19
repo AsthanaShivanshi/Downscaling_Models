@@ -39,7 +39,7 @@ if obs_valid.size == 0 or mod_valid.size == 0:
     print("No valid data for Zurich grid cell. Exiting.")
     exit(1)
 
-print("Fitting EQM for Zurich (euclidean dist)")
+print("Fitting EQM for Zurich")
 eqm = QM()
 eqm.fit(mod_valid.reshape(-1, 1), obs_valid.reshape(-1, 1))
 
@@ -65,11 +65,11 @@ lat_val = lat_vals[i_zurich, j_zurich]
 lon_val = lon_vals[i_zurich, j_zurich]
 
 plt.figure(figsize=(7, 5))
-plt.plot(quantiles * 100, correction, label="Correction (model - obs)")
+plt.plot(quantiles, correction, label="Correction (model - obs)")
 plt.axhline(0, color="gray", linestyle="--", label="No correction")
-plt.xlabel("Percentile")
+plt.xlabel("Quantile")
 plt.ylabel("Correction (Model - Observation)")
-plt.title(f"QM Correction Function\nZurich Cell (lat={lat_val:.3f}, lon={lon_val:.3f})")
+plt.title(f"QM Correction Function for Daily Accumulated Precip for \nZurich (lat={lat_val:.3f}, lon={lon_val:.3f})")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
@@ -86,7 +86,7 @@ plt.plot(obs_sorted, obs_cdf, label="Obs empirical CDF")
 plt.plot(mod_sorted, mod_cdf, label="Model empirical CDF")
 plt.xlabel("Value")
 plt.ylabel("Cumulative Probability")
-plt.title(f"Empirical CDFs\nZurich Cell (lat={lat_val:.3f}, lon={lon_val:.3f})")
+plt.title(f"Empirical CDFs for Daily Accumulated Precip for \nZurich (lat={lat_val:.3f}, lon={lon_val:.3f})")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
@@ -98,12 +98,7 @@ ax = plt.axes(projection=ccrs.Mercator())
 ax.set_extent([5.5, 10.5, 45.5, 47.9], crs=ccrs.PlateCarree()) 
 
 ax.add_feature(cfeature.BORDERS, linewidth=1)
-ax.add_feature(cfeature.COASTLINE, linewidth=0.5)
 ax.add_feature(cfeature.LAND, facecolor='lightgray')
-ax.add_feature(cfeature.LAKES, alpha=0.5)
-ax.add_feature(cfeature.RIVERS, alpha=0.5)
-
-# Plot the mean tas
 background = np.nanmean(model_output.values, axis=0)
 mesh = ax.pcolormesh(lon_vals, lat_vals, background, cmap="coolwarm", shading="auto", transform=ccrs.PlateCarree())
 plt.colorbar(mesh, ax=ax, orientation='vertical', label="Mean Temp (°C)")
@@ -112,7 +107,7 @@ ax.plot(lon_val, lat_val, marker="*", color="black", markersize=18, markeredgewi
 plt.title("Zurich Grid Cell on Switzerland Map", fontsize=15)
 plt.legend(loc="lower left")
 plt.tight_layout()
-plt.savefig(map_plot_path, dpi=600)
+plt.savefig(map_plot_path, dpi=1000)
 print(f"Map plot with Zurich grid cell saved to {map_plot_path}")
 
 print("EQM Zurich validation completed successfully.")
