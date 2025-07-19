@@ -6,16 +6,16 @@ import config
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 
-model_path = f"{config.SCRATCH_DIR}/temp_r01_HR_masked.nc"
-obs_path = f"{config.SCRATCH_DIR}/TabsD_1971_2023.nc"
-output_path = f"{config.BC_DIR}/qm_temp_r01_singlecell_output.nc"
-plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_temp_r01_zurich.png"
-cdf_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_cdf_temp_r01_zurich.png"
-map_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_selected_gridcell_map_temp_r01_zurich.png"
+model_path = f"{config.SCRATCH_DIR}/precip_r01_HR_masked.nc"
+obs_path = f"{config.SCRATCH_DIR}/RhiresD_1971_2023.nc"
+output_path = f"{config.BC_DIR}/qm_precip_r01_singlecell_output.nc"
+plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_precip_r01_zurich.png"
+cdf_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_cdf_precip_r01_zurich.png"
+map_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_selected_gridcell_map_precip_r01_zurich.png"
 
 print("Loading data")
-model_output = xr.open_dataset(model_path)["temp"]
-obs_output = xr.open_dataset(obs_path)["TabsD"]
+model_output = xr.open_dataset(model_path)["precip"]
+obs_output = xr.open_dataset(obs_path)["RhiresD"]
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
 calib_mod = model_output.sel(time=slice("1981-01-01", "2010-12-31"))
 
@@ -50,7 +50,7 @@ qm_data = np.full(model_output.shape, np.nan, dtype=np.float32)
 qm_data[:, i_zurich, j_zurich] = qm_series.astype(np.float32)
 
 qm_ds = xr.Dataset(
-    {"temp": (model_output.dims, qm_data)},
+    {"precip": (model_output.dims, qm_data)},
     coords=model_output.coords
 )
 qm_ds.to_netcdf(output_path)
