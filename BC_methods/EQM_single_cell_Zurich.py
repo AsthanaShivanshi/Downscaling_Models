@@ -24,7 +24,7 @@ print("model_output shape:", model_output.shape)
 print("lat_vals shape:", lat_vals.shape)
 print("lon_vals shape:", lon_vals.shape)
 
-# Find grid cell closest to Zurich (47.3769N, 8.5417E)
+# Find grid cell closest to Zurich
 target_lat = 47.3769
 target_lon = 8.5417
 dist = np.sqrt((lat_vals - target_lat)**2 + (lon_vals - target_lon)**2)
@@ -64,11 +64,11 @@ lat_val = lat_vals[i_zurich, j_zurich]
 lon_val = lon_vals[i_zurich, j_zurich]
 
 plt.figure(figsize=(7, 5))
-plt.plot(quantiles * 100, correction, label="Correction (model - obs)")
+plt.plot(quantiles, correction, label="Correction (model - obs)")
 plt.axhline(0, color="gray", linestyle="--", label="No correction")
-plt.xlabel("Percentile")
+plt.xlabel("Quantiles")
 plt.ylabel("Correction (Model - Observation)")
-plt.title(f"Quantile Mapping Correction Function\nZurich Cell (lat={lat_val:.3f}, lon={lon_val:.3f})")
+plt.title(f"QM Correction Function\nZurich Cell (lat={lat_val:.3f}, lon={lon_val:.3f})")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
@@ -100,7 +100,7 @@ plt.colorbar(label="Mean Tmax (°C)")
 plt.scatter(lon_val, lat_val, color="black", marker="*", s=400, label="Zurich grid cell")
 plt.xlabel("Longitude")
 plt.ylabel("Latitude")
-plt.title("Zurich Grid Cell on Switzerland Map")
+plt.title("Zurich Grid Cell on CH")
 plt.legend()
 plt.tight_layout()
 plt.savefig(map_plot_path, dpi=500)
