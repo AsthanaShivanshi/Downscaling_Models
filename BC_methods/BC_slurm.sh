@@ -18,5 +18,5 @@ export NUMEXPR_NUM_THREADS=$SLURM_CPUS_PER_TASK #1 in this case
 cd BC_methods
 
 echo "EQM for single cell started"
-python EQM_one_grid_cell.py --n_jobs $SLURM_CPUS_PER_TASK
+python EQM_single_cell_Zurich.py --n_jobs $SLURM_CPUS_PER_TASK
 echo "EQM finished"
