@@ -12,7 +12,7 @@ MAX_VALID_TRIALS = 16
 
 def objective(trial):
     wandb.init(project="UNet_Deterministic",
-                name=f"trial_new_{trial.number}",
+                name=f"trial_{trial.number}",
                 config={},
                 reinit=True)
     w0 = trial.suggest_float("w0", 0.1, 1.0)  # unnormalized weight for precip
