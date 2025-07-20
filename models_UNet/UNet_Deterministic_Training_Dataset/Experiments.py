@@ -13,41 +13,6 @@ def run_experiment(train_dataset, val_dataset, config, trial=None):
     train_cfg = config["train"]
     exp_cfg = config["experiment"]
 
-    # W&B logging: Start a new run for each trial, set config at init, use reinit=True
-    if trial is not None:
-        wandb_run = wandb.init(
-            project=train_cfg.get("wandb_project", "unet_downscaling"),
-            name=f"{train_cfg.get('wandb_run_name', 'CLR_experiment')}_trial_{trial.number}",
-            config={
-                "optimizer": train_cfg.get("optimizer", "Adam"),
-                "loss": train_cfg.get("loss_fn", "MSE"),
-                "base_lr": train_cfg.get("base_lr", 1e-4),
-                "max_lr": train_cfg.get("max_lr", 1e-3),
-                "scheduler": train_cfg.get("scheduler", "CyclicLR"),
-                "mode": train_cfg.get("scheduler_mode", "triangular"),
-                "epochs": train_cfg.get("num_epochs", 100),
-                "optuna_trial": trial.number,
-                "loss_weights": train_cfg.get("loss_weights", [0.25, 0.25, 0.25, 0.25])
-            },
-            reinit=True
-        )
-    else:
-        wandb_run = wandb.init(
-            project=train_cfg.get("wandb_project", "unet_downscaling"),
-            name=train_cfg.get("wandb_run_name", "CLR_experiment"),
-            config={
-                "optimizer": train_cfg.get("optimizer", "Adam"),
-                "loss": train_cfg.get("loss_fn", "MSE"),
-                "base_lr": train_cfg.get("base_lr", 1e-4),
-                "max_lr": train_cfg.get("max_lr", 1e-3),
-                "scheduler": train_cfg.get("scheduler", "CyclicLR"),
-                "mode": train_cfg.get("scheduler_mode", "triangular"),
-                "epochs": train_cfg.get("num_epochs", 100),
-                "loss_weights": train_cfg.get("loss_weights", [0.25, 0.25, 0.25, 0.25])
-            },
-            reinit=True
-        )
-
     model = UNet(in_channels=train_cfg.get("in_channels", 5), out_channels=train_cfg.get("out_channels", 4))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
@@ -110,6 +75,6 @@ def run_experiment(train_dataset, val_dataset, config, trial=None):
     wandb.log({"best_val_loss": best_val_loss})
     wandb.log({"best_val_loss_per_channel": best_val_per_channel})
 
-    wandb.finish()
+    # No wandb.finish() here!
 
     return trained_model, history, final_val_loss, best_val_loss, best_val_per_channel
