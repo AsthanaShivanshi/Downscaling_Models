@@ -23,6 +23,12 @@ def load_dataset(file_group: dict, config: dict, section: str) -> xr.Dataset:
     return merged_ds
 
 def main(config):
+    wandb.init(
+        project="UNet_Deterministic_Combined",
+        name="single_run",
+        config=config,
+        reinit=True
+    )
     paths = config["data"]
     elevation_path = paths.get("static", {}).get("elevation", None)
 
