@@ -120,7 +120,7 @@ def save_model_config(config, path):
 def train_model(model, train_loader, val_loader, optimizer, criterion, scheduler=None, config=None, trial=None):
 
     train_cfg = config["train"]
-    num_epochs = train_cfg.get("num_epochs", 100)
+    num_epochs = train_cfg.get("num_epochs", 200)
     checkpoint_path = train_cfg.get("checkpoint_path", "best_model.pth")
     inference_path = train_cfg.get("inference_weights_path", None)
     model_config_path = train_cfg.get("model_config_path", "model_config.json")
