@@ -69,7 +69,7 @@ def run_experiment(train_dataset, val_dataset, config):
 
     checkpoint_path = train_cfg.get("checkpoint_path", "best_model.pth")
     checkpoint_save(
-        model, optimizer, epoch=train_cfg.get("num_epochs", 100),
+        model, optimizer, epoch=train_cfg.get("num_epochs", 200),
         loss=final_val_loss, path=checkpoint_path
     )
 

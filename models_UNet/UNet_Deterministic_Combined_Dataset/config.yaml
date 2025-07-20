@@ -22,7 +22,7 @@ preprocessing:
 
 
 train:
-  num_epochs: 100
+  num_epochs: 200
   checkpoint_path: combined_model_huber.pth
   inference_weights_path: combined_model_weights_huber.pth
   model_config_path: combined_model_config_huber.json
