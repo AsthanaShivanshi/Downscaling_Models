@@ -1,0 +1,47 @@
+_wandb:
+    value:
+        cli_version: 0.20.1
+        m: []
+        python_version: 3.10.17
+        t:
+            "1":
+                - 1
+                - 35
+                - 54
+            "2":
+                - 1
+                - 35
+                - 54
+            "3":
+                - 2
+                - 13
+                - 16
+                - 55
+            "4": 3.10.17
+            "5": 0.20.1
+            "10":
+                - 20
+            "12": 0.20.1
+            "13": linux-x86_64
+base_lr:
+    value: 0.0001
+epochs:
+    value: 20
+loss:
+    value: huber
+loss_weights:
+    value:
+        - 0.279302347191531
+        - 0.2809004422372049
+        - 0.2934831478285148
+        - 0.14631406274274922
+max_lr:
+    value: 0.001
+mode:
+    value: min
+optimizer:
+    value: Adam
+optuna_trial:
+    value: 2
+scheduler:
+    value: ReduceLROnPlateau
