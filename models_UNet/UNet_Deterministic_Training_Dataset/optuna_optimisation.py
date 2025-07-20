@@ -12,7 +12,7 @@ MAX_VALID_TRIALS = 16
 
 def objective(trial):
     wandb.init(project="UNet_Deterministic",
-                name=f"trial_{trial.number}",
+                name=f"trial_new_{trial.number}",
                 config={},
                 reinit=True)
     w0 = trial.suggest_float("w0", 0.1, 1.0)  # unnormalized weight for precip
@@ -75,16 +75,18 @@ if __name__ == "__main__":
         try:
             values = objective(trial)
             study.tell(trial, values)
-            if trial.state == optuna.trial.TrialState.COMPLETE:
+            # Get the last trial's state from study.trials
+            last_trial = study.trials[-1]
+            if last_trial.state == optuna.trial.TrialState.COMPLETE:
                 valid_trials += 1
                 trial_data.append({
-                    "trial": trial.number,
-                    "initial_weights": trial.user_attrs.get("initial_weights"),
-                    "normalized_weights": trial.user_attrs.get("weights"),
+                    "trial": last_trial.number,
+                    "initial_weights": last_trial.user_attrs.get("initial_weights"),
+                    "normalized_weights": last_trial.user_attrs.get("weights"),
                     "precip_loss": values[0],
                     "total_loss": values[1],
-                    "per_channel_val_loss": trial.user_attrs.get("val_loss_per_channel"),
-                    "epoch_history": trial.user_attrs.get("epoch_history")
+                    "per_channel_val_loss": last_trial.user_attrs.get("val_loss_per_channel"),
+                    "epoch_history": last_trial.user_attrs.get("epoch_history")
                 })
         except optuna.TrialPruned:
             study.tell(trial, None, state=optuna.trial.TrialState.PRUNED)
