@@ -75,5 +75,5 @@ def run_experiment(train_dataset, val_dataset, config):
 
     wandb.log({"best_val_loss": best_val_loss})
     wandb.log({"best_val_loss_per_channel": best_val_per_channel})
-
+    wandb.log({"final_val_loss": final_val_loss})
     return trained_model, history, final_val_loss, best_val_loss, best_val_per_channel
