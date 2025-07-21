@@ -15,9 +15,12 @@ def objective(trial):
                 name=f"trial_{trial.number}",
                 config={},
                 reinit=True)
-    w0 = trial.suggest_float("w0", 0.1, 1.0)  # unnormalized weight for precip
-    w_rest = [trial.suggest_float(f"w{i}", 0.1, 1.0) for i in range(1, 4)]
-    initial_weights = [w0] + w_rest
+    initial_weights = [
+        trial.suggest_float("precip_weight", 0.1, 1.0),
+        trial.suggest_float("temp_weight", 0.1, 1.0),
+        trial.suggest_float("tmin_weight", 0.1, 1.0),
+        trial.suggest_float("tmax_weight", 0.1, 1.0)
+    ]
     weights = [w / sum(initial_weights) for w in initial_weights]
     # Constraints for channels (normalized)
     if weights[0] < 0.25 or any(w < 0.10 for w in weights[1:]):
@@ -69,7 +72,7 @@ if __name__ == "__main__":
 
     # Get the number of existing trials
     existing_trials = len(study.trials)
-    start_trial = 250  # Start from trial number 250, previous ones already exist.
+    start_trial = 16  # Start from trial number 16, previous ones already exist.
 
     for trial_idx in range(start_trial, 1000):
         if valid_trials >= MAX_VALID_TRIALS:
