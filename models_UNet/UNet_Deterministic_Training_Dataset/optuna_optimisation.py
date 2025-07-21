@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import json
 
-MAX_VALID_TRIALS = 16
+MAX_VALID_TRIALS = 15
 
 def objective(trial):
     wandb.init(project="UNet_Deterministic",
@@ -67,7 +67,11 @@ if __name__ == "__main__":
     valid_trials = 0
     trial_data = []
 
-    for _ in range(1000):  # Large upper bound, will break early
+    # Get the number of existing trials
+    existing_trials = len(study.trials)
+    start_trial = 15  # Start from trial number 15, previous ones already exist. 
+
+    for trial_idx in range(start_trial, 1000):
         if valid_trials >= MAX_VALID_TRIALS:
             print(f"Reached {MAX_VALID_TRIALS} valid trials. Stopping optimisation.")
             break
@@ -75,7 +79,6 @@ if __name__ == "__main__":
         try:
             values = objective(trial)
             study.tell(trial, values)
-            # Get the last trial's state from study.trials
             last_trial = study.trials[-1]
             if last_trial.state == optuna.trial.TrialState.COMPLETE:
                 valid_trials += 1
@@ -91,11 +94,3 @@ if __name__ == "__main__":
         except optuna.TrialPruned:
             study.tell(trial, None, state=optuna.trial.TrialState.PRUNED)
             continue
-
-    df = pd.DataFrame(trial_data)
-    print("\nAll valid trials:")
-    print(df)
-    df.to_csv("optuna_trials_table.csv", index=False)
-    # Save all trial info as a JSON table
-    with open("all_trials_summary.json", "w") as f:
-        json.dump(trial_data, f, indent=2)
