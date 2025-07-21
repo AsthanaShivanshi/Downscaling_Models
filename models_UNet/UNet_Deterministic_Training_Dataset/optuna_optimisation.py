@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import json
 
-MAX_VALID_TRIALS = 15
+MAX_VALID_TRIALS = 20
 
 def objective(trial):
     wandb.init(project="UNet_Deterministic",
@@ -69,7 +69,7 @@ if __name__ == "__main__":
 
     # Get the number of existing trials
     existing_trials = len(study.trials)
-    start_trial = 15  # Start from trial number 15, previous ones already exist. 
+    start_trial = 250  # Start from trial number 250, previous ones already exist.
 
     for trial_idx in range(start_trial, 1000):
         if valid_trials >= MAX_VALID_TRIALS:
