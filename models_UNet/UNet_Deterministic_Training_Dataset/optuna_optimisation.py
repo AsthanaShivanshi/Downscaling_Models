@@ -8,11 +8,11 @@ import numpy as np
 import pandas as pd
 import json
 
-MAX_VALID_TRIALS = 20
+MAX_VALID_TRIALS = 25
 
 def objective(trial):
     wandb.init(project="UNet_Deterministic",
-                name=f"trial_{trial.number}",
+                name=f"trial*_{trial.number}",
                 config={},
                 reinit=True)
     initial_weights = [
@@ -53,14 +53,15 @@ def objective(trial):
 
     # Log to wandb for each valid trial (log at the end of the trial)
     wandb.log({
-        "trial": trial.number,
-        "weights": weights,
-        "total_val_loss": best_val_loss,
-        "precip_val_loss": best_val_loss_per_channel[0],
-        "temp_val_loss": best_val_loss_per_channel[1],
-        "tmin_val_loss": best_val_loss_per_channel[2],
-        "tmax_val_loss": best_val_loss_per_channel[3],
-    })
+    "trial": trial.number,
+    "initial_weights": initial_weights,
+    "weights": weights,
+    "total_val_loss": best_val_loss,
+    "precip_val_loss": best_val_loss_per_channel[0],
+    "temp_val_loss": best_val_loss_per_channel[1],
+    "tmin_val_loss": best_val_loss_per_channel[2],
+    "tmax_val_loss": best_val_loss_per_channel[3],
+})
     wandb.finish()
     # precip loss, total loss
     return best_val_loss_per_channel[0], best_val_loss
@@ -70,7 +71,6 @@ if __name__ == "__main__":
     valid_trials = 0
     trial_data = []
 
-    # Get the number of existing trials
     existing_trials = len(study.trials)
     start_trial = 16  # Start from trial number 16, previous ones already exist.
 
