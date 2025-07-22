@@ -51,5 +51,6 @@ train:
   wandb_project: "UNet_Deterministic"
   wandb_run_name: "Combined_Dataset"
   loss_weights: [0.3477343285121066,0.13714940067549747,0.16922271164546554,0.3458935591669304] #these are scaling factors taken from shorter training dataset
-# Placeholder for the paths in the untracked .paths.yaml file
+# After trial 4 from the trainign runs
+#Placeholder for the paths in the untracked .paths.yaml file
 data: {}
