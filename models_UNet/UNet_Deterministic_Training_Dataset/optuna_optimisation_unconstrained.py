@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import json
 
-MAX_VALID_TRIALS = 20
+MAX_VALID_TRIALS = 25
 
 def objective(trial):
     wandb.init(
