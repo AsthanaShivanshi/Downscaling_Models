@@ -12,7 +12,7 @@ MAX_VALID_TRIALS = 20
 
 def objective(trial):
     wandb.init(project="UNet_Deterministic",
-                name=f"trial*_unconstrained_{trial.number}",
+                name=f"trial*_{trial.number}",
                 config={},
                 reinit=True)
     initial_weights = [

@@ -27,6 +27,10 @@ def run_experiment(train_dataset, val_dataset, config, trial=None):
         
     loss_fn_name = train_cfg.get("loss_fn", "huber").lower()
     weights = train_cfg.get("loss_weights", [0.25, 0.25, 0.25, 0.25])
+    #for w in weights:
+    #    if not (0.1 <= w <= 1.0):
+    #        raise ValueError(f"Weight {w} is out of allowed range [0.1, 1.0]")
+
     if loss_fn_name == "huber":
         criterion = WeightedHuberLoss(weights=weights, delta=train_cfg.get("huber_delta", 0.05))
     elif loss_fn_name == "mse":
