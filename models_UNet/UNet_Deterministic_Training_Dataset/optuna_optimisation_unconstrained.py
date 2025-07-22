@@ -8,23 +8,24 @@ import numpy as np
 import pandas as pd
 import json
 
-MAX_VALID_TRIALS = 10
+MAX_VALID_TRIALS = 20
 
 def objective(trial):
-    wandb.init(project="UNet_Deterministic",
-                name=f"trial*_{trial.number}",
-                config={},
-                reinit=True)
+    wandb.init(
+        project="UNet_Deterministic",
+        name=f"trial*_unconstrained_{trial.number}",
+        config={},
+        reinit=True
+    )
+    # Suggest unnormalized weights
     initial_weights = [
         trial.suggest_float("precip_weight", 0.1, 1.0),
         trial.suggest_float("temp_weight", 0.1, 1.0),
         trial.suggest_float("tmin_weight", 0.1, 1.0),
         trial.suggest_float("tmax_weight", 0.1, 1.0)
     ]
+    # Normalizing and taking all trials : unconstrained.
     weights = [w / sum(initial_weights) for w in initial_weights]
-    # Constraints for channels (normalized)
-    if weights[0] < 0.25 or any(w < 0.10 for w in weights[1:]):
-        raise optuna.TrialPruned()
     print("initial unnormalised weights:", initial_weights)
     print(f"Trial {trial.number}: Normalized weights used: {weights}, sum={sum(weights)}")
     trial.set_user_attr("normalized_weights", weights)
@@ -46,24 +47,20 @@ def objective(trial):
         train_dataset, val_dataset, config, trial=trial
     )
 
-    trial.set_user_attr("initial_weights", initial_weights)
-    trial.set_user_attr("weights", weights)
     trial.set_user_attr("val_loss_per_channel", best_val_loss_per_channel)
     trial.set_user_attr("epoch_history", history)
 
-    # Log to wandb for each valid trial (log at the end of the trial)
     wandb.log({
-    "trial": trial.number,
-    "initial_weights": initial_weights,
-    "weights": weights,
-    "total_val_loss": best_val_loss,
-    "precip_val_loss": best_val_loss_per_channel[0],
-    "temp_val_loss": best_val_loss_per_channel[1],
-    "tmin_val_loss": best_val_loss_per_channel[2],
-    "tmax_val_loss": best_val_loss_per_channel[3],
-})
+        "trial": trial.number,
+        "initial_weights": initial_weights,
+        "weights": weights,
+        "total_val_loss": best_val_loss,
+        "precip_val_loss": best_val_loss_per_channel[0],
+        "temp_val_loss": best_val_loss_per_channel[1],
+        "tmin_val_loss": best_val_loss_per_channel[2],
+        "tmax_val_loss": best_val_loss_per_channel[3],
+    })
     wandb.finish()
-    # precip loss, total loss
     return best_val_loss_per_channel[0], best_val_loss
 
 if __name__ == "__main__":
@@ -72,7 +69,7 @@ if __name__ == "__main__":
     trial_data = []
 
     existing_trials = len(study.trials)
-    start_trial = 1  # Start from trial number 16, previous ones already exist.
+    start_trial = 1
 
     for trial_idx in range(start_trial, 1000):
         if valid_trials >= MAX_VALID_TRIALS:
@@ -87,8 +84,8 @@ if __name__ == "__main__":
                 valid_trials += 1
                 trial_data.append({
                     "trial": last_trial.number,
-                    "initial_weights": last_trial.user_attrs.get("initial_weights"),
-                    "normalized_weights": last_trial.user_attrs.get("weights"),
+                    "initial_weights": last_trial.user_attrs.get("weights"),
+                    "normalized_weights": last_trial.user_attrs.get("normalized_weights"),
                     "precip_loss": values[0],
                     "total_loss": values[1],
                     "per_channel_val_loss": last_trial.user_attrs.get("val_loss_per_channel"),
@@ -97,3 +94,11 @@ if __name__ == "__main__":
         except optuna.TrialPruned:
             study.tell(trial, None, state=optuna.trial.TrialState.PRUNED)
             continue
+
+    # Save results
+    df = pd.DataFrame(trial_data)
+    print("\nAll valid trials:")
+    print(df)
+    df.to_csv("optuna_trials_table.csv", index=False)
+    with open("all_trials_summary.json", "w") as f:
+        json.dump(trial_data, f, indent=2)
