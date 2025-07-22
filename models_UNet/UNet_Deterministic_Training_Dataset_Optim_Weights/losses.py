@@ -6,13 +6,10 @@ import numpy as np
 class WeightedHuberLoss(nn.Module):
     def __init__(self, weights, delta=0.05):
         super().__init__()
-        # Random initialization between 0.1 and 1.0
-        random_weights = np.random.uniform(0.1, 1.0, size=len(weights))
-        # Scale by config weights (relative importance)
-        scaled_weights = random_weights * np.array(weights, dtype=np.float32)
-        # Normalize so sum is 1
-        final_weights = scaled_weights / scaled_weights.sum()
-        self.weights = torch.tensor(final_weights).float()
+        # Use provided weights directly (assumed normalized)
+        weights = np.array(weights, dtype=np.float32)
+        weights = weights / weights.sum()  # Just in case
+        self.weights = torch.tensor(weights).float()
         self.delta = delta
 
     def forward(self, input, target):
@@ -26,10 +23,9 @@ class WeightedHuberLoss(nn.Module):
 class WeightedMSELoss(nn.Module):
     def __init__(self, weights):
         super().__init__()
-        random_weights = np.random.uniform(0.1, 1.0, size=len(weights))
-        scaled_weights = random_weights * np.array(weights, dtype=np.float32)
-        final_weights = scaled_weights / scaled_weights.sum()
-        self.weights = torch.tensor(final_weights).float()
+        weights = np.array(weights, dtype=np.float32)
+        weights = weights / weights.sum()
+        self.weights = torch.tensor(weights).float()
 
     def forward(self, input, target):
         weights = self.weights.to(input.device)
