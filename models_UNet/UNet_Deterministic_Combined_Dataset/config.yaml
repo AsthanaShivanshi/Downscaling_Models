@@ -50,7 +50,6 @@ train:
   #So following from above, step size up= Number iter per epoch/2
   wandb_project: "UNet_Deterministic"
   wandb_run_name: "Combined_Dataset"
-  loss_weights: [0.3963012163092444, 0.21432430554508924, 0.27094190529111545, 0.11843257285455093] #these are scaling factors taken from shorter training dataset
-  #loss_weights for trial_2: [0.279302347191531, 0.2809004422372049, 0.2934831478285148, 0.14631406274274922]
+  loss_weights: [0.3477343285121066,0.13714940067549747,0.16922271164546554,0.3458935591669304] #these are scaling factors taken from shorter training dataset
 # Placeholder for the paths in the untracked .paths.yaml file
 data: {}
