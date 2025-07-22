@@ -8,11 +8,11 @@ import numpy as np
 import pandas as pd
 import json
 
-MAX_VALID_TRIALS = 25
+MAX_VALID_TRIALS = 20
 
 def objective(trial):
     wandb.init(project="UNet_Deterministic",
-                name=f"trial*_{trial.number}",
+                name=f"trial*_unconstrained_{trial.number}",
                 config={},
                 reinit=True)
     initial_weights = [
@@ -23,8 +23,8 @@ def objective(trial):
     ]
     weights = [w / sum(initial_weights) for w in initial_weights]
     # Constraints for channels (normalized)
-    if weights[0] < 0.25 or any(w < 0.10 for w in weights[1:]):
-        raise optuna.TrialPruned()
+    #if weights[0] < 0.25 or any(w < 0.10 for w in weights[1:]):
+        #raise optuna.TrialPruned()
     print("initial unnormalised weights:", initial_weights)
     print(f"Trial {trial.number}: Normalized weights used: {weights}, sum={sum(weights)}")
     trial.set_user_attr("normalized_weights", weights)
@@ -72,7 +72,7 @@ if __name__ == "__main__":
     trial_data = []
 
     existing_trials = len(study.trials)
-    start_trial = 16  # Start from trial number 16, previous ones already exist.
+    start_trial = 1  # Start from trial number 16, previous ones already exist.
 
     for trial_idx in range(start_trial, 1000):
         if valid_trials >= MAX_VALID_TRIALS:
