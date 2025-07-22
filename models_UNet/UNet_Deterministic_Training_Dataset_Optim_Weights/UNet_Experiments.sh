@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=UNet_Deterministic_Training_OptimWeights
+#SBATCH --job-name=Optim_Weights_UNet_Deterministic_Training
 #SBATCH --output=logs/training/job_output-%j.txt
 #SBATCH --error=logs/training/job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --time=3-00:00:00
-#SBATCH --mem=500G
+#SBATCH --time=2-00:00:00
+#SBATCH --mem=256G
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
 
