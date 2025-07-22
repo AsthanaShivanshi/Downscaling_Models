@@ -1,0 +1,56 @@
+experiment:
+  batch_size: 32
+  num_workers: 4
+  quick_test: false #Alternative true would set it into smoke test mode, not for training or inference, just checking everything is alright
+# Input channels: [precip, temp, temp_min, temp_max, elevation]
+# Output channels: [precip, temp, temp_min, temp_max]
+variables:
+  input:
+    precip: RhiresD
+    temp: TabsD
+    temp_min: TminD
+    temp_max: TmaxD
+  target:
+    precip: RhiresD
+    temp: TabsD
+    temp_min: TminD
+    temp_max: TmaxD
+
+preprocessing:
+  nan_to_num: true
+  nan_value : 0.0
+
+
+train:
+  num_epochs: 200
+  checkpoint_path: training_model_huber_trial_weights.pth
+  inference_weights_path: training_model_weights_huber_trial_weights.pth
+  model_config_path: training_model_config_huber_trial_weights.json
+  in_channels: 5
+  out_channels: 4
+  optimizer: "Adam"
+  loss_fn: "huber"   # or "mse"
+  huber_delta: 0.005  #Modified threshold, default is 1.0
+  #loss_fn: "MSE"
+  scheduler: "ReduceLROnPlateau"
+  scheduler_mode: "min"
+  scheduler_factor: 0.8
+  scheduler_patience: 2 # Waiting for N epochs for no improvement
+  early_stopping_patience: 5
+  #scheduler: "CyclicLR"
+  #scheduler_mode: "triangular2"
+  #base_lr: 1e-4
+  #max_lr: 1e-3
+  #step_size_up: 208
+
+  #scheduler: "StepLR"
+  #gamma: 0.1
+  #step_size: 2 #Every 2 epochs, it is reducing the learning rate by 10 percent. Customisable and overridable
+   #How was step size chosen? Numer of iterations(training batches) per epoch= len(training_set)/batch_size
+  #So following from above, step size up= Number iter per epoch/2
+  wandb_project: "UNet_Deterministic"
+  wandb_run_name: "Training_Dataset"
+  loss_weights: [0.3477343285121066,0.13714940067549747,0.16922271164546554,0.3458935591669304] #these are scaling factors taken from shorter training dataset
+# After trial 4 from the training runs
+#Placeholder for the paths in the untracked .paths.yaml file
+data: {}
