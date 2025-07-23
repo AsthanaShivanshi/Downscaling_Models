@@ -8,6 +8,7 @@ from config_loader import load_config
 import numpy as np
 import xarray as xr
 from pathlib import Path
+from UNet import UNet
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Main.py started")
@@ -43,8 +44,14 @@ def main(config):
     print(f"Using learning rate scheduler: {config['train'].get('scheduler', 'CyclicLR')}")
     print(f"Train samples: {len(train_dataset)}, Val: {len(val_dataset)}")
 
+    #Pretrained weights
+    model = UNet(in_channels=5, out_channels=4)
+    pretrained_path = "/work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Training_Dataset_Optim_Weights/training_model_weights_huber_weights.pth"  # Update path if needed
+    model.load_state_dict(torch.load(pretrained_path, map_location=device))
+    model.to(device)
+
     model, history, final_val_loss, best_val_loss, best_val_loss_per_channel = run_experiment(
-        train_dataset, val_dataset, config=config
+        train_dataset, val_dataset, config=config, model=model  # Pass the initialized model
     )
 
     print({"final val loss per last epoch": final_val_loss, "best val loss across epochs": best_val_loss})
