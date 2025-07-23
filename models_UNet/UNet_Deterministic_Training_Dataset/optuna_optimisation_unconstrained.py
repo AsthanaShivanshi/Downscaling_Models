@@ -8,12 +8,12 @@ import numpy as np
 import pandas as pd
 import json
 
-MAX_VALID_TRIALS = 25
+MAX_VALID_TRIALS = 30
 
 def objective(trial):
     wandb.init(
         project="UNet_Deterministic",
-        name=f"trial*_unconstrained_{trial.number}",
+        name=f"UNCONSTRAINED_trial_{trial.number}",
         config={},
         reinit=True
     )
@@ -24,7 +24,7 @@ def objective(trial):
         trial.suggest_float("tmin_weight", 0.1, 1.0),
         trial.suggest_float("tmax_weight", 0.1, 1.0)
     ]
-    # Normalizing and taking all trials : unconstrained.
+    # Normalizing and taking all trials : unconstrained.: no channel wise constraints
     weights = [w / sum(initial_weights) for w in initial_weights]
     print("initial unnormalised weights:", initial_weights)
     print(f"Trial {trial.number}: Normalized weights used: {weights}, sum={sum(weights)}")
@@ -94,11 +94,3 @@ if __name__ == "__main__":
         except optuna.TrialPruned:
             study.tell(trial, None, state=optuna.trial.TrialState.PRUNED)
             continue
-
-    # Save results
-    df = pd.DataFrame(trial_data)
-    print("\nAll valid trials:")
-    print(df)
-    df.to_csv("optuna_trials_table.csv", index=False)
-    with open("all_trials_summary.json", "w") as f:
-        json.dump(trial_data, f, indent=2)
