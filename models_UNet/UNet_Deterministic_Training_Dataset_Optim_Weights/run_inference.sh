@@ -11,7 +11,6 @@
 mkdir -p logs/training
 module load python
 source environment.sh
-
 cd models_UNet/UNet_Deterministic_Training_Dataset_Optim_Weights
 
 python Inference.py
