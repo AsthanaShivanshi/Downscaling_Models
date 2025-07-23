@@ -1,0 +1,107 @@
+_wandb:
+    value:
+        cli_version: 0.20.1
+        m: []
+        python_version: 3.10.17
+        t:
+            "1":
+                - 1
+            "2":
+                - 1
+                - 54
+            "3":
+                - 13
+                - 16
+                - 55
+            "4": 3.10.17
+            "5": 0.20.1
+            "10":
+                - 20
+            "12": 0.20.1
+            "13": linux-x86_64
+data:
+    value:
+        static:
+            elevation: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/elevation.tif
+        test:
+            input:
+                precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/RhiresD_input_test_chronological_scaled.nc
+                temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TabsD_input_test_chronological_scaled.nc
+                temp_max: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TmaxD_input_test_chronological_scaled.nc
+                temp_min: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TminD_input_test_chronological_scaled.nc
+            target:
+                precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/RhiresD_target_test_chronological_scaled.nc
+                temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TabsD_target_test_chronological_scaled.nc
+                temp_max: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TmaxD_target_test_chronological_scaled.nc
+                temp_min: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TminD_target_test_chronological_scaled.nc
+        train:
+            input:
+                precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/RhiresD_input_train_chronological_scaled.nc
+                temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TabsD_input_train_chronological_scaled.nc
+                temp_max: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TmaxD_input_train_chronological_scaled.nc
+                temp_min: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TminD_input_train_chronological_scaled.nc
+            target:
+                precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/RhiresD_target_train_chronological_scaled.nc
+                temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TabsD_target_train_chronological_scaled.nc
+                temp_max: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TmaxD_target_train_chronological_scaled.nc
+                temp_min: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TminD_target_train_chronological_scaled.nc
+        val:
+            input:
+                precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/RhiresD_input_val_chronological_scaled.nc
+                temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TabsD_input_val_chronological_scaled.nc
+                temp_max: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TmaxD_input_val_chronological_scaled.nc
+                temp_min: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TminD_input_val_chronological_scaled.nc
+            target:
+                precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/RhiresD_target_val_chronological_scaled.nc
+                temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TabsD_target_val_chronological_scaled.nc
+                temp_max: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TmaxD_target_val_chronological_scaled.nc
+                temp_min: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset/TminD_target_val_chronological_scaled.nc
+experiment:
+    value:
+        batch_size: 32
+        num_workers: 4
+        quick_test: false
+preprocessing:
+    value:
+        nan_to_num: true
+        nan_value: 0
+train:
+    value:
+        checkpoint_path: training_model_huber_weights.pth
+        early_stopping_patience: 5
+        huber_delta: 0.005
+        in_channels: 5
+        inference_weights_path: training_model_weights_huber_weights.pth
+        loss_fn: huber
+        loss_weights:
+            - 0.3410072868046871
+            - 0.2909043694955993
+            - 0.19833770299436973
+            - 0.16975064070534393
+        loss_weights_unnormalized:
+            - 0.3507590560457098
+            - 0.2992233479816839
+            - 0.20400955689965994
+            - 0.17460499174336847
+        model_config_path: training_model_config_huber_weights.json
+        num_epochs: 200
+        optimizer: Adam
+        out_channels: 4
+        scheduler: ReduceLROnPlateau
+        scheduler_factor: 0.8
+        scheduler_mode: min
+        scheduler_patience: 2
+        wandb_project: UNet_Deterministic
+        wandb_run_name: Training_Dataset
+variables:
+    value:
+        input:
+            precip: RhiresD
+            temp: TabsD
+            temp_max: TmaxD
+            temp_min: TminD
+        target:
+            precip: RhiresD
+            temp: TabsD
+            temp_max: TmaxD
+            temp_min: TminD
