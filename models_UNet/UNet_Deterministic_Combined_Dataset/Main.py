@@ -46,7 +46,7 @@ def main(config):
 
     #Pretrained weights
     model = UNet(in_channels=5, out_channels=4)
-    pretrained_path = "/work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Training_Dataset_Optim_Weights/training_model_weights_huber_weights.pth"  # Update path if needed
+    pretrained_path = "/work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Training_Dataset_Optim_Weights/training_model_weights_huber_weights.pth" 
     model.load_state_dict(torch.load(pretrained_path, map_location=device))
     model.to(device)
 
@@ -55,7 +55,7 @@ def main(config):
 
     print({"final val loss per last epoch": final_val_loss, "best val loss across epochs": best_val_loss})
 
-    # Log per-channel best validation losses
+    # per-channel best validation losses
     var_names = ["precip", "temp", "tmin", "tmax"]
     for var, loss in zip(var_names, best_val_loss_per_channel):
         print(f"Best validation loss for channel {var}: {loss}")
