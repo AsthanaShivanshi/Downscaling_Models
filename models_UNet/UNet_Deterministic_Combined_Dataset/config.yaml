@@ -52,6 +52,6 @@ train:
   wandb_run_name: "Combined_Dataset"
   loss_weights_unnormalized: [0.3507590560457098, 0.2992233479816839, 0.20400955689965994, 0.17460499174336847]
   loss_weights: [0.3410072868046871, 0.2909043694955993, 0.19833770299436973, 0.16975064070534393] #these are scaling factors taken from shorter training dataset
-# After trial 13 from the training runs, elbow of precip and total loss in minimisation.
+# After trial 13 from the training runs, elbow of precip and total loss in minimisation. (other runs happening)
 #Placeholder for the paths in the untracked .paths.yaml file
 data: {}
