@@ -2,7 +2,7 @@
 #SBATCH --job-name=UNet_inference_combined_dataset
 #SBATCH --output=logs/combined/UNet_inference_%j.out
 #SBATCH --error=logs/combined/UNet_inference_%j.err
-#SBATCH --time=3-00:00:00
+#SBATCH --time=08:00:00
 #SBATCH --partition=cpu
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4

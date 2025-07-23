@@ -21,7 +21,7 @@ BASE_DIR = os.environ["BASE_DIR"]
 sys.path.append(os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Training_Dataset_Optim_Weights"))
 
 # Load model
-model_path = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Training_Dataset_Optim_Weights/training_model_huber_trial_weights.pth")
+model_path = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Training_Dataset_Optim_Weights/training_model_huber_weights.pth")
 training_checkpoint = torch.load(model_path, map_location=torch.device('cpu'))
 model_instance = UNet(in_channels=5, out_channels=4)
 model_instance.load_state_dict(training_checkpoint["model_state_dict"])
@@ -51,7 +51,7 @@ targets_merged = xr.merge([precip_target, temp_target, tmin_target, tmax_target]
 ds = DownscalingDataset(inputs_merged, targets_merged, config, elevation_path)
 paired_ds = DataLoader(ds, batch_size=1, shuffle=False, num_workers=4)
 
-var_names = ["precip", "temp", "tmin", "tmax"]
+var_names = ["RhiresD", "TabsD", "TminD", "TmaxD"]
 all_preds = []
 
 with torch.no_grad():
