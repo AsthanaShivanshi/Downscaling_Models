@@ -51,8 +51,7 @@ def main(config):
     model.to(device)
 
     model, history, final_val_loss, best_val_loss, best_val_loss_per_channel = run_experiment(
-        train_dataset, val_dataset, config=config, model=model  # Pass the initialized model
-    )
+    train_dataset, val_dataset, config=config, model=model)
 
     print({"final val loss per last epoch": final_val_loss, "best val loss across epochs": best_val_loss})
 

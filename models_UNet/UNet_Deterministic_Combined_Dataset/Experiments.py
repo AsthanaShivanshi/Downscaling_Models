@@ -9,7 +9,7 @@ from torch.optim.lr_scheduler import StepLR
 import torch.nn.functional as F
 from losses import WeightedHuberLoss, WeightedMSELoss
 
-def run_experiment(train_dataset, val_dataset, config):
+def run_experiment(train_dataset, val_dataset, config, model=None):
     train_cfg = config["train"]
     exp_cfg = config["experiment"]
 
@@ -18,7 +18,9 @@ def run_experiment(train_dataset, val_dataset, config):
         if not (0.1 <= w <= 1.0):
             raise ValueError(f"Weight {w} is out of allowed range [0.1, 1.0]")
 
-    model = UNet(in_channels=train_cfg.get("in_channels", 5), out_channels=train_cfg.get("out_channels", 4))
+    # --- CHANGE: Only create a new model if not provided ---
+    if model is None:
+        model = UNet(in_channels=train_cfg.get("in_channels", 5), out_channels=train_cfg.get("out_channels", 4))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
