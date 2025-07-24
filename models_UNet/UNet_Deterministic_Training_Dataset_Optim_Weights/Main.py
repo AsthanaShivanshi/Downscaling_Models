@@ -25,7 +25,7 @@ def load_dataset(file_group: dict, config: dict, section: str) -> xr.Dataset:
 def main(config):
     wandb.init(
         project="UNet_Deterministic_Training_Optim_Weights",
-        name="single_run",
+        name="single_run_unconstrained_01",
         config=config,
         reinit=True
     )
