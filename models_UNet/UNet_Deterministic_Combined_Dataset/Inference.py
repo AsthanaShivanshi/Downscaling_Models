@@ -21,7 +21,7 @@ BASE_DIR = os.environ["BASE_DIR"]
 sys.path.append(os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Combined_Dataset"))
 
 # Load model
-model_path = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Combined_Dataset/combined_model_huber.pth")
+model_path = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Combined_Dataset/combined_model_huber_trial_weights.pth")
 training_checkpoint = torch.load(model_path, map_location=torch.device('cpu'))
 model_instance = UNet(in_channels=5, out_channels=4)
 model_instance.load_state_dict(training_checkpoint["model_state_dict"])
