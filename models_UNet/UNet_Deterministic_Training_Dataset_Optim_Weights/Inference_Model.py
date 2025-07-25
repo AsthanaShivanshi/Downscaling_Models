@@ -33,7 +33,7 @@ scaling_param_files = {
     for var in var_names
 }
 
-# Scaling functions
+# Scaling
 def scale_precip(x, min_val, max_val):
     return (x - min_val) / (max_val - min_val)
 
@@ -46,27 +46,13 @@ def descale_precip(x, min_val, max_val):
 def descale_temp(x, mean, std):
     return x * std + mean
 
+
 with open(CONFIG_PATH, 'r') as f:
     config = yaml.safe_load(f)
 training_checkpoint = torch.load(MODEL_PATH, map_location=torch.device('cpu'))
 model_instance = UNet(in_channels=5, out_channels=4)
 model_instance.load_state_dict(training_checkpoint["model_state_dict"])
 model_instance.eval()
-
-elevation_da = rioxarray.open_rasterio(ELEVATION_PATH)
-if elevation_da.ndim == 3:
-    elevation_da = elevation_da.isel(band=0)
-if set(elevation_da.dims) == {"x", "y"}:
-    elevation_da = elevation_da.rename({"x": "lon", "y": "lat"})
-if "lat" not in elevation_da.coords or "lon" not in elevation_da.coords:
-    elevation_da = elevation_da.assign_coords(
-        lat=coords["lat"],
-        lon=coords["lon"]
-    )
-elev_resampled = elevation_da.interp(
-    lat=coords["lat"],
-    lon=coords["lon"]
-).values
 
 inputs_scaled = []
 coords = None
@@ -88,7 +74,19 @@ for var in var_names:
             "lon": ds.lon.values
         }
 
-inputs_scaled = np.stack(inputs_scaled, axis=1)  
+inputs_scaled = np.stack(inputs_scaled, axis=1)
+
+# Elevation and resampling for EQM grid matching
+elevation_da = rioxarray.open_rasterio(ELEVATION_PATH)
+if elevation_da.ndim == 3:
+    elevation_da = elevation_da.isel(band=0)
+if set(elevation_da.dims) == {"x", "y"}:
+    elevation_da = elevation_da.rename({"x": "lon", "y": "lat"})
+if "lat" not in elevation_da.coords or "lon" not in elevation_da.coords:
+    elevation_da = elevation_da.assign_coords(
+        lat=coords["lat"],
+        lon=coords["lon"]
+    )
 elev_resampled = elevation_da.interp(
     lat=coords["lat"],
     lon=coords["lon"]
@@ -98,15 +96,15 @@ if elev_resampled.ndim == 2:
 elev_resampled = np.repeat(elev_resampled, inputs_scaled.shape[0], axis=0)
 inputs_scaled = np.concatenate([inputs_scaled, elev_resampled[:, None, :, :]], axis=1)
 
+# Downscaling
 all_preds = []
 with torch.no_grad():
     for t in range(inputs_scaled.shape[0]):
-        input_tensor = torch.tensor(inputs_scaled[t:t+1], dtype=torch.float32) 
+        input_tensor = torch.tensor(inputs_scaled[t:t+1], dtype=torch.float32)
         output = model_instance(input_tensor)
         all_preds.append(output.squeeze(0).cpu().numpy())
-all_preds = np.stack(all_preds) 
+all_preds = np.stack(all_preds)
 
-# Denormalising
 for i, var in enumerate(var_names):
     params = json.load(open(os.path.join(SCALING_DIR, scaling_param_files[var])))
     if var == "precip":
