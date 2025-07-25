@@ -56,9 +56,17 @@ model_instance.eval()
 elevation_da = rioxarray.open_rasterio(ELEVATION_PATH)
 if elevation_da.ndim == 3:
     elevation_da = elevation_da.isel(band=0)
-# After loading elevation_da, has to be renamed because it was giving an error
 if set(elevation_da.dims) == {"x", "y"}:
     elevation_da = elevation_da.rename({"x": "lon", "y": "lat"})
+if "lat" not in elevation_da.coords or "lon" not in elevation_da.coords:
+    elevation_da = elevation_da.assign_coords(
+        lat=coords["lat"],
+        lon=coords["lon"]
+    )
+elev_resampled = elevation_da.interp(
+    lat=coords["lat"],
+    lon=coords["lon"]
+).values
 
 inputs_scaled = []
 coords = None
