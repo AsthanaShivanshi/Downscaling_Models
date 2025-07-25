@@ -78,11 +78,14 @@ for var in var_names:
         }
 
 inputs_scaled = np.stack(inputs_scaled, axis=1)  
-elev = elevation_da.values
-if elev.ndim == 2:
-    elev = elev[None, :, :] 
-elev = np.repeat(elev, inputs_scaled.shape[0], axis=0)
-inputs_scaled = np.concatenate([inputs_scaled, elev[:, None, :, :]], axis=1) 
+elev_resampled = elevation_da.interp(
+    lat=coords["lat"],
+    lon=coords["lon"]
+).values
+if elev_resampled.ndim == 2:
+    elev_resampled = elev_resampled[None, :, :]
+elev_resampled = np.repeat(elev_resampled, inputs_scaled.shape[0], axis=0)
+inputs_scaled = np.concatenate([inputs_scaled, elev_resampled[:, None, :, :]], axis=1)
 
 all_preds = []
 with torch.no_grad():
