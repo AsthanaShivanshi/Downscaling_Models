@@ -83,7 +83,13 @@ elevation_da = rioxarray.open_rasterio(ELEVATION_PATH)
 if elevation_da.ndim == 3:
     elevation_da = elevation_da.isel(band=0)
 
+# After loading elevation_da
 elev_array = elevation_da.values
+
+# If shape is (lon, lat), transpose to (lat, lon)
+if elev_array.shape == (len(eqm_lon), len(eqm_lat)):
+    elev_array = elev_array.T
+
 target_shape = (len(eqm_lat), len(eqm_lon))
 if elev_array.shape != target_shape:
     elev_array = resize(
@@ -94,9 +100,9 @@ if elev_array.shape != target_shape:
         anti_aliasing=True
     )
 elev_array = elev_array.astype(np.float32)
-elev_array = elev_array[None, :, :]  
+elev_array = elev_array[None, :, :] 
 elev_array = np.repeat(elev_array, inputs_scaled.shape[0], axis=0)  
-inputs_scaled = np.concatenate([inputs_scaled, elev_array[:, None, :, :]], axis=1) 
+inputs_scaled = np.concatenate([inputs_scaled, elev_array[:, None, :, :]], axis=1)  
 
 
 all_preds = []
