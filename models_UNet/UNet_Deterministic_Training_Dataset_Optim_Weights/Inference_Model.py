@@ -84,21 +84,10 @@ elevation_da = rioxarray.open_rasterio(ELEVATION_PATH)
 if elevation_da.ndim == 3:
     elevation_da = elevation_da.isel(band=0)
 
+# Prepare elevation for single t
 elev_array = elevation_da.values
-
-#Debugging statements
-print("inputs_scaled shape:", inputs_scaled.shape)
-print("Original elev_array shape:", elevation_da.values.shape)
-print("elev_array shape (before transpose/resize):", elev_array.shape)
-print("eqm_lat len:", len(eqm_lat))
-print("eqm_lon len:", len(eqm_lon))
-
-#The latxlon order in the elevation wasnt matching the input, had to be resized and transposed. 
-
 if elev_array.shape == (len(eqm_lon), len(eqm_lat)):
     elev_array = elev_array.T
-    print("elev_array shape (after transpose):", elev_array.shape)
-
 target_shape = (len(eqm_lat), inputs_scaled.shape[3])
 if elev_array.shape != target_shape:
     elev_array = resize(
@@ -108,36 +97,38 @@ if elev_array.shape != target_shape:
         preserve_range=True,
         anti_aliasing=True
     )
-    print("elev_array shape (after resize):", elev_array.shape)
-
 elev_array = elev_array.astype(np.float32)
-elev_array = elev_array[None, :, :] 
-elev_array = np.repeat(elev_array, inputs_scaled.shape[0], axis=0)  
-print("elev_array shape (after repeat):", elev_array.shape)
 
-inputs_scaled = np.concatenate([inputs_scaled, elev_array[:, None, :, :]], axis=1)
-print("inputs_scaled shape (after concat):", inputs_scaled.shape)
+output_arrays = {var: np.empty((inputs_scaled.shape[0], len(eqm_lat), inputs_scaled.shape[3]), dtype=np.float32) for var in var_names}
 
-all_preds = []
 with torch.no_grad():
     for t in range(inputs_scaled.shape[0]):
-        input_tensor = torch.tensor(inputs_scaled[t:t+1], dtype=torch.float32)
-        output = model_instance(input_tensor)
-        all_preds.append(output.squeeze(0).cpu().numpy())
-all_preds = np.stack(all_preds)
+        input_t = inputs_scaled[t]
+        elev_t = elev_array[None, :, :]
+        input_t = np.concatenate([input_t, elev_t], axis=0)
+        input_tensor = torch.tensor(input_t[None], dtype=torch.float32)
+        output = model_instance(input_tensor).cpu().numpy().squeeze(0)
 
-for i, var in enumerate(var_names):
-    params = json.load(open(os.path.join(SCALING_DIR, scaling_param_files[var])))
-    if var == "precip":
-        arr_denorm = descale_precip(all_preds[:, i, :, :], params["min"], params["max"])
-    else:
-        arr_denorm = descale_temp(all_preds[:, i, :, :], params["mean"], params["std"])
-    da = xr.DataArray(
-        arr_denorm,
-        dims=("time", "lat", "lon"),
-        coords=coords,
-        name=var
-    )
-    out_path = os.path.join(EQM_DIR, f"eqm_{var}_downscaled_r01.nc")
-    da.to_netcdf(out_path)
-    print(f"Saved downscaled {var} to {out_path}")
+        for i, var in enumerate(var_names):
+            params = json.load(open(os.path.join(SCALING_DIR, scaling_param_files[var])))
+            if var == "precip":
+                arr_denorm = descale_precip(output[i], params["min"], params["max"])
+            else:
+                arr_denorm = descale_temp(output[i], params["mean"], params["std"])
+            da = xr.DataArray(
+                arr_denorm[None, :, :],
+                dims=("time", "lat", "lon"),
+                coords={
+                    "time": [coords["time"][t]],
+                    "lat": coords["lat"],
+                    "lon": coords["lon"]
+                },
+                name=var
+            )
+            out_path = os.path.join(EQM_DIR, f"eqm_{var}_downscaled_r01.nc")
+            if t == 0:
+                da.to_netcdf(out_path, mode="w")
+            else:
+                da.to_netcdf(out_path, mode="a")
+
+        del input_t, elev_t, input_tensor, output, arr_denorm, da
