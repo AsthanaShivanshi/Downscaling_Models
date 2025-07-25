@@ -7,6 +7,8 @@ import json
 import sys
 from UNet import UNet
 import rioxarray
+from skimage.transform import resize
+
 
 BASE_DIR = "/work/FAC/FGSE/IDYST/tbeucler/downscaling"
 EQM_DIR = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/BC_Model_Runs/EQM")
@@ -53,6 +55,7 @@ model_instance = UNet(in_channels=5, out_channels=4)
 model_instance.load_state_dict(training_checkpoint["model_state_dict"])
 model_instance.eval()
 
+
 inputs_scaled = []
 coords = None
 for var in var_names:
@@ -71,19 +74,27 @@ for var in var_names:
             "lat": ds.lat.values,
             "lon": ds.lon.values
         }
+        eqm_lat = ds.lat.values
+        eqm_lon = ds.lon.values
 
 inputs_scaled = np.stack(inputs_scaled, axis=1)
 
-#Static elevation
 elevation_da = rioxarray.open_rasterio(ELEVATION_PATH)
 if elevation_da.ndim == 3:
     elevation_da = elevation_da.isel(band=0)
-elev_array = elevation_da.values
-if elev_array.shape != (len(coords["lat"]), len(coords["lon"])):
-    elev_array = np.resize(elev_array, (len(coords["lat"]), len(coords["lon"])))
+
+if "lat" in elevation_da.coords and "lon" in elevation_da.coords:
+    elev_array = elevation_da.sel(lat=eqm_lat, lon=eqm_lon, method="nearest").values
+else:
+    elev_array = elevation_da.values
+    elev_array = np.resize(elev_array, (len(eqm_lat), len(eqm_lon)))
+
 elev_array = elev_array[None, :, :]  
-elev_array = np.repeat(elev_array, inputs_scaled.shape[0], axis=0) 
+elev_array = np.repeat(elev_array, inputs_scaled.shape[0], axis=0)  
+print("inputs_scaled shape:", inputs_scaled.shape)
+print("elev_array shape:", elev_array.shape)
 inputs_scaled = np.concatenate([inputs_scaled, elev_array[:, None, :, :]], axis=1)  
+
 
 all_preds = []
 with torch.no_grad():
