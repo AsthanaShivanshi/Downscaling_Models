@@ -33,7 +33,6 @@ scaling_param_files = {
     for var in var_names
 }
 
-# Scaling
 def scale_precip(x, min_val, max_val):
     return (x - min_val) / (max_val - min_val)
 
@@ -45,7 +44,6 @@ def descale_precip(x, min_val, max_val):
 
 def descale_temp(x, mean, std):
     return x * std + mean
-
 
 with open(CONFIG_PATH, 'r') as f:
     config = yaml.safe_load(f)
@@ -60,7 +58,6 @@ for var in var_names:
     eqm_path = os.path.join(EQM_DIR, eqm_files[var])
     ds = xr.open_dataset(eqm_path)
     arr = ds[var].values if var in ds else ds[list(ds.data_vars)[0]].values
-    # Load scaling params
     params = json.load(open(os.path.join(SCALING_DIR, scaling_param_files[var])))
     if var == "precip":
         arr_scaled = scale_precip(arr, params["min"], params["max"])
@@ -76,21 +73,29 @@ for var in var_names:
 
 inputs_scaled = np.stack(inputs_scaled, axis=1)
 
-# Elevation and resampling for EQM grid matching
+
 elevation_da = rioxarray.open_rasterio(ELEVATION_PATH)
 if elevation_da.ndim == 3:
     elevation_da = elevation_da.isel(band=0)
 if set(elevation_da.dims) == {"x", "y"}:
     elevation_da = elevation_da.rename({"x": "lon", "y": "lat"})
+
 if "lat" not in elevation_da.coords or "lon" not in elevation_da.coords:
+    raster_lat = np.linspace(coords["lat"].min(), coords["lat"].max(), elevation_da.shape[0])
+    raster_lon = np.linspace(coords["lon"].min(), coords["lon"].max(), elevation_da.shape[1])
     elevation_da = elevation_da.assign_coords(
+        lat=("lat", raster_lat),
+        lon=("lon", raster_lon)
+    )
+
+if elevation_da.shape == (len(coords["lat"]), len(coords["lon"])):
+    elev_resampled = elevation_da.values
+else:
+    elev_resampled = elevation_da.interp(
         lat=coords["lat"],
         lon=coords["lon"]
-    )
-elev_resampled = elevation_da.interp(
-    lat=coords["lat"],
-    lon=coords["lon"]
-).values
+    ).values
+
 if elev_resampled.ndim == 2:
     elev_resampled = elev_resampled[None, :, :]
 elev_resampled = np.repeat(elev_resampled, inputs_scaled.shape[0], axis=0)
@@ -104,6 +109,7 @@ with torch.no_grad():
         output = model_instance(input_tensor)
         all_preds.append(output.squeeze(0).cpu().numpy())
 all_preds = np.stack(all_preds)
+
 
 for i, var in enumerate(var_names):
     params = json.load(open(os.path.join(SCALING_DIR, scaling_param_files[var])))
