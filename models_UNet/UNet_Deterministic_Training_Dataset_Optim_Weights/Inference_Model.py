@@ -99,13 +99,18 @@ if lat_1d.ndim > 1:
 if lon_1d.ndim > 1:
     lon_1d = lon_1d[0, :]
 
+n_time = inputs_scaled.shape[0]
+n_lat = len(lat_1d)
+n_lon = len(lon_1d)
+outputs_all = {var: np.empty((n_time, n_lat, n_lon), dtype=np.float32) for var in var_names}
+
 with torch.no_grad():
-    for t in range(inputs_scaled.shape[0]):
-        input_t = inputs_scaled[t] 
-        elev_t = elev_array[None, :, :]  
-        input_t = np.concatenate([input_t, elev_t], axis=0)  
-        input_tensor = torch.tensor(input_t[None], dtype=torch.float32) 
-        output = model_instance(input_tensor).cpu().numpy().squeeze(0) 
+    for t in range(n_time):
+        input_t = inputs_scaled[t]
+        elev_t = elev_array[None, :, :]
+        input_t = np.concatenate([input_t, elev_t], axis=0)
+        input_tensor = torch.tensor(input_t[None], dtype=torch.float32)
+        output = model_instance(input_tensor).cpu().numpy().squeeze(0)
 
         for i, var in enumerate(var_names):
             params = json.load(open(os.path.join(SCALING_DIR, scaling_param_files[var])))
@@ -113,20 +118,21 @@ with torch.no_grad():
                 arr_denorm = descale_precip(output[i], params["min"], params["max"])
             else:
                 arr_denorm = descale_temp(output[i], params["mean"], params["std"])
-            da = xr.DataArray(
-                arr_denorm[None, :, :],
-                dims=("time", "lat", "lon"),
-                coords={
-                    "time": [coords["time"][t]],
-                    "lat": lat_1d,
-                    "lon": lon_1d
-                },
-                name=var
-            )
-            out_path = os.path.join(EQM_DIR, f"eqm_{var}_downscaled_r01.nc")
-            if t == 0:
-                da.to_netcdf(out_path, mode="w")
-            else:
-                da.to_netcdf(out_path, mode="a")
-        del input_t, elev_t, input_tensor, output, arr_denorm, da
-        print(f"Processed time step {t+1}/{inputs_scaled.shape[0]} for {var}")
+            outputs_all[var][t] = arr_denorm
+        del input_t, elev_t, input_tensor, output, arr_denorm
+
+# Writing all timesteps at once
+for var in var_names:
+    da = xr.DataArray(
+        outputs_all[var],
+        dims=("time", "lat", "lon"),
+        coords={
+            "time": coords["time"],
+            "lat": lat_1d,
+            "lon": lon_1d
+        },
+        name=var
+    )
+    out_path = os.path.join(EQM_DIR, f"eqm_{var}_downscaled_r01.nc")
+    da.to_netcdf(out_path, mode="w")
+    print(f"Saved full downscaled {var} to {out_path}")
