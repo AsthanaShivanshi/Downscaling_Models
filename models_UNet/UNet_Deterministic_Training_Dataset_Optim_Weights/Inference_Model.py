@@ -92,12 +92,12 @@ print("elev_array shape (before transpose/resize):", elev_array.shape)
 print("eqm_lat len:", len(eqm_lat))
 print("eqm_lon len:", len(eqm_lon))
 
-# If shape is (lon, lat), transpose to (lat, lon)
+
 if elev_array.shape == (len(eqm_lon), len(eqm_lat)):
     elev_array = elev_array.T
     print("elev_array shape (after transpose):", elev_array.shape)
 
-target_shape = (len(eqm_lat), len(eqm_lon))
+target_shape = (len(eqm_lat), inputs_scaled.shape[3]) 
 if elev_array.shape != target_shape:
     elev_array = resize(
         elev_array,
@@ -115,7 +115,6 @@ print("elev_array shape (after repeat):", elev_array.shape)
 
 inputs_scaled = np.concatenate([inputs_scaled, elev_array[:, None, :, :]], axis=1)
 print("inputs_scaled shape (after concat):", inputs_scaled.shape)
-
 
 all_preds = []
 with torch.no_grad():
