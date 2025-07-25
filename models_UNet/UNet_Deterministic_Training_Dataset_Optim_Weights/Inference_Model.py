@@ -86,17 +86,20 @@ if elevation_da.ndim == 3:
 
 elev_array = elevation_da.values
 
+#Debugging statements
 print("inputs_scaled shape:", inputs_scaled.shape)
 print("Original elev_array shape:", elevation_da.values.shape)
 print("elev_array shape (before transpose/resize):", elev_array.shape)
 print("eqm_lat len:", len(eqm_lat))
 print("eqm_lon len:", len(eqm_lon))
 
+#The latxlon order in the elevation wasnt matching the input, had to be resized and transposed. 
+
 if elev_array.shape == (len(eqm_lon), len(eqm_lat)):
     elev_array = elev_array.T
     print("elev_array shape (after transpose):", elev_array.shape)
 
-target_shape = (len(eqm_lat), inputs_scaled.shape[3])  # <-- THIS IS THE FIX
+target_shape = (len(eqm_lat), inputs_scaled.shape[3])
 if elev_array.shape != target_shape:
     elev_array = resize(
         elev_array,
