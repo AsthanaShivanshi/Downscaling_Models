@@ -4,11 +4,9 @@ import torch
 import xarray as xr
 import numpy as np
 import json
-import sys
 from UNet import UNet
 import rioxarray
 from skimage.transform import resize
-
 
 BASE_DIR = "/work/FAC/FGSE/IDYST/tbeucler/downscaling"
 EQM_DIR = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/BC_Model_Runs/EQM")
@@ -47,14 +45,12 @@ def descale_precip(x, min_val, max_val):
 def descale_temp(x, mean, std):
     return x * std + mean
 
-
 with open(CONFIG_PATH, 'r') as f:
     config = yaml.safe_load(f)
 training_checkpoint = torch.load(MODEL_PATH, map_location=torch.device('cpu'))
 model_instance = UNet(in_channels=5, out_channels=4)
 model_instance.load_state_dict(training_checkpoint["model_state_dict"])
 model_instance.eval()
-
 
 inputs_scaled = []
 coords = None
@@ -77,18 +73,15 @@ for var in var_names:
         eqm_lat = ds.lat.values
         eqm_lon = ds.lon.values
 
-inputs_scaled = np.stack(inputs_scaled, axis=1)
+inputs_scaled = np.stack(inputs_scaled, axis=1) 
 
 elevation_da = rioxarray.open_rasterio(ELEVATION_PATH)
-
 if elevation_da.ndim == 3:
     elevation_da = elevation_da.isel(band=0)
-
-# Prepare elevation for single t
 elev_array = elevation_da.values
 if elev_array.shape == (len(eqm_lon), len(eqm_lat)):
     elev_array = elev_array.T
-target_shape = (len(eqm_lat), inputs_scaled.shape[3])
+target_shape = (len(eqm_lat), inputs_scaled.shape[3])  
 if elev_array.shape != target_shape:
     elev_array = resize(
         elev_array,
@@ -99,15 +92,20 @@ if elev_array.shape != target_shape:
     )
 elev_array = elev_array.astype(np.float32)
 
-output_arrays = {var: np.empty((inputs_scaled.shape[0], len(eqm_lat), inputs_scaled.shape[3]), dtype=np.float32) for var in var_names}
+lat_1d = np.asarray(eqm_lat)
+lon_1d = np.asarray(eqm_lon)
+if lat_1d.ndim > 1:
+    lat_1d = lat_1d[:, 0]
+if lon_1d.ndim > 1:
+    lon_1d = lon_1d[0, :]
 
 with torch.no_grad():
     for t in range(inputs_scaled.shape[0]):
-        input_t = inputs_scaled[t]
-        elev_t = elev_array[None, :, :]
-        input_t = np.concatenate([input_t, elev_t], axis=0)
-        input_tensor = torch.tensor(input_t[None], dtype=torch.float32)
-        output = model_instance(input_tensor).cpu().numpy().squeeze(0)
+        input_t = inputs_scaled[t] 
+        elev_t = elev_array[None, :, :]  
+        input_t = np.concatenate([input_t, elev_t], axis=0)  
+        input_tensor = torch.tensor(input_t[None], dtype=torch.float32) 
+        output = model_instance(input_tensor).cpu().numpy().squeeze(0) 
 
         for i, var in enumerate(var_names):
             params = json.load(open(os.path.join(SCALING_DIR, scaling_param_files[var])))
@@ -120,8 +118,8 @@ with torch.no_grad():
                 dims=("time", "lat", "lon"),
                 coords={
                     "time": [coords["time"][t]],
-                    "lat": coords["lat"],
-                    "lon": coords["lon"]
+                    "lat": lat_1d,
+                    "lon": lon_1d
                 },
                 name=var
             )
@@ -130,5 +128,5 @@ with torch.no_grad():
                 da.to_netcdf(out_path, mode="w")
             else:
                 da.to_netcdf(out_path, mode="a")
-
         del input_t, elev_t, input_tensor, output, arr_denorm, da
+        print(f"Processed time step {t+1}/{inputs_scaled.shape[0]} for {var}")
