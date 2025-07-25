@@ -80,15 +80,22 @@ for var in var_names:
 inputs_scaled = np.stack(inputs_scaled, axis=1)
 
 elevation_da = rioxarray.open_rasterio(ELEVATION_PATH)
+
 if elevation_da.ndim == 3:
     elevation_da = elevation_da.isel(band=0)
 
-# After loading elevation_da
 elev_array = elevation_da.values
+
+print("inputs_scaled shape:", inputs_scaled.shape)
+print("Original elev_array shape:", elevation_da.values.shape)
+print("elev_array shape (before transpose/resize):", elev_array.shape)
+print("eqm_lat len:", len(eqm_lat))
+print("eqm_lon len:", len(eqm_lon))
 
 # If shape is (lon, lat), transpose to (lat, lon)
 if elev_array.shape == (len(eqm_lon), len(eqm_lat)):
     elev_array = elev_array.T
+    print("elev_array shape (after transpose):", elev_array.shape)
 
 target_shape = (len(eqm_lat), len(eqm_lon))
 if elev_array.shape != target_shape:
@@ -99,10 +106,15 @@ if elev_array.shape != target_shape:
         preserve_range=True,
         anti_aliasing=True
     )
+    print("elev_array shape (after resize):", elev_array.shape)
+
 elev_array = elev_array.astype(np.float32)
 elev_array = elev_array[None, :, :] 
 elev_array = np.repeat(elev_array, inputs_scaled.shape[0], axis=0)  
-inputs_scaled = np.concatenate([inputs_scaled, elev_array[:, None, :, :]], axis=1)  
+print("elev_array shape (after repeat):", elev_array.shape)
+
+inputs_scaled = np.concatenate([inputs_scaled, elev_array[:, None, :, :]], axis=1)
+print("inputs_scaled shape (after concat):", inputs_scaled.shape)
 
 
 all_preds = []
