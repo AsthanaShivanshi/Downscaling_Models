@@ -45,6 +45,7 @@ def descale_precip(x, min_val, max_val):
 def descale_temp(x, mean, std):
     return x * std + mean
 
+
 with open(CONFIG_PATH, 'r') as f:
     config = yaml.safe_load(f)
 training_checkpoint = torch.load(MODEL_PATH, map_location=torch.device('cpu'))
@@ -73,35 +74,17 @@ for var in var_names:
 
 inputs_scaled = np.stack(inputs_scaled, axis=1)
 
-
+#Static elevation
 elevation_da = rioxarray.open_rasterio(ELEVATION_PATH)
 if elevation_da.ndim == 3:
     elevation_da = elevation_da.isel(band=0)
-if set(elevation_da.dims) == {"x", "y"}:
-    elevation_da = elevation_da.rename({"x": "lon", "y": "lat"})
+elev_array = elevation_da.values
+if elev_array.shape != (len(coords["lat"]), len(coords["lon"])):
+    elev_array = np.resize(elev_array, (len(coords["lat"]), len(coords["lon"])))
+elev_array = elev_array[None, :, :]  
+elev_array = np.repeat(elev_array, inputs_scaled.shape[0], axis=0) 
+inputs_scaled = np.concatenate([inputs_scaled, elev_array[:, None, :, :]], axis=1)  
 
-if "lat" not in elevation_da.coords or "lon" not in elevation_da.coords:
-    raster_lat = np.linspace(coords["lat"].min(), coords["lat"].max(), elevation_da.shape[0])
-    raster_lon = np.linspace(coords["lon"].min(), coords["lon"].max(), elevation_da.shape[1])
-    elevation_da = elevation_da.assign_coords(
-        lat=("lat", raster_lat),
-        lon=("lon", raster_lon)
-    )
-
-if elevation_da.shape == (len(coords["lat"]), len(coords["lon"])):
-    elev_resampled = elevation_da.values
-else:
-    elev_resampled = elevation_da.interp(
-        lat=coords["lat"],
-        lon=coords["lon"]
-    ).values
-
-if elev_resampled.ndim == 2:
-    elev_resampled = elev_resampled[None, :, :]
-elev_resampled = np.repeat(elev_resampled, inputs_scaled.shape[0], axis=0)
-inputs_scaled = np.concatenate([inputs_scaled, elev_resampled[:, None, :, :]], axis=1)
-
-# Downscaling
 all_preds = []
 with torch.no_grad():
     for t in range(inputs_scaled.shape[0]):
@@ -109,7 +92,6 @@ with torch.no_grad():
         output = model_instance(input_tensor)
         all_preds.append(output.squeeze(0).cpu().numpy())
 all_preds = np.stack(all_preds)
-
 
 for i, var in enumerate(var_names):
     params = json.load(open(os.path.join(SCALING_DIR, scaling_param_files[var])))
