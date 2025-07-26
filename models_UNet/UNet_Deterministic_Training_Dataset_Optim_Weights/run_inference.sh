@@ -6,7 +6,7 @@
 #SBATCH --partition=cpu
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=64G
+#SBATCH --mem=256G
 
 mkdir -p logs/model_downscaling_logs
 module load python
