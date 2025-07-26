@@ -7,13 +7,9 @@ import json
 from UNet import UNet
 import rioxarray
 from skimage.transform import resize
-
-BASE_DIR = "/work/FAC/FGSE/IDYST/tbeucler/downscaling"
-EQM_DIR = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/BC_Model_Runs/EQM")
-SCALING_DIR = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset")
-MODEL_PATH = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Training_Dataset_Optim_Weights/training_model_huber_weights.pth")
-CONFIG_PATH = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Training_Dataset_Optim_Weights/config.yaml")
-ELEVATION_PATH = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/elevation.tif")
+from directories import (
+    EQM_DIR, SCALING_DIR, MODEL_PATH, CONFIG_PATH, ELEVATION_PATH
+)
 
 var_names = ["precip", "temp", "tmin", "tmax"]
 eqm_files = {
@@ -46,12 +42,11 @@ def descale_temp(x, mean, std):
     return x * std + mean
 
 with open(CONFIG_PATH, 'r') as f:
-    config = yaml.safe_load(f)
+    directories = yaml.safe_load(f)
 training_checkpoint = torch.load(MODEL_PATH, map_location=torch.device('cpu'))
 model_instance = UNet(in_channels=5, out_channels=4)
 model_instance.load_state_dict(training_checkpoint["model_state_dict"])
 model_instance.eval()
-print("Model loaded.")
 
 inputs_scaled = []
 coords = None
@@ -65,7 +60,6 @@ for var in var_names:
         arr_scaled = scale_precip(arr, params["min"], params["max"])
     else:
         arr_scaled = scale_temp(arr, params["mean"], params["std"])
-    print(f"{var} scaled shape: {arr_scaled.shape}, min: {np.nanmin(arr_scaled)}, max: {np.nanmax(arr_scaled)}, mean: {np.nanmean(arr_scaled)}")
     inputs_scaled.append(arr_scaled)
     if coords is None:
         coords = {
@@ -77,13 +71,11 @@ for var in var_names:
         eqm_lon = ds.lon.values
 
 inputs_scaled = np.stack(inputs_scaled, axis=1)
-print("inputs_scaled shape:", inputs_scaled.shape, "min:", np.nanmin(inputs_scaled), "max:", np.nanmax(inputs_scaled), "mean:", np.nanmean(inputs_scaled))
 
 elevation_da = rioxarray.open_rasterio(ELEVATION_PATH)
 if elevation_da.ndim == 3:
     elevation_da = elevation_da.isel(band=0)
 elev_array = elevation_da.values
-print("Original elev_array shape:", elev_array.shape, "min:", np.nanmin(elev_array), "max:", np.nanmax(elev_array), "mean:", np.nanmean(elev_array))
 if elev_array.shape == (len(eqm_lon), len(eqm_lat)):
     elev_array = elev_array.T
     print("Transposed elev_array shape:", elev_array.shape)
@@ -112,35 +104,30 @@ n_lat = len(lat_1d)
 n_lon = len(lon_1d)
 outputs_all = {var: np.empty((n_time, n_lat, n_lon), dtype=np.float32) for var in var_names}
 
-
-# After stacking inputs_scaled, NaN handling
-input_nan_mask = np.any(np.isnan(inputs_scaled), axis=1) 
+input_nan_mask = np.any(np.isnan(inputs_scaled), axis=1)
 inputs_scaled = np.nan_to_num(inputs_scaled, nan=0.0)
 
-with torch.no_grad():
-    for t in range(n_time):
-        input_t = inputs_scaled[t]
-        elev_t = elev_array[None, :, :]
-        input_t = np.concatenate([input_t, elev_t], axis=0)
-        print(f"Step {t}: input_t shape: {input_t.shape}, min: {np.nanmin(input_t)}, max: {np.nanmax(input_t)}, mean: {np.nanmean(input_t)}")
-        input_tensor = torch.tensor(input_t[None], dtype=torch.float32)
-        output = model_instance(input_tensor).cpu().numpy().squeeze(0)
-        print(f"Step {t}: output shape: {output.shape}, min: {np.nanmin(output)}, max: {np.nanmax(output)}, mean: {np.nanmean(output)}")
+for t in range(n_time):
+    input_t = inputs_scaled[t]
+    elev_t = elev_array[None, :, :]
+    input_t = np.concatenate([input_t, elev_t], axis=0)
+    print(f"Step {t}: input_t shape: {input_t.shape}, min: {np.nanmin(input_t)}, max: {np.nanmax(input_t)}, mean: {np.nanmean(input_t)}")
+    input_tensor = torch.tensor(input_t[None], dtype=torch.float32)
+    output = model_instance(input_tensor).cpu().detach().numpy()[0]
+    print(f"Step {t}: output shape: {output.shape}, min: {np.nanmin(output)}, max: {np.nanmax(output)}, mean: {np.nanmean(output)}")
 
-        for i, var in enumerate(var_names):
-            params = json.load(open(os.path.join(SCALING_DIR, scaling_param_files[var])))
-            if var == "precip":
-                arr_denorm = descale_precip(output[i], params["min"], params["max"])
-            else:
-                arr_denorm = descale_temp(output[i], params["mean"], params["std"])
-
-            arr_denorm[input_nan_mask[t]] = np.nan
-            print(f"Step {t}, var {var}: arr_denorm shape: {arr_denorm.shape}, min: {np.nanmin(arr_denorm)}, max: {np.nanmax(arr_denorm)}, mean: {np.nanmean(arr_denorm)}")
-            outputs_all[var][t] = arr_denorm
-        del input_t, elev_t, input_tensor, output, arr_denorm
+    for i, var in enumerate(var_names):
+        params = json.load(open(os.path.join(SCALING_DIR, scaling_param_files[var])))
+        if var == "precip":
+            arr_denorm = descale_precip(output[i], params["min"], params["max"])
+        else:
+            arr_denorm = descale_temp(output[i], params["mean"], params["std"])
+        arr_denorm[input_nan_mask[t]] = np.nan
+        print(f"Step {t}, var {var}: arr_denorm shape: {arr_denorm.shape}, min: {np.nanmin(arr_denorm)}, max: {np.nanmax(arr_denorm)}, mean: {np.nanmean(arr_denorm)}")
+        outputs_all[var][t] = arr_denorm
 
 for var in var_names:
-    print(f"Saving {var} to NetCDF: shape {outputs_all[var].shape}, min: {np.nanmin(outputs_all[var])}, max: {np.nanmax(outputs_all[var])}, mean: {np.nanmean(outputs_all[var])}")
+    print(f"Saving {var}: shape {outputs_all[var].shape}, min: {np.nanmin(outputs_all[var])}, max: {np.nanmax(outputs_all[var])}, mean: {np.nanmean(outputs_all[var])}")
     da = xr.DataArray(
         outputs_all[var],
         dims=("time", "lat", "lon"),
@@ -153,4 +140,3 @@ for var in var_names:
     )
     out_path = os.path.join(EQM_DIR, f"eqm_{var}_downscaled_r01.nc")
     da.to_netcdf(out_path, mode="w")
-    print(f"Saved full downscaled {var} to {out_path}")

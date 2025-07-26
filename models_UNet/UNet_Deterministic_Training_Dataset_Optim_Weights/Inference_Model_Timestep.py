@@ -7,13 +7,10 @@ import json
 from UNet import UNet
 import rioxarray
 from skimage.transform import resize
+from directories import (
+    EQM_DIR, SCALING_DIR, MODEL_PATH, CONFIG_PATH, ELEVATION_PATH
+)
 
-BASE_DIR = "/work/FAC/FGSE/IDYST/tbeucler/downscaling"
-EQM_DIR = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/BC_Model_Runs/EQM")
-SCALING_DIR = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset")
-MODEL_PATH = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Training_Dataset_Optim_Weights/training_model_huber_weights.pth")
-CONFIG_PATH = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Training_Dataset_Optim_Weights/config.yaml")
-ELEVATION_PATH = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/elevation.tif")
 
 var_names = ["precip", "temp", "tmin", "tmax"]
 eqm_files = {
@@ -122,7 +119,7 @@ elev_t = elev_array[None, :, :]
 input_t = np.concatenate([input_t, elev_t], axis=0)
 print(f"Step {t}: input_t shape: {input_t.shape}, min: {np.nanmin(input_t)}, max: {np.nanmax(input_t)}, mean: {np.nanmean(input_t)}")
 input_tensor = torch.tensor(input_t[None], dtype=torch.float32)
-output = model_instance(input_tensor).cpu().numpy().squeeze(0)
+output = model_instance(input_tensor).cpu().detach().numpy()[0]
 print(f"Step {t}: output shape: {output.shape}, min: {np.nanmin(output)}, max: {np.nanmax(output)}, mean: {np.nanmean(output)}")
 
 for i, var in enumerate(var_names):
