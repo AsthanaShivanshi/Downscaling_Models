@@ -8,6 +8,10 @@ import sys
 from UNet import UNet
 from Downscaling_Dataset_Prep import DownscalingDataset
 from torch.utils.data import DataLoader
+import sys
+from directories import (
+    EQM_DIR, ELEVATION_PATH
+)
 
 def descale_precip(x, min_val, max_val):
     return x * (max_val - min_val) + min_val
@@ -42,7 +46,7 @@ config_path = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/mo
 with open(config_path, 'r') as f:
     config = yaml.safe_load(f)
 
-elevation_path = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/elevation.tif")
+elevation_path = ELEVATION_PATH
 
 # Merge datasets for dataloader
 inputs_merged = xr.merge([precip_input, temp_input, tmin_input, tmax_input])
