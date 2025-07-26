@@ -51,6 +51,7 @@ training_checkpoint = torch.load(MODEL_PATH, map_location=torch.device('cpu'))
 model_instance = UNet(in_channels=5, out_channels=4)
 model_instance.load_state_dict(training_checkpoint["model_state_dict"])
 model_instance.eval()
+print("Model loaded.")
 
 inputs_scaled = []
 coords = None
@@ -58,11 +59,13 @@ for var in var_names:
     eqm_path = os.path.join(EQM_DIR, eqm_files[var])
     ds = xr.open_dataset(eqm_path)
     arr = ds[var].values if var in ds else ds[list(ds.data_vars)[0]].values
+    print(f"{var} input shape: {arr.shape}, min: {np.nanmin(arr)}, max: {np.nanmax(arr)}, mean: {np.nanmean(arr)}")
     params = json.load(open(os.path.join(SCALING_DIR, scaling_param_files[var])))
     if var == "precip":
         arr_scaled = scale_precip(arr, params["min"], params["max"])
     else:
         arr_scaled = scale_temp(arr, params["mean"], params["std"])
+    print(f"{var} scaled shape: {arr_scaled.shape}, min: {np.nanmin(arr_scaled)}, max: {np.nanmax(arr_scaled)}, mean: {np.nanmean(arr_scaled)}")
     inputs_scaled.append(arr_scaled)
     if coords is None:
         coords = {
@@ -73,15 +76,18 @@ for var in var_names:
         eqm_lat = ds.lat.values
         eqm_lon = ds.lon.values
 
-inputs_scaled = np.stack(inputs_scaled, axis=1) 
+inputs_scaled = np.stack(inputs_scaled, axis=1)
+print("inputs_scaled shape:", inputs_scaled.shape, "min:", np.nanmin(inputs_scaled), "max:", np.nanmax(inputs_scaled), "mean:", np.nanmean(inputs_scaled))
 
 elevation_da = rioxarray.open_rasterio(ELEVATION_PATH)
 if elevation_da.ndim == 3:
     elevation_da = elevation_da.isel(band=0)
 elev_array = elevation_da.values
+print("Original elev_array shape:", elev_array.shape, "min:", np.nanmin(elev_array), "max:", np.nanmax(elev_array), "mean:", np.nanmean(elev_array))
 if elev_array.shape == (len(eqm_lon), len(eqm_lat)):
     elev_array = elev_array.T
-target_shape = (len(eqm_lat), inputs_scaled.shape[3])  
+    print("Transposed elev_array shape:", elev_array.shape)
+target_shape = (len(eqm_lat), inputs_scaled.shape[3])
 if elev_array.shape != target_shape:
     elev_array = resize(
         elev_array,
@@ -90,7 +96,9 @@ if elev_array.shape != target_shape:
         preserve_range=True,
         anti_aliasing=True
     )
+    print("Resized elev_array shape:", elev_array.shape)
 elev_array = elev_array.astype(np.float32)
+print("Final elev_array stats: min:", np.nanmin(elev_array), "max:", np.nanmax(elev_array), "mean:", np.nanmean(elev_array))
 
 lat_1d = np.asarray(eqm_lat)
 lon_1d = np.asarray(eqm_lon)
@@ -109,8 +117,10 @@ with torch.no_grad():
         input_t = inputs_scaled[t]
         elev_t = elev_array[None, :, :]
         input_t = np.concatenate([input_t, elev_t], axis=0)
+        print(f"Step {t}: input_t shape: {input_t.shape}, min: {np.nanmin(input_t)}, max: {np.nanmax(input_t)}, mean: {np.nanmean(input_t)}")
         input_tensor = torch.tensor(input_t[None], dtype=torch.float32)
         output = model_instance(input_tensor).cpu().numpy().squeeze(0)
+        print(f"Step {t}: output shape: {output.shape}, min: {np.nanmin(output)}, max: {np.nanmax(output)}, mean: {np.nanmean(output)}")
 
         for i, var in enumerate(var_names):
             params = json.load(open(os.path.join(SCALING_DIR, scaling_param_files[var])))
@@ -118,11 +128,13 @@ with torch.no_grad():
                 arr_denorm = descale_precip(output[i], params["min"], params["max"])
             else:
                 arr_denorm = descale_temp(output[i], params["mean"], params["std"])
+            print(f"Step {t}, var {var}: arr_denorm shape: {arr_denorm.shape}, min: {np.nanmin(arr_denorm)}, max: {np.nanmax(arr_denorm)}, mean: {np.nanmean(arr_denorm)}")
             outputs_all[var][t] = arr_denorm
         del input_t, elev_t, input_tensor, output, arr_denorm
 
 # Writing all timesteps at once
 for var in var_names:
+    print(f"Saving {var} to NetCDF: shape {outputs_all[var].shape}, min: {np.nanmin(outputs_all[var])}, max: {np.nanmax(outputs_all[var])}, mean: {np.nanmean(outputs_all[var])}")
     da = xr.DataArray(
         outputs_all[var],
         dims=("time", "lat", "lon"),
