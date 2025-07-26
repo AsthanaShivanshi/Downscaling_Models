@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=Single_timestep_test
-#SBATCH --output=logs/model_downscaling_logs/single_timestep_%j.out
-#SBATCH --error=logs/model_downscaling_logs/single_timestep_%j.err
+#SBATCH --job-name=Model_Downscaling
+#SBATCH --output=logs/model_downscaling_logs/all_timesteps_%j.out
+#SBATCH --error=logs/model_downscaling_logs/all_timesteps_%j.err
 #SBATCH --time=08:00:00
 #SBATCH --partition=cpu
 #SBATCH --ntasks=1
@@ -13,6 +13,6 @@ module load python
 source environment.sh
 cd models_UNet/UNet_Deterministic_Training_Dataset_Optim_Weights
 
-python Inference_Model_Timestep.py
+python Inference_Model.py
 
 echo "Inference done, test loss printed"
