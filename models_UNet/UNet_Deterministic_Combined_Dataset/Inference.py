@@ -8,6 +8,10 @@ import sys
 from UNet import UNet
 from Downscaling_Dataset_Prep import DownscalingDataset
 from torch.utils.data import DataLoader
+import sys
+from directories import (BASE_DIR,
+    SCALING_DIR, MODEL_PATH, CONFIG_PATH, ELEVATION_PATH
+)
 
 def descale_precip(x, min_val, max_val):
     return x * (max_val - min_val) + min_val
@@ -15,13 +19,8 @@ def descale_precip(x, min_val, max_val):
 def descale_temp(x, mean, std):
     return x * std + mean
 
-os.environ["BASE_DIR"] = "/work/FAC/FGSE/IDYST/tbeucler/downscaling"
-BASE_DIR = os.environ["BASE_DIR"]
-
-sys.path.append(os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Combined_Dataset"))
-
 # Load model
-model_path = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Combined_Dataset/combined_model_huber_trial_weights.pth")
+model_path = MODEL_PATH
 training_checkpoint = torch.load(model_path, map_location=torch.device('cpu'))
 model_instance = UNet(in_channels=5, out_channels=4)
 model_instance.load_state_dict(training_checkpoint["model_state_dict"])
@@ -38,11 +37,11 @@ temp_target   = xr.open_dataset(os.path.join(BASE_DIR, "sasthana/Downscaling/Dow
 tmin_target   = xr.open_dataset(os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Combined_Chronological_Dataset/combined_tmin_target_test_chronological_scaled.nc"))
 tmax_target   = xr.open_dataset(os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Combined_Chronological_Dataset/combined_tmax_target_test_chronological_scaled.nc"))
 
-config_path = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Combined_Dataset/config.yaml")
+config_path = CONFIG_PATH
 with open(config_path, 'r') as f:
     config = yaml.safe_load(f)
 
-elevation_path = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/elevation.tif")
+elevation_path = ELEVATION_PATH
 
 # Merge datasets for dataloader
 inputs_merged = xr.merge([precip_input, temp_input, tmin_input, tmax_input])
@@ -62,7 +61,7 @@ with torch.no_grad():
 all_preds = np.stack(all_preds)
 
 # Load scaling params
-scaling_dir = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Combined_Chronological_Dataset")
+scaling_dir = SCALING_DIR
 rhiresd_params = json.load(open(os.path.join(scaling_dir, "combined_precip_scaling_params_chronological.json")))
 tabsd_params   = json.load(open(os.path.join(scaling_dir, "combined_temp_scaling_params_chronological.json")))
 tmind_params   = json.load(open(os.path.join(scaling_dir, "combined_tmin_scaling_params_chronological.json")))

@@ -46,4 +46,5 @@ __pycache__/
 Outputs/
 logs/
 models_UNet/config.py
-*/directories.py
+directories.py
+models_UNet/UNet_Deterministic_Training_Dataset_Optim_Weights/directories.py
