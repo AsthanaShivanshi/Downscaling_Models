@@ -44,3 +44,4 @@ logs/
 *.pyc
 __pycache__/
 Outputs/
+logs/

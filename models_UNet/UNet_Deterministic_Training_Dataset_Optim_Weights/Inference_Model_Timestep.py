@@ -110,47 +110,43 @@ if lon_1d.ndim > 1:
 n_time = inputs_scaled.shape[0]
 n_lat = len(lat_1d)
 n_lon = len(lon_1d)
-outputs_all = {var: np.empty((n_time, n_lat, n_lon), dtype=np.float32) for var in var_names}
+outputs_all = {var: np.empty((1, n_lat, n_lon), dtype=np.float32) for var in var_names}
 
-
-# After stacking inputs_scaled, NaN handling
-input_nan_mask = np.any(np.isnan(inputs_scaled), axis=1) 
+input_nan_mask = np.any(np.isnan(inputs_scaled), axis=1)
 inputs_scaled = np.nan_to_num(inputs_scaled, nan=0.0)
 
-with torch.no_grad():
-    for t in range(n_time):
-        input_t = inputs_scaled[t]
-        elev_t = elev_array[None, :, :]
-        input_t = np.concatenate([input_t, elev_t], axis=0)
-        print(f"Step {t}: input_t shape: {input_t.shape}, min: {np.nanmin(input_t)}, max: {np.nanmax(input_t)}, mean: {np.nanmean(input_t)}")
-        input_tensor = torch.tensor(input_t[None], dtype=torch.float32)
-        output = model_instance(input_tensor).cpu().numpy().squeeze(0)
-        print(f"Step {t}: output shape: {output.shape}, min: {np.nanmin(output)}, max: {np.nanmax(output)}, mean: {np.nanmean(output)}")
+#Single timstep (debugging script)
+t = 50
+input_t = inputs_scaled[t]
+elev_t = elev_array[None, :, :]
+input_t = np.concatenate([input_t, elev_t], axis=0)
+print(f"Step {t}: input_t shape: {input_t.shape}, min: {np.nanmin(input_t)}, max: {np.nanmax(input_t)}, mean: {np.nanmean(input_t)}")
+input_tensor = torch.tensor(input_t[None], dtype=torch.float32)
+output = model_instance(input_tensor).cpu().numpy().squeeze(0)
+print(f"Step {t}: output shape: {output.shape}, min: {np.nanmin(output)}, max: {np.nanmax(output)}, mean: {np.nanmean(output)}")
 
-        for i, var in enumerate(var_names):
-            params = json.load(open(os.path.join(SCALING_DIR, scaling_param_files[var])))
-            if var == "precip":
-                arr_denorm = descale_precip(output[i], params["min"], params["max"])
-            else:
-                arr_denorm = descale_temp(output[i], params["mean"], params["std"])
-
-            arr_denorm[input_nan_mask[t]] = np.nan
-            print(f"Step {t}, var {var}: arr_denorm shape: {arr_denorm.shape}, min: {np.nanmin(arr_denorm)}, max: {np.nanmax(arr_denorm)}, mean: {np.nanmean(arr_denorm)}")
-            outputs_all[var][t] = arr_denorm
-        del input_t, elev_t, input_tensor, output, arr_denorm
+for i, var in enumerate(var_names):
+    params = json.load(open(os.path.join(SCALING_DIR, scaling_param_files[var])))
+    if var == "precip":
+        arr_denorm = descale_precip(output[i], params["min"], params["max"])
+    else:
+        arr_denorm = descale_temp(output[i], params["mean"], params["std"])
+    arr_denorm[input_nan_mask[t]] = np.nan
+    print(f"Step {t}, var {var}: arr_denorm shape: {arr_denorm.shape}, min: {np.nanmin(arr_denorm)}, max: {np.nanmax(arr_denorm)}, mean: {np.nanmean(arr_denorm)}")
+    outputs_all[var][0] = arr_denorm
 
 for var in var_names:
-    print(f"Saving {var} to NetCDF: shape {outputs_all[var].shape}, min: {np.nanmin(outputs_all[var])}, max: {np.nanmax(outputs_all[var])}, mean: {np.nanmean(outputs_all[var])}")
+    print(f"Saving {var} timestep {t} to NetCDF: shape {outputs_all[var].shape}, min: {np.nanmin(outputs_all[var])}, max: {np.nanmax(outputs_all[var])}, mean: {np.nanmean(outputs_all[var])}")
     da = xr.DataArray(
         outputs_all[var],
         dims=("time", "lat", "lon"),
         coords={
-            "time": coords["time"],
+            "time": [coords["time"][t]],
             "lat": lat_1d,
             "lon": lon_1d
         },
         name=var
     )
-    out_path = os.path.join(EQM_DIR, f"eqm_{var}_downscaled_r01.nc")
+    out_path = os.path.join(EQM_DIR, f"eqm_{var}_downscaled_r01_t{t}.nc")
     da.to_netcdf(out_path, mode="w")
-    print(f"Saved full downscaled {var} to {out_path}")
+    print(f"Saved downscaled {var}  timestep {t} to {out_path}")
