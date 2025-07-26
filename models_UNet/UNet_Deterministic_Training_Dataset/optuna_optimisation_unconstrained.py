@@ -8,12 +8,12 @@ import numpy as np
 import pandas as pd
 import json
 
-MAX_VALID_TRIALS = 30
+MAX_VALID_TRIALS = 40
 
 def objective(trial):
     wandb.init(
         project="UNet_Deterministic",
-        name=f"UNCONSTRAINED_trial_{trial.number}",
+        name=f"UNCONSTRAINED_trial_third_iter_{trial.number}",
         config={},
         reinit=True
     )
