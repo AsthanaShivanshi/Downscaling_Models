@@ -138,5 +138,10 @@ for var in var_names:
         },
         name=var
     )
+#lat lon have to be added as vars for cdo compatibility for downstream tasks
+    ds = da.to_dataset()
+    lon2d, lat2d = np.meshgrid(lon_1d, lat_1d)
+    ds["lat2d"] = (("lat", "lon"), lat2d)
+    ds["lon2d"] = (("lat", "lon"), lon2d)
     out_path = os.path.join(EQM_DIR, f"combined_model_eqm_{var}_downscaled_r01.nc")
-    da.to_netcdf(out_path, mode="w")
+    ds.to_netcdf(out_path, mode="w")
