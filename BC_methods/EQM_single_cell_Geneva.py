@@ -9,9 +9,9 @@ import cartopy.feature as cfeature
 model_path = f"{config.SCRATCH_DIR}/tmin_r01_HR_masked.nc"
 obs_path = f"{config.SCRATCH_DIR}/TminD_1971_2023.nc"
 output_path = f"{config.BC_DIR}/qm_tmin_r01_singlecell_output.nc"
-plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_tmin_r01_zurich.png"
-cdf_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_cdf_tmin_r01_zurich.png"
-map_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_selected_gridcell_map_tmin_r01_zurich.png"
+plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_tmin_r01_geneva.png"
+cdf_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_cdf_tmin_r01_geneva.png"
+map_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_selected_gridcell_map_tmin_r01_geneva.png"
 
 print("Loading data")
 model_output = xr.open_dataset(model_path)["tmin"]
@@ -26,28 +26,28 @@ print("model_output shape:", model_output.shape)
 print("lat_vals shape:", lat_vals.shape)
 print("lon_vals shape:", lon_vals.shape)
 
-target_lat = 47.3769
-target_lon = 8.5417
+target_lat = 46.2044
+target_lon = 6.1432
 dist = np.sqrt((lat_vals - target_lat)**2 + (lon_vals - target_lon)**2)
-i_zurich, j_zurich = np.unravel_index(np.argmin(dist), dist.shape)
-print(f"Closest grid cell to Zurich: i={i_zurich}, j={j_zurich}")
-print(f"Location: lat={lat_vals[i_zurich, j_zurich]}, lon={lon_vals[i_zurich, j_zurich]}")
+i_geneva, j_geneva = np.unravel_index(np.argmin(dist), dist.shape)
+print(f"Closest grid cell to Geneva: i={i_geneva}, j={j_geneva}")
+print(f"Location: lat={lat_vals[i_geneva, j_geneva]}, lon={lon_vals[i_geneva, j_geneva]}")
 
-obs_valid = calib_obs[:, i_zurich, j_zurich].values[~np.isnan(calib_obs[:, i_zurich, j_zurich].values)]
-mod_valid = calib_mod[:, i_zurich, j_zurich].values[~np.isnan(calib_mod[:, i_zurich, j_zurich].values)]
+obs_valid = calib_obs[:, i_geneva, j_geneva].values[~np.isnan(calib_obs[:, i_geneva, j_geneva].values)]
+mod_valid = calib_mod[:, i_geneva, j_geneva].values[~np.isnan(calib_mod[:, i_geneva, j_geneva].values)]
 if obs_valid.size == 0 or mod_valid.size == 0:
-    print("No valid data for Zurich grid cell. Exiting.")
+    print("No valid data for Geneva grid cell. Exiting.")
     exit(1)
 
-print("Fitting EQM for Zurich")
+print("Fitting EQM for Geneva")
 eqm = QM()
 eqm.fit(mod_valid.reshape(-1, 1), obs_valid.reshape(-1, 1))
 
-full_mod_series = model_output[:, i_zurich, j_zurich].values.reshape(-1, 1)
+full_mod_series = model_output[:, i_geneva, j_geneva].values.reshape(-1, 1)
 qm_series = eqm.predict(full_mod_series).flatten()
 
 qm_data = np.full(model_output.shape, np.nan, dtype=np.float32)
-qm_data[:, i_zurich, j_zurich] = qm_series.astype(np.float32)
+qm_data[:, i_geneva, j_geneva] = qm_series.astype(np.float32)
 
 qm_ds = xr.Dataset(
     {"tmin": (model_output.dims, qm_data)},
@@ -61,15 +61,15 @@ quantiles = np.linspace(0, 1, 1001)
 plot_obs_q = np.quantile(obs_valid, quantiles)
 plot_mod_q = np.quantile(mod_valid, quantiles)
 correction = plot_mod_q - plot_obs_q
-lat_val = lat_vals[i_zurich, j_zurich]
-lon_val = lon_vals[i_zurich, j_zurich]
+lat_val = lat_vals[i_geneva, j_geneva]
+lon_val = lon_vals[i_geneva, j_geneva]
 
 plt.figure(figsize=(7, 5))
 plt.plot(quantiles, correction, label="Correction (model - obs)")
 plt.axhline(0, color="gray", linestyle="--", label="No correction")
 plt.xlabel("Quantile")
 plt.ylabel("Correction (Model - Observation) in degrees C")
-plt.title(f"Correction Function for Daily Min Temp for \nZurich (lat={lat_val:.3f}, lon={lon_val:.3f})")
+plt.title(f"Correction Function for Daily Min Temp for \nGeneva (lat={lat_val:.3f}, lon={lon_val:.3f})")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
@@ -103,11 +103,11 @@ background = np.nanmean(model_output.values, axis=0)
 mesh = ax.pcolormesh(lon_vals, lat_vals, background, cmap="coolwarm", shading="auto", transform=ccrs.PlateCarree())
 plt.colorbar(mesh, ax=ax, orientation='vertical', label="degrees C")
 
-ax.plot(lon_val, lat_val, marker="*", color="black", markersize=18, markeredgewidth=2, label="Zurich grid cell", transform=ccrs.PlateCarree())
-plt.title("Zurich Grid Cell on Switzerland Map", fontsize=15)
+ax.plot(lon_val, lat_val, marker="*", color="black", markersize=18, markeredgewidth=2, label="Geneva grid cell", transform=ccrs.PlateCarree())
+plt.title("Geneva Grid Cell on Switzerland Map", fontsize=15)
 plt.legend(loc="lower left")
 plt.tight_layout()
 plt.savefig(map_plot_path, dpi=1000)
-print(f"Map plot with Zurich grid cell saved to {map_plot_path}")
+print(f"Map plot with Geneva grid cell saved to {map_plot_path}")
 
-print("EQM Zurich validation completed successfully.")
+print("EQM Geneva validation completed successfully.")
