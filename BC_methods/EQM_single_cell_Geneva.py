@@ -50,7 +50,7 @@ qm_data = np.full(model_output.shape, np.nan, dtype=np.float32)
 qm_data[:, i_geneva, j_geneva] = qm_series.astype(np.float32)
 
 qm_ds = xr.Dataset(
-    {"tmin": (model_output.dims, qm_data)},
+    {"precip": (model_output.dims, qm_data)},
     coords=model_output.coords
 )
 qm_ds.to_netcdf(output_path)
@@ -68,8 +68,8 @@ plt.figure(figsize=(7, 5))
 plt.plot(quantiles, correction, label="Correction (model - obs)")
 plt.axhline(0, color="gray", linestyle="--", label="No correction")
 plt.xlabel("Quantile")
-plt.ylabel("Correction (Model - Observation) in degrees C")
-plt.title(f"Correction Function for Daily Min Temp for \nGeneva (lat={lat_val:.3f}, lon={lon_val:.3f})")
+plt.ylabel("Correction (Model - Observation) in mm/day")
+plt.title(f"Correction Function for Daily Accumulated Precip for \nGeneva (lat={lat_val:.3f}, lon={lon_val:.3f})")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
@@ -86,7 +86,7 @@ plt.plot(obs_sorted, obs_cdf, label="Obs empirical CDF")
 plt.plot(mod_sorted, mod_cdf, label="Model empirical CDF")
 plt.xlabel("Value")
 plt.ylabel("Cumulative Probability")
-plt.title(f"Empirical CDFs for Daily Min Temp for \nZurich (lat={lat_val:.3f}, lon={lon_val:.3f})")
+plt.title(f"Empirical CDFs for Daily Accumulated Precip for \nGeneva (lat={lat_val:.3f}, lon={lon_val:.3f})")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
