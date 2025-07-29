@@ -6,16 +6,16 @@ import config
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 
-model_path = f"{config.SCRATCH_DIR}/tmin_r01_HR_masked.nc"
-obs_path = f"{config.SCRATCH_DIR}/TminD_1971_2023.nc"
-output_path = f"{config.BC_DIR}/qm_tmin_r01_singlecell_output.nc"
-plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_tmin_r01_geneva.png"
-cdf_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_cdf_tmin_r01_geneva.png"
-map_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_selected_gridcell_map_tmin_r01_geneva.png"
+model_path = f"{config.SCRATCH_DIR}/precip_r01_HR_masked.nc"
+obs_path = f"{config.SCRATCH_DIR}/RhiresD_1971_2023.nc"
+output_path = f"{config.BC_DIR}/qm_precip_r01_singlecell_output.nc"
+plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_precip_r01_geneva.png"
+cdf_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_cdf_precip_r01_geneva.png"
+map_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_selected_gridcell_map_precip_r01_geneva.png"
 
 print("Loading data")
-model_output = xr.open_dataset(model_path)["tmin"]
-obs_output = xr.open_dataset(obs_path)["TminD"]
+model_output = xr.open_dataset(model_path)["precip"]
+obs_output = xr.open_dataset(obs_path)["RhiresD"]
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
 calib_mod = model_output.sel(time=slice("1981-01-01", "2010-12-31"))
 
