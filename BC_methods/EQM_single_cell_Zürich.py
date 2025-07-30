@@ -3,8 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from SBCK import QM
 import config
-import cartopy.crs as ccrs
-import cartopy.feature as cfeature
 
 model_path = f"{config.SCRATCH_DIR}/precip_r01_HR_masked.nc"
 obs_path = f"{config.SCRATCH_DIR}/RhiresD_1971_2023.nc"
@@ -71,15 +69,10 @@ obs_tail = np.quantile(obs_valid, quantiles[upper_tail_mask])
 mod_tail = np.quantile(mod_valid, quantiles[upper_tail_mask])
 correction_tail = mod_tail - obs_tail
 
-plt.plot(quantiles[upper_tail_mask], correction_tail, color="red", label="Upper tail correction (95–100th pct)")
-
-plt.legend()
-plt.savefig(plot_path, dpi=1000)
-print(f"Correction function plot (with upper tail) saved to {plot_path}")
-
 plt.figure(figsize=(7, 5))
-plt.plot(quantiles, correction, label="Correction (model - obs)")
-plt.axhline(0, color="gray", linestyle="--", label="No correction") #No correction line
+plt.plot(quantiles, correction, label="Correction (model - obs) original", color="blue")
+plt.plot(quantiles[upper_tail_mask], correction_tail, color="red", label="Correction function with murdered upper tail", linestyle="--")
+plt.axhline(0, color="gray", linestyle="--", label="No correction")
 plt.xlabel("Quantile")
 plt.ylabel("Correction (Model - Observation) in mm/day")
 plt.title(f"Correction Function for Daily Accumulated Precip for \nZürich (lat={lat_val:.3f}, lon={lon_val:.3f})")
@@ -99,7 +92,7 @@ plt.plot(obs_sorted, obs_cdf, label="Obs empirical CDF")
 plt.plot(mod_sorted, mod_cdf, label="Model empirical CDF")
 plt.xlabel("Value")
 plt.ylabel("Cumulative Probability")
-plt.title(f"Empirical CDFs for Daily Accumulated Precip for \nGeneva (lat={lat_val:.3f}, lon={lon_val:.3f})")
+plt.title(f"Empirical CDFs for Daily Accumulated Precip for \nZürich (lat={lat_val:.3f}, lon={lon_val:.3f})")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
