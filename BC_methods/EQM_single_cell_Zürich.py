@@ -62,16 +62,14 @@ correction = plot_mod_q - plot_obs_q
 lat_val = lat_vals[i_zurich, j_zurich]
 lon_val = lon_vals[i_zurich, j_zurich]
 
-#Calibrated correction function
-
-upper_tail_mask= (quantiles >= 0.95)
-obs_tail = np.quantile(obs_valid, quantiles[upper_tail_mask])
-mod_tail = np.quantile(mod_valid, quantiles[upper_tail_mask])
-correction_tail = mod_tail - obs_tail
+# Setting correction for quantiles >= 0.95 to the value at 0.95
+murdered_correction = correction.copy()
+tail_start_idx = np.where(quantiles >= 0.95)[0][0]
+murdered_correction[tail_start_idx:] = correction[tail_start_idx]
 
 plt.figure(figsize=(7, 5))
-plt.plot(quantiles, correction, label="Correction (model - obs) original", color="blue")
-plt.plot(quantiles[upper_tail_mask], correction_tail, color="red", label="Correction function with murdered upper tail", linestyle="--")
+plt.plot(quantiles, correction, label="Original correction", color="blue")
+plt.plot(quantiles, murdered_correction, color="red", linestyle="--", label="Correction with murdered tail")
 plt.axhline(0, color="gray", linestyle="--", label="No correction")
 plt.xlabel("Quantile")
 plt.ylabel("Correction (Model - Observation) in mm/day")
@@ -81,6 +79,7 @@ plt.grid(True)
 plt.tight_layout()
 plt.savefig(plot_path, dpi=1000)
 print(f"Correction function plot saved to {plot_path}")
+
 
 # ECDF
 plt.figure(figsize=(7, 5))
