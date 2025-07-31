@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import config
 import pandas as pd
+from SBCK import QM
 
 model_path = f"{config.SCRATCH_DIR}/temp_r01_HR_masked.nc"
 obs_path = f"{config.SCRATCH_DIR}/TabsD_1971_2023.nc"
@@ -28,14 +29,15 @@ print(f"Location: lat={lat_vals[i_zurich, j_zurich]}, lon={lon_vals[i_zurich, j_
 
 calib_times = pd.to_datetime(calib_mod['time'].values)
 model_times = pd.to_datetime(model_output['time'].values)
+model_doys = model_times.dayofyear
 
 qm_series = np.full(model_output.shape[0], np.nan, dtype=np.float32)
 
-quantiles = np.linspace(0.01, 0.99, 99)
-correction_functions = {}
+correction_functions={}
 
-for doy in range(1, 367): 
+for doy in range(1, 367):  # 1 to 366
     calib_doys = calib_times.dayofyear
+    # 91-day window centered on doy
     window_mask = ((calib_doys >= doy - 45) & (calib_doys <= doy + 45)) | \
                   ((doy - 45 < 1) & (calib_doys >= 365 + (doy - 45))) | \
                   ((doy + 45 > 366) & (calib_doys <= (doy + 45) - 366))
@@ -45,33 +47,24 @@ for doy in range(1, 367):
     mod_window = mod_window[~np.isnan(mod_window)]
     if obs_window.size == 0 or mod_window.size == 0:
         continue
+
+    # EQM fit
+    eqm = QM()
+    eqm.fit(mod_window.reshape(-1, 1), obs_window.reshape(-1, 1))
+
+    # Corr function for each doy stored in seoparate arr
+    quantiles = np.linspace(0.01, 0.99, 99)
     obs_q = np.quantile(obs_window, quantiles)
     mod_q = np.quantile(mod_window, quantiles)
     correction = mod_q - obs_q
-    extended_quantiles = np.concatenate([[0.0], quantiles, [1.0]])
-    extended_correction = np.concatenate(([correction[0]], correction, [correction[-1]]))
-    correction_functions[doy] = (extended_quantiles, extended_correction)
+    ext_q = np.concatenate([[0.0], quantiles, [1.0]])
+    ext_corr = np.concatenate(([correction[0]], correction, [correction[-1]]))
+    correction_functions[doy] = (ext_q, ext_corr)
 
-# Apply corr fx for each model time step
-model_doys = model_times.dayofyear
-for idx in range(model_output.shape[0]):
-    doy = model_doys[idx]
-    value = model_output[idx, i_zurich, j_zurich]
-    if doy in correction_functions:
-        ext_q, ext_corr = correction_functions[doy]
-        mod_window = calib_mod[:, i_zurich, j_zurich].values
-        mod_window = mod_window[~np.isnan(mod_window)]
-        pct = np.searchsorted(np.sort(mod_window), value) / len(mod_window)
-        # Flat extrapolation
-        if pct <= ext_q[0]:
-            corr = ext_corr[0]
-        elif pct >= ext_q[-1]:
-            corr = ext_corr[-1]
-        else:
-            corr = np.interp(pct, ext_q, ext_corr)
-        qm_series[idx] = value - corr
-    else:
-        qm_series[idx] = value
+    indices = np.where(model_doys == doy)[0]
+    for idx in indices:
+        value = model_output[idx, i_zurich, j_zurich]
+        qm_series[idx] = eqm.predict(np.array([[value]])).flatten()[0]
 
 qm_data = np.full(model_output.shape, np.nan, dtype=np.float32)
 qm_data[:, i_zurich, j_zurich] = qm_series.astype(np.float32)
@@ -99,3 +92,5 @@ if sample_doy in correction_functions:
     plt.tight_layout()
     plt.savefig(plot_path, dpi=1000)
     print(f"Correction function plot for DOY={sample_doy} saved to {plot_path}")
+else:
+    print(f"No correction function found for DOY={sample_doy}")
