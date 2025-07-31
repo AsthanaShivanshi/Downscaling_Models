@@ -55,6 +55,15 @@ for i in range(nlat):
             eqm = QM()
             eqm.fit(mod_window.reshape(-1, 1), obs_window.reshape(-1, 1))
 
+            quantiles = np.linspace(0.01, 0.99, 99)
+            obs_q = np.quantile(obs_window, quantiles)
+            mod_q = np.quantile(mod_window, quantiles)
+            # Set 0th and 100th percentiles to 1st and 99th
+            obs_q = np.concatenate([[obs_q[0]], obs_q, [obs_q[-1]]])
+            mod_q = np.concatenate([[mod_q[0]], mod_q, [mod_q[-1]]])
+            correction = mod_q - obs_q
+            ext_q = np.linspace(0, 1, 101)
+
             indices = np.where(model_doys == doy)[0]
             for idx in indices:
                 value = model_output[idx, i, j]
