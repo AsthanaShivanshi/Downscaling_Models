@@ -52,7 +52,7 @@ for doy in range(1, 367):  # 1 to 366
     eqm = QM()
     eqm.fit(mod_window.reshape(-1, 1), obs_window.reshape(-1, 1))
 
-    # Corr function for each doy stored in seoparate arr
+    # Corr fx stored in separate arr for each doy
     quantiles = np.linspace(0.01, 0.99, 99)
     obs_q = np.quantile(obs_window, quantiles)
     mod_q = np.quantile(mod_window, quantiles)
