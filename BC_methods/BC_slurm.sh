@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=EQM_Zurich_SBCK
+#SBATCH --job-name=EQM_Zurich_Manual
 #SBATCH --output=logs/bc/EQM_zurich_output-%j.txt
 #SBATCH --error=logs/bc/EQM_zurich_job_error-%j.txt
 #SBATCH --ntasks=1
