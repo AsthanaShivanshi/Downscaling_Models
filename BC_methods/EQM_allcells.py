@@ -13,7 +13,6 @@ model_path = f"{config.SCRATCH_DIR}/temp_r01_HR_masked.nc"
 obs_path = f"{config.SCRATCH_DIR}/TabsD_1971_2023.nc"
 output_path = f"{config.BIAS_CORRECTED_DIR}/EQM/eqm_temp_r01.nc"
 
-print("Loading data")
 model_output = xr.open_dataset(model_path)["temp"]
 obs_output = xr.open_dataset(obs_path)["TabsD"]
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
@@ -66,7 +65,7 @@ for i in range(nlat):
         qm_data[:, i, j] = cell_series
 
 qm_ds = xr.Dataset(
-    {"tmax": (model_output.dims, qm_data)},
+    {"temp": (model_output.dims, qm_data)},
     coords=model_output.coords
 )
 qm_ds.to_netcdf(output_path)
