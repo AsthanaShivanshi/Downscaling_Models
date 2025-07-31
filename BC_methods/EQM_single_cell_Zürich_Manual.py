@@ -4,14 +4,14 @@ import matplotlib.pyplot as plt
 from SBCK import QM
 import config
 
-model_path = f"{config.SCRATCH_DIR}/temp_r01_HR_masked.nc"
-obs_path = f"{config.SCRATCH_DIR}/TabsD_1971_2023.nc"
-output_path = f"{config.BC_DIR}/qm_temp_r01_singlecell_output.nc"
-plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_temp_r01_zurich_window.png"
+model_path = f"{config.SCRATCH_DIR}/tmax_r01_HR_masked.nc"
+obs_path = f"{config.SCRATCH_DIR}/TmaxD_1971_2023.nc"
+output_path = f"{config.BC_DIR}/qm_tmax_r01_singlecell_output.nc"
+plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_tmax_r01_zurich_window.png"
 
 print("Loading data")
-model_output = xr.open_dataset(model_path)["temp"]
-obs_output = xr.open_dataset(obs_path)["TabsD"]
+model_output = xr.open_dataset(model_path)["tmax"]
+obs_output = xr.open_dataset(obs_path)["TmaxD"]
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
 calib_mod = model_output.sel(time=slice("1981-01-01", "2010-12-31"))
 
@@ -66,7 +66,7 @@ qm_data = np.full(model_output.shape, np.nan, dtype=np.float32)
 qm_data[:, i_zurich, j_zurich] = qm_series.astype(np.float32)
 
 qm_ds = xr.Dataset(
-    {"temp": (model_output.dims, qm_data)},
+    {"tmax": (model_output.dims, qm_data)},
     coords=model_output.coords
 )
 qm_ds.to_netcdf(output_path)
