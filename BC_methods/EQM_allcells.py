@@ -40,10 +40,9 @@ for i in range(nlat):
         if obs_cell.size == 0 or mod_cell.size == 0:
             continue
 
-        # Prepare output for this cell
         cell_series = np.full(ntime, np.nan, dtype=np.float32)
 
-        # Compute correction function for each DOY
+        # Corr fx
         for doy in range(1, 367):
             calib_doys = calib_times.dayofyear
             window_mask = ((calib_doys >= doy - 45) & (calib_doys <= doy + 45)) | \
