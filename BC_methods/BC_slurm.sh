@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=EQM_Geneva
+#SBATCH --job-name=EQM_Zurich_SBCK
 #SBATCH --output=logs/bc/EQM_geneva_output-%j.txt
 #SBATCH --error=logs/bc/EQM_geneva_job_error-%j.txt
 #SBATCH --ntasks=1
@@ -17,6 +17,6 @@ export NUMEXPR_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 cd BC_methods
 
-echo "EQM for Geneva started"
-python EQM_single_cell_Geneva.py --n_jobs $SLURM_CPUS_PER_TASK
-echo "EQM for Geneva finished"
+echo "EQM for Zurich started"
+python EQM_single_cell_Zürich_SBCK.py --n_jobs $SLURM_CPUS_PER_TASK
+echo "EQM for Zurich finished using SBCK"
