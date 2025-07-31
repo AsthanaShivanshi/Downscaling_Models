@@ -3,13 +3,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from SBCK import QM
 import config
+import pandas as pd
 
 model_path = f"{config.SCRATCH_DIR}/temp_r01_HR_masked.nc"
 obs_path = f"{config.SCRATCH_DIR}/TabsD_1971_2023.nc"
 output_path = f"{config.BC_DIR}/qm_temp_r01_singlecell_output.nc"
-plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_temp_r01_geneva.png"
-cdf_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_cdf_temp_r01_geneva.png"
-map_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_selected_gridcell_map_temp_r01_geneva.png"
+plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_temp_r01_zurich.png"
+cdf_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_cdf_temp_r01_zurich.png"
+map_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_selected_gridcell_map_temp_r01_zurich.png"
 
 print("Loading data")
 model_output = xr.open_dataset(model_path)["temp"]
@@ -56,40 +57,27 @@ qm_ds = xr.Dataset(
 qm_ds.to_netcdf(output_path)
 print(f"Single-cell output saved to {output_path}")
 
-# Correction fx with quantiles : (model - obs)
-quantiles = np.linspace(0, 1, 99) # 99 quantiles from 0 to 1
+# Correction fx with quantiles
+quantiles = np.linspace(0.01, 0.99, 99) # 99 quantiles from 1 to 99th percentiles
 plot_obs_q = np.quantile(obs_valid, quantiles)
 plot_mod_q = np.quantile(mod_valid, quantiles)
 correction = plot_mod_q - plot_obs_q
 lat_val = lat_vals[i_zurich, j_zurich]
 lon_val = lon_vals[i_zurich, j_zurich]
 
+#Extended correction 
+extended_quantiles= np.concatenate([[0.0],quantiles,[1.0]])
+extended_correction= np.concatenate(([correction[0]],correction,[correction[-1]]))
+
+
 plt.figure(figsize=(7, 5))
-plt.plot(quantiles, correction, label="correction function", color="blue")
+plt.plot(extended_quantiles, extended_correction, label="correction function", color="blue")
 plt.axhline(0, color="gray", linestyle="--", label="No correction")
 plt.xlabel("Quantile")
-plt.ylabel("Correction (Model - Observation) in °C")
+plt.ylabel("Correction (Model - Observation) in degrees C")
 plt.title(f"Correction Function for Daily Average Temperature for \nZürich (lat={lat_val:.3f}, lon={lon_val:.3f})")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.savefig(plot_path, dpi=1000)
 print(f"Correction function plot saved to {plot_path}")
-
-
-# ECDF
-plt.figure(figsize=(7, 5))
-obs_sorted = np.sort(obs_valid)
-mod_sorted = np.sort(mod_valid)
-obs_cdf = np.arange(1, len(obs_sorted)+1) / len(obs_sorted)
-mod_cdf = np.arange(1, len(mod_sorted)+1) / len(mod_sorted)
-plt.plot(obs_sorted, obs_cdf, label="Obs empirical CDF")
-plt.plot(mod_sorted, mod_cdf, label="Model empirical CDF")
-plt.xlabel("Value")
-plt.ylabel("Cumulative Probability")
-plt.title(f"Empirical CDFs for Daily Max Temperature for \nZürich (lat={lat_val:.3f}, lon={lon_val:.3f})")
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
-plt.savefig(cdf_plot_path, dpi=1000)
-print(f"CDF plot saved to {cdf_plot_path}")
