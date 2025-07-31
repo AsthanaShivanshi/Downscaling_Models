@@ -14,13 +14,20 @@ print("Loading data")
 model_output = xr.open_dataset(model_path)["temp"]
 obs_output = xr.open_dataset(obs_path)["TabsD"]
 
-# Padding for calibration
-buffer_start = pd.to_datetime("1981-01-01") - pd.Timedelta(days=45)
-buffer_end = pd.to_datetime("2010-12-31") + pd.Timedelta(days=45)
-calib_obs_ext = obs_output.sel(time=slice(buffer_start, buffer_end))
-calib_mod_ext = model_output.sel(time=slice(buffer_start, buffer_end))
+model_output['time'] = pd.to_datetime(model_output['time'].values)
+obs_output['time'] = pd.to_datetime(obs_output['time'].values)
 
-# Aligning time
+calib_start = pd.to_datetime("1981-01-01")
+calib_end = pd.to_datetime("2010-12-31")
+buffer_days = 45
+
+# Avail buffer around calibration 
+actual_start = max(model_output['time'].values[0], obs_output['time'].values[0], calib_start - pd.Timedelta(days=buffer_days))
+actual_end = min(model_output['time'].values[-1], obs_output['time'].values[-1], calib_end + pd.Timedelta(days=buffer_days))
+
+calib_obs_ext = obs_output.sel(time=slice(actual_start, actual_end))
+calib_mod_ext = model_output.sel(time=slice(actual_start, actual_end))
+
 common_times = np.intersect1d(calib_obs_ext['time'].values, calib_mod_ext['time'].values)
 calib_obs_ext = calib_obs_ext.sel(time=common_times)
 calib_mod_ext = calib_mod_ext.sel(time=common_times)
@@ -42,17 +49,15 @@ print(f"Location: lat={lat_vals[i_zurich, j_zurich]}, lon={lon_vals[i_zurich, j_
 
 model_times = pd.to_datetime(model_output['time'].values)
 model_doys = model_times.dayofyear
-valid_mask = (model_times >= "1981-01-01") & (model_times <= "2010-12-31")
+valid_mask = (model_times >= calib_start) & (model_times <= calib_end)
 qm_series = np.full(model_output.shape[0], np.nan, dtype=np.float32)
 correction_functions = {}
 
-for doy in range(1, 367):  # 1 to 366
+for doy in range(1, 367):  # covering leap cases
     calib_doys_ext = calib_times_ext.dayofyear
+    # 91-day window centered on doy
     window_doys = ((calib_doys_ext - doy + 366) % 366)
     window_mask = (window_doys <= 45) | (window_doys >= (366 - 45))
-    if calib_obs_ext.shape[0] != window_mask.shape[0]:
-        print(f"Warning: window_mask shape {window_mask.shape} does not match time axis {calib_obs_ext.shape[0]}")
-        continue
     obs_window = calib_obs_ext[:, i_zurich, j_zurich].values[window_mask]
     mod_window = calib_mod_ext[:, i_zurich, j_zurich].values[window_mask]
     obs_window = obs_window[~np.isnan(obs_window)]
@@ -64,10 +69,11 @@ for doy in range(1, 367):  # 1 to 366
     quantiles = np.linspace(0.01, 0.99, 99)
     obs_q = np.quantile(obs_window, quantiles)
     mod_q = np.quantile(mod_window, quantiles)
+    obs_q = np.concatenate([[np.min(obs_window)], obs_q, [np.max(obs_window)]])
+    mod_q = np.concatenate([[np.min(mod_window)], mod_q, [np.max(mod_window)]])
     correction = mod_q - obs_q
-    ext_q = np.concatenate([[0.0], quantiles, [1.0]])
-    ext_corr = np.concatenate(([correction[0]], correction, [correction[-1]]))
-    correction_functions[doy] = (ext_q, ext_corr)
+    ext_q = np.linspace(0, 1, 101)
+    correction_functions[doy] = (ext_q, correction)
     indices = np.where((model_doys == doy) & valid_mask)[0]
     for idx in indices:
         value = model_output[idx, i_zurich, j_zurich]
