@@ -37,7 +37,6 @@ correction_functions={}
 
 for doy in range(1, 367):  # 1 to 366
     calib_doys = calib_times.dayofyear
-    # 91-day window centered on doy
     window_mask = ((calib_doys >= doy - 45) & (calib_doys <= doy + 45)) | \
                   ((doy - 45 < 1) & (calib_doys >= 365 + (doy - 45))) | \
                   ((doy + 45 > 366) & (calib_doys <= (doy + 45) - 366))
@@ -75,22 +74,31 @@ qm_ds = xr.Dataset(
 qm_ds.to_netcdf(output_path)
 print(f"Single-cell output saved to {output_path}")
 
-# Sample DOY June 1, doy=152
-sample_doy = 152
-if sample_doy in correction_functions:
-    ext_q, ext_corr = correction_functions[sample_doy]
-    lat_val = lat_vals[i_zurich, j_zurich]
-    lon_val = lon_vals[i_zurich, j_zurich]
-    plt.figure(figsize=(7, 5))
-    plt.plot(ext_q, ext_corr, label=f"Correction function DOY={sample_doy}", color="blue")
-    plt.axhline(0, color="gray", linestyle="--", label="No correction")
-    plt.xlabel("Quantile")
-    plt.ylabel("Correction (Model - Observation) in degrees C")
-    plt.title(f"Correction Function (91-day window) for DOY={sample_doy}\nZürich (lat={lat_val:.3f}, lon={lon_val:.3f})")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.savefig(plot_path, dpi=1000)
-    print(f"Correction function plot for DOY={sample_doy} saved to {plot_path}")
-else:
-    print(f"No correction function found for DOY={sample_doy}")
+#Plot: seasonal corr fx 
+season_doys = {
+    "DJF": list(range(335, 367)) + list(range(1, 60)),
+    "MAM": list(range(60, 152)),
+    "JJA": list(range(152, 244)),
+    "SON": list(range(244, 335)),
+}
+
+plt.figure(figsize=(8, 6))
+for season, doys in season_doys.items():
+    season_corrs = []
+    for doy in doys:
+        if doy in correction_functions:
+            ext_q, ext_corr = correction_functions[doy]
+            season_corrs.append(ext_corr)
+    if season_corrs:
+        mean_corr = np.mean(season_corrs, axis=0)
+        plt.plot(ext_q, mean_corr, label=season)
+
+plt.axhline(0, color="gray", linestyle="--", label="No correction")
+plt.xlabel("Quantile")
+plt.ylabel("Correction (Model - Observation) in degrees C")
+plt.title("Seasonal Correction Functions for Zürich (91-day window)")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.savefig(plot_path.replace(".png", "_seasons.png"), dpi=1000)
+print(f"Saved to {plot_path.replace('.png', '_seasons.png')}")
