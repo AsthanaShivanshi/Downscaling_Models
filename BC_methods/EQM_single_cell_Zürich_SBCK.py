@@ -8,9 +8,9 @@ import pandas as pd
 model_path = f"{config.SCRATCH_DIR}/temp_r01_HR_masked.nc"
 obs_path = f"{config.SCRATCH_DIR}/TabsD_1971_2023.nc"
 output_path = f"{config.BC_DIR}/qm_temp_r01_singlecell_output.nc"
-plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_temp_r01_zurich.png"
-cdf_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_cdf_temp_r01_zurich.png"
-map_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_selected_gridcell_map_temp_r01_zurich.png"
+plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_temp_r01_zurich_SBCK.png"
+cdf_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_cdf_temp_r01_zurich_SBCK.png"
+map_plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_selected_gridcell_map_temp_r01_zurich_SBCK.png"
 
 print("Loading data")
 model_output = xr.open_dataset(model_path)["temp"]
@@ -58,7 +58,7 @@ qm_ds.to_netcdf(output_path)
 print(f"Single-cell output saved to {output_path}")
 
 # Correction fx with quantiles
-quantiles = np.linspace(0.01, 0.99, 99) # 99 quantiles from 1 to 99th percentiles
+quantiles = np.linspace(0.01, 0.99, 99) # 99 quantiles
 plot_obs_q = np.quantile(obs_valid, quantiles)
 plot_mod_q = np.quantile(mod_valid, quantiles)
 correction = plot_mod_q - plot_obs_q

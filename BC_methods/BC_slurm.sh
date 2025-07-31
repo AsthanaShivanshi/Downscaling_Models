@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=EQM_Zurich_SBCK
-#SBATCH --output=logs/bc/EQM_geneva_output-%j.txt
-#SBATCH --error=logs/bc/EQM_geneva_job_error-%j.txt
+#SBATCH --output=logs/bc/EQM_zurich_output-%j.txt
+#SBATCH --error=logs/bc/EQM_zurich_job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-00:00:00
@@ -19,4 +19,4 @@ cd BC_methods
 
 echo "EQM for Zurich started"
 python EQM_single_cell_Zürich_SBCK.py --n_jobs $SLURM_CPUS_PER_TASK
-echo "EQM for Zurich finished using SBCK"
+echo "EQM for Zurich finished using SBCK method"
