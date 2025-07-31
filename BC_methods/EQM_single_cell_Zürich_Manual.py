@@ -21,7 +21,6 @@ lon_vals = model_output['lon'].values
 target_lat = 47.3769
 target_lon = 8.5417
 
-#Selecting the city
 dist = np.sqrt((lat_vals - target_lat)**2 + (lon_vals - target_lon)**2)
 i_zurich, j_zurich = np.unravel_index(np.argmin(dist), dist.shape)
 print(f"Closest grid cell to Zurich: i={i_zurich}, j={j_zurich}")

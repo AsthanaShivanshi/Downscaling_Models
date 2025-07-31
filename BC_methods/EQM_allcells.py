@@ -4,12 +4,12 @@ from SBCK import QM
 import config
 import pandas as pd
 
-model_path = f"{config.SCRATCH_DIR}/temp_r01_HR_masked.nc"
-obs_path = f"{config.SCRATCH_DIR}/TabsD_1971_2023.nc"
-output_path = f"{config.BIAS_CORRECTED_DIR}/EQM/eqm_temp_r01.nc"
+model_path = f"{config.SCRATCH_DIR}/tmax_r01_HR_masked.nc"
+obs_path = f"{config.SCRATCH_DIR}/TmaxD_1971_2023.nc"
+output_path = f"{config.BIAS_CORRECTED_DIR}/EQM/eqm_tmax_r01.nc"
 
-model_output = xr.open_dataset(model_path)["temp"]
-obs_output = xr.open_dataset(obs_path)["TabsD"]
+model_output = xr.open_dataset(model_path)["tmax"]
+obs_output = xr.open_dataset(obs_path)["TmaxD"]
 
 calib_start = "1981-01-01"
 calib_end = "2010-12-31"
@@ -72,7 +72,7 @@ for i in range(nlat):
         qm_data[:, i, j] = cell_series
 
 qm_ds = xr.Dataset(
-    {"temp": (model_output.dims, qm_data)},
+    {"tmax": (model_output.dims, qm_data)},
     coords=model_output.coords
 )
 qm_ds.to_netcdf(output_path)
