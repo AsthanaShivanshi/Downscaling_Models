@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=EQM_Zurich_AllCells
-#SBATCH --output=logs/bc/EQM_zurich_output-%j.txt
-#SBATCH --error=logs/bc/EQM_zurich_job_error-%j.txt
+#SBATCH --job-name=AllCells
+#SBATCH --output=logs/bc/AllCells_output-%j.txt
+#SBATCH --error=logs/bc/AllCells_job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-00:00:00
