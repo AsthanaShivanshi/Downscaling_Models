@@ -4,14 +4,14 @@ import matplotlib.pyplot as plt
 from SBCK import QM
 import config
 
-model_path = f"{config.SCRATCH_DIR}/tmax_r01_HR_masked.nc"
-obs_path = f"{config.SCRATCH_DIR}/TmaxD_1971_2023.nc"
-output_path_template = f"{config.BC_DIR}/qm_tmax_r01_singlecell_{{city}}_output.nc"
-plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_tmax_r01_3cities_window.png"
+model_path = f"{config.SCRATCH_DIR}/tmin_r01_HR_masked.nc"
+obs_path = f"{config.SCRATCH_DIR}/TminD_1971_2023.nc"
+output_path_template = f"{config.BC_DIR}/qm_tmin_r01_singlecell_{{city}}_output.nc"
+plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_tmin_r01_3cities_window.png"
 
 print("Loading data")
-model_output = xr.open_dataset(model_path)["tmax"]
-obs_output = xr.open_dataset(obs_path)["TmaxD"]
+model_output = xr.open_dataset(model_path)["tmin"]
+obs_output = xr.open_dataset(obs_path)["TminD"]
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
 calib_mod = model_output.sel(time=slice("1981-01-01", "2010-12-31"))
 
@@ -72,7 +72,7 @@ for city, (target_lat, target_lon) in locations.items():
     qm_data = np.full(model_output.shape, np.nan, dtype=np.float32)
     qm_data[:, i_city, j_city] = qm_series.astype(np.float32)
     qm_ds = xr.Dataset(
-        {"tmax": (model_output.dims, qm_data)},
+        {"tmin": (model_output.dims, qm_data)},
         coords=model_output.coords
     )
     output_path = output_path_template.format(city=city.lower())
@@ -91,7 +91,7 @@ for city, (target_lat, target_lon) in locations.items():
 
 plt.axhline(0, color="gray", linestyle="--")
 plt.xlabel("Quantile")
-plt.ylabel("Correction (Model - Observation) in degrees C")
+plt.ylabel("Correction (Model - Observation)")
 plt.title("Mean Correction Function (All DOYs)\nZurich, Geneva, Locarno")
 plt.legend()
 plt.grid(True)
