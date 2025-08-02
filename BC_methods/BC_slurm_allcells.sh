@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=Tmin_CProfiler_DASK_AllCells
-#SBATCH --output=logs/bc/Tmin_CProfiler_DASK_AllCells_output-%j.txt
-#SBATCH --error=logs/bc/Tmin_CProfiler_DASK_AllCells_job_error-%j.txt
+#SBATCH --job-name=Tmax_CProfiler_DASK_AllCells
+#SBATCH --output=logs/bc/Tmax_CProfiler_DASK_AllCells_output-%j.txt
+#SBATCH --error=logs/bc/Tmax_CProfiler_DASK_AllCells_job_error-%j.txt
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=16
 #SBATCH --time=3-00:00:00
-#SBATCH --mem=256G
+#SBATCH --mem=400G
 #SBATCH --partition=cpu
 
 module load python
@@ -18,5 +18,5 @@ export NUMEXPR_NUM_THREADS=$SLURM_CPUS_PER_TASK
 cd BC_methods
 
 echo "EQM for All Cells started"
-python EQM_allcells_DASK.py --n_jobs $SLURM_CPUS_PER_TASK
+python EQM_allcells_progress.py --n_jobs $SLURM_CPUS_PER_TASK
 echo "EQM for All Cells finished"
