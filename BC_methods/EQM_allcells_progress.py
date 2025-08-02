@@ -4,7 +4,10 @@ from SBCK import QM
 import config
 import dask
 from dask.diagnostics import ProgressBar
+from dask.distributed import Client
 import time
+
+
 
 def eqm_cell(model_cell, obs_cell, calib_start, calib_end, model_times, obs_times):
     if model_cell.ndim != 1 or obs_cell.ndim != 1:
@@ -49,14 +52,16 @@ def eqm_cell(model_cell, obs_cell, calib_start, calib_end, model_times, obs_time
     return qm_series
 
 def main():
+    from dask.distributed import Client
+    client = Client()
     start = time.time()
     model_path = f"{config.SCRATCH_DIR}/tmax_r01_HR_masked.nc"
     obs_path = f"{config.SCRATCH_DIR}/TmaxD_1971_2023.nc"
     output_path = f"{config.BIAS_CORRECTED_DIR}/EQM/eqm_tmax_r01_allcells_DOY.nc"
 
     print("Loading data")
-    model_output = xr.open_dataset(model_path,chunks={"lat": 20, "lon":20})["tmax"]
-    obs_output = xr.open_dataset(obs_path,chunks={"lat": 20,"lon":20})["TmaxD"]
+    model_output = xr.open_dataset(model_path,chunks={"lat": 100, "lon":100})["tmax"]
+    obs_output = xr.open_dataset(obs_path,chunks={"lat": 100,"lon":100})["TmaxD"]
 
     model_output = model_output.sel(time=slice("1981-01-01", "2010-12-31"))
     obs_output = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
@@ -115,5 +120,13 @@ def main():
     qm_ds.to_netcdf(output_path)
     print(f"Bias-corrected tmax saved to {output_path}")
 
+#Profiler
 if __name__ == "__main__":
-    main()
+    import cProfile
+    import pstats
+    profile_file = "EQM_allcells_progress.prof"
+    cProfile.run('main()', profile_file)
+    with open("EQM_allcells_progress_cumstat.txt", "w") as f:
+        stats = pstats.Stats(profile_file, stream=f)
+        stats.sort_stats("cumulative").print_stats(10)
+    print("Profiling complete. Check EQM_allcells_progress_cumstat.txt for details.")

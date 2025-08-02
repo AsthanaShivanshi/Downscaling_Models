@@ -3,7 +3,7 @@
 #SBATCH --output=logs/bc/Tmax_CProfiler_DASK_AllCells_output-%j.txt
 #SBATCH --error=logs/bc/Tmax_CProfiler_DASK_AllCells_job_error-%j.txt
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=8
 #SBATCH --time=3-00:00:00
 #SBATCH --mem=400G
 #SBATCH --partition=cpu
