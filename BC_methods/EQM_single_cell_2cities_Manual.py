@@ -7,7 +7,7 @@ import config
 model_path = f"{config.SCRATCH_DIR}/tmax_r01_HR_masked.nc"
 obs_path = f"{config.SCRATCH_DIR}/TmaxD_1971_2023.nc"
 output_path_template = f"{config.BC_DIR}/qm_tmax_r01_singlecell_{{city}}_output.nc"
-plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_tmax_r01_3cities_DJF.png"
+plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_tmax_r01_2cities_DJF.png"
 
 print("Loading data")
 model_output = xr.open_dataset(model_path)["tmax"]
@@ -20,8 +20,7 @@ lon_vals = model_output['lon'].values
 
 locations = {
     "Zurich": (47.3769, 8.5417),
-    "Geneva": (46.2044, 6.1432),
-    "Locarno": (46.1670, 8.7943),
+    "Geneva": (46.2044, 6.1432)
 }
 
 calib_times = calib_mod['time'].values
@@ -33,7 +32,7 @@ def get_season(doy):
     else:
         return None
 
-city_colors = {"Zurich": "b", "Geneva": "g", "Locarno": "r"}
+city_colors = {"Zurich": "b", "Geneva": "g"}
 
 fig, ax = plt.subplots(figsize=(10, 7))
 
@@ -72,10 +71,10 @@ for city, (target_lat, target_lon) in locations.items():
 
 ax.axhline(0, color="gray", linestyle="--")
 ax.set_xlabel("Quantile")
-ax.set_ylabel("Correction (Model - Observation) in degrees C")
-ax.set_title("Winter (DJF) Correction Function\nZurich, Geneva, Locarno")
+ax.set_ylabel("Correction (Model - Observations) in degrees C")
+ax.set_title("Winter (DJF, seasonal) Mean Correction Function of Maximum Daily Temperatures for \nZurich and Geneva")
 ax.legend(loc="upper left")
 ax.grid(True)
 fig.tight_layout()
 plt.savefig(plot_path, dpi=1000)
-print(f"Winter correction function plot for 3 cities saved to {plot_path}")
+print(f"Winter correction function plot for Zurich and Geneva saved to {plot_path}")
