@@ -22,6 +22,7 @@ calib_mod = model_output.sel(time=slice("1981-01-01", "2010-12-31"))
 
 ntime, nlat, nlon = model_output.shape
 
+# time arrays
 calib_times = calib_mod['time'].values
 calib_doys = xr.DataArray(calib_times).dt.dayofyear.values
 
@@ -29,31 +30,41 @@ model_times = model_output['time'].values
 model_doys = xr.DataArray(model_times).dt.dayofyear.values
 valid_mask = (model_times >= np.datetime64("1981-01-01")) & (model_times <= np.datetime64("2010-12-31"))
 
+doy_to_indices = {}
+for doy in range(1, 367):
+    doy_to_indices[doy] = np.where((model_doys == doy) & valid_mask)[0]
+
+# quantile arrays
+quantiles = np.linspace(0.01, 0.99, 99)
+ext_q = np.concatenate([[0], quantiles, [1]])
+
 def process_cell(i, j):
     qm_series = np.full(ntime, np.nan, dtype=np.float32)
+    # Pre-extract cell data for efficiency
+    calib_obs_cell = calib_obs[:, i, j].values
+    calib_mod_cell = calib_mod[:, i, j].values
+    model_output_cell = model_output[:, i, j].values
+
     for doy in range(1, 367):  # 1 to 366
         window_doys = ((calib_doys - doy + 366) % 366)
         window_mask = (window_doys <= 45) | (window_doys >= (366 - 45))
-        obs_window = calib_obs[:, i, j].values[window_mask]
-        mod_window = calib_mod[:, i, j].values[window_mask]
+        obs_window = calib_obs_cell[window_mask]
+        mod_window = calib_mod_cell[window_mask]
         obs_window = obs_window[~np.isnan(obs_window)]
         mod_window = mod_window[~np.isnan(mod_window)]
         if obs_window.size == 0 or mod_window.size == 0:
             continue
-        quantiles = np.linspace(0.01, 0.99, 99)
         obs_q = np.quantile(obs_window, quantiles)
         mod_q = np.quantile(mod_window, quantiles)
         # Extend to 0th and 100th using 1st and 99th
-        ext_q = np.concatenate([[0], quantiles, [1]])
         ext_obs_q = np.concatenate([[obs_q[0]], obs_q, [obs_q[-1]]])
         ext_mod_q = np.concatenate([[mod_q[0]], mod_q, [mod_q[-1]]])
-        indices = np.where((model_doys == doy) & valid_mask)[0]
+        indices = doy_to_indices[doy]
         for idx in indices:
-            value = model_output[idx, i, j]
+            value = model_output_cell[idx]
             if np.isnan(value):
                 continue
             q = np.interp(value, ext_mod_q, ext_q)
-            # Correction 
             corr = np.interp(q, ext_q, ext_mod_q - ext_obs_q)
             qm_series[idx] = value - corr
     return (i, j, qm_series.astype(np.float32))
