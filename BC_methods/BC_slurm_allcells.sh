@@ -1,9 +1,9 @@
 #!/bin/bash
-#SBATCH --job-name=CProfiler_DASK_AllCells
-#SBATCH --output=logs/bc/CProfiler_DASK_AllCells_output-%j.txt
-#SBATCH --error=logs/bc/CProfiler_DASK_AllCells_job_error-%j.txt
+#SBATCH --job-name=Precip_CProfiler_DASK_AllCells
+#SBATCH --output=logs/bc/Precip_CProfiler_DASK_AllCells_output-%j.txt
+#SBATCH --error=logs/bc/Precip_CProfiler_DASK_AllCells_job_error-%j.txt
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=1
 #SBATCH --time=3-00:00:00
 #SBATCH --mem=256G
 #SBATCH --partition=cpu
