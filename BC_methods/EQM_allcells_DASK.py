@@ -4,9 +4,10 @@ from SBCK import QM
 import config
 import argparse
 import cProfile
+import dask
+#dask.config.set(scheduler='single-threaded') #For pirnt statements in log files
 
 def eqm_cell(model_cell, obs_cell, calib_start, calib_end, model_times, obs_times, quantiles):
-    print("IN EQM_CELL")
     print("  model_cell.shape:", model_cell.shape, "obs_cell.shape:", obs_cell.shape)
     print("  calib_start:", calib_start, "calib_end:", calib_end)
     print("  model_times.shape:", model_times.shape, "obs_times.shape:", obs_times.shape)
@@ -62,18 +63,17 @@ def main():
     parser.add_argument('--n_jobs', type=int, default=1)
     args = parser.parse_args()
 
-    model_path = f"{config.SCRATCH_DIR}/precip_r01_HR_masked.nc"
-    obs_path = f"{config.SCRATCH_DIR}/RhiresD_1971_2023.nc"
-    output_path = f"{config.BIAS_CORRECTED_DIR}/EQM/eqm_precip_r01.nc"
+    model_path = f"{config.SCRATCH_DIR}/tmin_r01_HR_masked.nc"
+    obs_path = f"{config.SCRATCH_DIR}/TminD_1971_2023.nc"
+    output_path = f"{config.BIAS_CORRECTED_DIR}/EQM/eqm_tmin_r01.nc"
 
     print("Loading data")
-    model_output = xr.open_dataset(model_path)["precip"]
-    obs_output = xr.open_dataset(obs_path)["RhiresD"]
+    model_output = xr.open_dataset(model_path)["tmin"]
+    obs_output = xr.open_dataset(obs_path)["TminD"]
 
     print("Model time range:", str(model_output['time'].values[0]), "to", str(model_output['time'].values[-1]), "len:", len(model_output['time']))
     print("Obs time range:", str(obs_output['time'].values[0]), "to", str(obs_output['time'].values[-1]), "len:", len(obs_output['time']))
 
-    # Select common period before align
     model_output = model_output.sel(time=slice("1981-01-01", "2010-12-31"))
     obs_output = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
 
@@ -81,7 +81,6 @@ def main():
     print("  Model time range:", str(model_output['time'].values[0]), "to", str(model_output['time'].values[-1]), "len:", len(model_output['time']))
     print("  Obs time range:", str(obs_output['time'].values[0]), "to", str(obs_output['time'].values[-1]), "len:", len(obs_output['time']))
 
-    # If still not matching, forcibly assign obs time to model time if lengths match
     if not np.array_equal(model_output['time'].values, obs_output['time'].values):
         if len(model_output['time']) == len(obs_output['time']):
             print("Time coordinates do not match exactly but lengths match. Forcibly assigning obs time to model time.")
@@ -112,7 +111,7 @@ def main():
     )
 
     qm_ds = xr.Dataset(
-        {"precip": qm_data},
+        {"tmin": qm_data},
         coords=model_output.coords
     )
     qm_ds.to_netcdf(output_path)
