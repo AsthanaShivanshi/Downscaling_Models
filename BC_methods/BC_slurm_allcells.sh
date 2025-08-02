@@ -3,9 +3,9 @@
 #SBATCH --output=logs/bc/DASK_AllCells_output-%j.txt
 #SBATCH --error=logs/bc/DASK_AllCells_job_error-%j.txt
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=16
 #SBATCH --time=3-00:00:00
-#SBATCH --mem=256G
+#SBATCH --mem=512G
 #SBATCH --partition=cpu
 
 module load python
