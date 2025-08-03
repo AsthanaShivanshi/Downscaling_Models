@@ -1,39 +1,42 @@
-from pyexpat import model
-import dask
-import dask.array as da
 import xarray as xr
 import numpy as np
 import config
-from dask.diagnostics import ProgressBar
-from dask.distributed import Client
+from SBCK import QM
+from joblib import Parallel, delayed
 
 def eqm_cell(model_cell, obs_cell, calib_start, calib_end, model_times, obs_times):
-    # Return all-NaN if input is invalid
-    if model_cell.ndim != 1 or obs_cell.ndim != 1:
-        ntime = len(model_times)
-        return np.full(ntime, np.nan, dtype=np.float32)
     ntime = model_cell.shape[0]
     qm_series = np.full(ntime, np.nan, dtype=np.float32)
-
     if ntime == 0 or np.all(np.isnan(model_cell)) or np.all(np.isnan(obs_cell)):
         return qm_series
 
-    model_times = xr.DataArray(model_times)
-    obs_times = xr.DataArray(obs_times)
-    calib_mask_mod = (model_times >= calib_start) & (model_times <= calib_end)
-    calib_mask_obs = (obs_times >= calib_start) & (obs_times <= calib_end)
+    # Convert to date only (ignore time-of-day)
+    model_dates = np.array(model_times, dtype='datetime64[D]')
+    obs_dates = np.array(obs_times, dtype='datetime64[D]')
 
-    if not calib_mask_mod.any() or not calib_mask_obs.any():
+    # Calibration period mask for both
+    calib_dates = np.arange(calib_start, calib_end + np.timedelta64(1, 'D'), dtype='datetime64[D]')
+    model_calib_idx = np.in1d(model_dates, calib_dates)
+    obs_calib_idx = np.in1d(obs_dates, calib_dates)
+
+    # Only keep dates present in both model and obs during calibration
+    common_dates = np.intersect1d(model_dates[model_calib_idx], obs_dates[obs_calib_idx])
+    if len(common_dates) == 0:
         return qm_series
 
-    calib_mod_cell = model_cell[calib_mask_mod.values]
-    calib_obs_cell = obs_cell[calib_mask_obs.values]
-    calib_doys = model_times[calib_mask_mod].dt.dayofyear.values
-    model_doys = model_times.dt.dayofyear.values
+    model_common_idx = np.in1d(model_dates, common_dates)
+    obs_common_idx = np.in1d(obs_dates, common_dates)
 
-    quantiles = np.linspace(0.01, 0.99, 99)  # 99quantiles
+    calib_mod_cell = model_cell[model_common_idx]
+    calib_obs_cell = obs_cell[obs_common_idx]
+
+    # Calculate DOY for calibration and full model period
+    def get_doy(d): return (np.datetime64(d, 'D') - np.datetime64(str(d)[:4] + '-01-01', 'D')).astype(int) + 1
+    calib_doys = np.array([get_doy(d) for d in common_dates])
+    model_doys = np.array([get_doy(d) for d in model_dates])
 
     for doy in range(1, 367):
+        # 91-day window, wraparound
         window_doys = ((calib_doys - doy + 366) % 366)
         window_mask = (window_doys <= 45) | (window_doys >= (366 - 45))
         obs_window = calib_obs_cell[window_mask]
@@ -42,73 +45,56 @@ def eqm_cell(model_cell, obs_cell, calib_start, calib_end, model_times, obs_time
         mod_window = mod_window[~np.isnan(mod_window)]
         if obs_window.size == 0 or mod_window.size == 0:
             continue
-
-        obs_q = np.quantile(obs_window, quantiles)
-        mod_q = np.quantile(mod_window, quantiles)
-
+        eqm = QM()
+        eqm.fit(mod_window.reshape(-1, 1), obs_window.reshape(-1, 1))
         indices = np.where(model_doys == doy)[0]
         if indices.size > 0:
             values = model_cell[indices]
-            # Linear interp between 1st and 99th
-            corrected = np.interp(values, mod_q, obs_q, left=obs_q[0], right=obs_q[-1])
-            qm_series[indices] = corrected
+            qm_series[indices] = eqm.predict(values.reshape(-1, 1)).flatten()
     return qm_series
 
-
 def main():
-    client = Client(n_workers=4) 
-    print(f"Dashboard: {client.dashboard_link}")
+    print("EQM for All Cells started")
 
     model_path = f"{config.SCRATCH_DIR}/tmax_r01_HR_masked.nc"
     obs_path = f"{config.SCRATCH_DIR}/TmaxD_1971_2023.nc"
-    output_path = f"{config.BIAS_CORRECTED_DIR}/EQM/eqm_tmax_r01_allcells_DOY.nc"
+    output_path = f"{config.BIAS_CORRECTED_DIR}/EQM/eqm_tmax_r01_allcells_EQM.nc"
 
-
-    # Open with chunking for Dask
     model_ds = xr.open_dataset(model_path)
     obs_ds = xr.open_dataset(obs_path)
-    model = model_ds["tmax"].sel(time=slice("1981-01-01", "2010-12-31")).chunk({"time": -1, "N": 10, "E": 10})
-    obs = obs_ds["TmaxD"].sel(time=slice("1981-01-01", "2010-12-31")).chunk({"time": -1, "N": 10, "E": 10})
-    print("model variable dims:", model.dims)
-    print("obs variable dims:", obs.dims)
+    model = model_ds["tmax"]
+    obs = obs_ds["TmaxD"]
 
-    # After slicing model and obs:
-    if not np.array_equal(model['time'].values, obs['time'].values):
-        print("WARNING: Forcing obs time axis to match model time axis for alignment. Indexing different but time alignment works")
-        obs = obs.assign_coords(time=model['time'])
+    ntime, nN, nE = model.shape
+    qm_data = np.full(model.shape, np.nan, dtype=np.float32)
 
-    # Dims
-    spatial_dims = [d for d in model.dims if d != "time"]
+    # Parallelize over grid cells
+    def process_cell(i, j):
+        model_cell = model[:, i, j].values
+        obs_cell = obs[:, i, j].values
+        return eqm_cell(
+            model_cell, obs_cell,
+            np.datetime64("1981-01-01"), np.datetime64("2010-12-31"),
+            model['time'].values, obs['time'].values
+        )
 
-    # UFunc for parallelization
-    qm_da = xr.apply_ufunc(
-        eqm_cell,
-        model,
-        obs,
-        input_core_dims=[['time'], ['time']],
-        output_core_dims=[['time']],
-        vectorize=True,
-        dask='parallelized',
-        output_dtypes=[np.float32],
-        kwargs={
-            'calib_start': np.datetime64("1981-01-01"),
-            'calib_end': np.datetime64("2010-12-31"),
-            'model_times': model['time'].values,
-            'obs_times': obs['time'].values
-        }
+    print("Starting gridwise EQM correction...")
+    results = Parallel(n_jobs=16)(
+        delayed(process_cell)(i, j)
+        for i in range(nN) for j in range(nE)
     )
 
-    with ProgressBar():
-        qm_da = qm_da.compute()
-    print("qm_da dims:", qm_da.dims)
-    print("qm_da shape:", qm_da.shape)
-    print("qm_da coords:", qm_da.coords)
+    idx = 0
+    for i in range(nN):
+        for j in range(nE):
+            qm_data[:, i, j] = results[idx]
+            idx += 1
 
-    qm_ds = xr.Dataset({"tmax": qm_da})
-    qm_ds.to_netcdf(output_path)
+    out_ds = model_ds.copy()
+    out_ds["tmax"] = (("time", "N", "E"), qm_data)
+    out_ds.to_netcdf(output_path)
     print(f"Bias-corrected tmax saved to {output_path}")
+    print("EQM for All Cells finished")
 
 if __name__ == "__main__":
     main()
-    print("Running EQM bias correction for all cells...")
-    print("Done.")
