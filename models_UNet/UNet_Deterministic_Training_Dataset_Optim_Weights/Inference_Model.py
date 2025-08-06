@@ -13,10 +13,10 @@ from directories import (
 
 var_names = ["precip", "temp", "tmin", "tmax"]
 eqm_files = {
-    "precip": "eqm_precip_r01_allcells_EQM.nc",
-    "temp": "eqm_temp_r01_allcells_EQM.nc",
-    "tmin": "eqm_tmin_r01_allcells_EQM.nc",
-    "tmax": "eqm_tmax_r01_allcells_EQM.nc"
+    "precip": "eqm_precip_r01_allcells.nc",
+    "temp": "eqm_temp_r01_allcells.nc",
+    "tmin": "eqm_tmin_r01_allcells.nc",
+    "tmax": "eqm_tmax_r01_allcells.nc"
 }
 scaling_param_map = {
     "precip": "RhiresD",
@@ -138,5 +138,5 @@ for var in var_names:
         },
         name=var
     )
-    out_path = os.path.join(EQM_DIR, f"eqm_{var}_downscaled_r01.nc")
+    out_path = os.path.join(EQM_DIR, f"TRAINING_eqm_{var}_downscaled_r01.nc")
     da.to_netcdf(out_path, mode="w")
