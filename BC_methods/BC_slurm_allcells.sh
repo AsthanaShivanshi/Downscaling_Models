@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=precip_CProfiler_DASK_AllCells
-#SBATCH --output=logs/bc/precip_CProfiler_DASK_AllCells_output-%j.txt
-#SBATCH --error=logs/bc/precip_CProfiler_DASK_AllCells_job_error-%j.txt
+#SBATCH --job-name=tmax_CProfiler_DASK_AllCells
+#SBATCH --output=logs/bc/tmax_CProfiler_DASK_AllCells_output-%j.txt
+#SBATCH --error=logs/bc/tmax_CProfiler_DASK_AllCells_job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --time=3-00:00:00
