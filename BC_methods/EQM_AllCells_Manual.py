@@ -45,12 +45,28 @@ def eqm_cell(model_cell, obs_cell, calib_start, calib_end, model_times, obs_time
         mod_window = mod_window[~np.isnan(mod_window)]
         if obs_window.size == 0 or mod_window.size == 0:
             continue
+
+        #quantile reoslution 
+        quantiles= np.linspace(0.01,0.99,99)
+        mod_q= np.quantile(mod_window, quantiles)
+        obs_q= np.quantile(obs_window, quantiles)
         eqm = QM()
         eqm.fit(mod_window.reshape(-1, 1), obs_window.reshape(-1, 1))
         indices = np.where(model_doys == doy)[0]
         if indices.size > 0:
             values = model_cell[indices]
-            qm_series[indices] = eqm.predict(values.reshape(-1, 1)).flatten()
+            mapped= eqm.predict(values.reshape(-1, 1)).flatten()
+
+            #Flat extrapolation for tails
+            p1_mod=mod_q[0]
+            p99_obs=obs_q[-1]
+            p1_obs=obs_q[0]
+            p99_mod=mod_q[-1]
+
+            mapped[values < p1_mod] = p1_obs
+            mapped[values > p99_mod] = p99_obs
+            qm_series[indices] = mapped
+
     return qm_series
 
 def main():

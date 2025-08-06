@@ -13,10 +13,10 @@ from directories import (
 
 var_names = ["precip", "temp", "tmin", "tmax"]
 eqm_files = {
-    "precip": "eqm_precip_r01.nc",
-    "temp": "eqm_temp_r01.nc",
-    "tmin": "eqm_tmin_r01.nc",
-    "tmax": "eqm_tmax_r01.nc"
+    "precip": "eqm_precip_r01_allcells_EQM.nc",
+    "temp": "eqm_temp_r01_allcells_EQM.nc",
+    "tmin": "eqm_tmin_r01_allcells_EQM.nc",
+    "tmax": "eqm_tmax_r01_allcells_EQM.nc"
 }
 scaling_param_map = {
     "precip": "RhiresD",
