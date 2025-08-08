@@ -19,7 +19,7 @@ def eqm_cell(model_cell, obs_cell, calib_start, calib_end, model_times, obs_time
     model_calib_idx = np.in1d(model_dates, calib_dates)
     obs_calib_idx = np.in1d(obs_dates, calib_dates)
 
-    # Only keep dates present in both model and obs during calibration
+    # Only keeping overlapping dates during calibration
     common_dates = np.intersect1d(model_dates[model_calib_idx], obs_dates[obs_calib_idx])
     if len(common_dates) == 0:
         return qm_series
@@ -30,7 +30,7 @@ def eqm_cell(model_cell, obs_cell, calib_start, calib_end, model_times, obs_time
     calib_mod_cell = model_cell[model_common_idx]
     calib_obs_cell = obs_cell[obs_common_idx]
 
-    # Calculate DOY for calibration and full model period
+    # DOY for calibration and full model period
     def get_doy(d): return (np.datetime64(d, 'D') - np.datetime64(str(d)[:4] + '-01-01', 'D')).astype(int) + 1
     calib_doys = np.array([get_doy(d) for d in common_dates])
     model_doys = np.array([get_doy(d) for d in model_dates])
@@ -84,7 +84,7 @@ def main():
     ntime, nN, nE = model.shape
     qm_data = np.full(model.shape, np.nan, dtype=np.float32)
 
-    # Parallelize over grid cells
+    # Parallelising over grid
     def process_cell(i, j):
         model_cell = model[:, i, j].values
         obs_cell = obs[:, i, j].values
@@ -109,7 +109,7 @@ def main():
     out_ds = model_ds.copy()
     out_ds["tmax"] = (("time", "N", "E"), qm_data)
     out_ds.to_netcdf(output_path)
-    print(f"Bias-corrected temp saved to {output_path}")
+    print(f"Bias-corrected tmax saved to {output_path}")
     print("EQM for All Cells finished")
 
 if __name__ == "__main__":
