@@ -72,14 +72,14 @@ def eqm_cell(model_cell, obs_cell, calib_start, calib_end, model_times, obs_time
 def main():
     print("EQM for All Cells started")
 
-    model_path = f"{config.SCRATCH_DIR}/temp_r01_HR_masked.nc"
-    obs_path = f"{config.SCRATCH_DIR}/TabsD_1971_2023.nc"
-    output_path = f"{config.BIAS_CORRECTED_DIR}/EQM/eqm_temp_r01_allcells.nc"
+    model_path = f"{config.SCRATCH_DIR}/tmin_r01_HR_masked.nc"
+    obs_path = f"{config.SCRATCH_DIR}/TminD_1971_2023.nc"
+    output_path = f"{config.BIAS_CORRECTED_DIR}/EQM/eqm_tmin_r01_allcells.nc"
 
     model_ds = xr.open_dataset(model_path)
     obs_ds = xr.open_dataset(obs_path)
-    model = model_ds["temp"]
-    obs = obs_ds["TabsD"]
+    model = model_ds["tmin"]
+    obs = obs_ds["TminD"]
 
     ntime, nN, nE = model.shape
     qm_data = np.full(model.shape, np.nan, dtype=np.float32)
@@ -95,7 +95,7 @@ def main():
         )
 
     print("Starting gridwise EQM correction...")
-    results = Parallel(n_jobs=16)(
+    results = Parallel(n_jobs=8)(
         delayed(process_cell)(i, j)
         for i in range(nN) for j in range(nE)
     )
@@ -107,9 +107,9 @@ def main():
             idx += 1
 
     out_ds = model_ds.copy()
-    out_ds["temp"] = (("time", "N", "E"), qm_data)
+    out_ds["tmin"] = (("time", "N", "E"), qm_data)
     out_ds.to_netcdf(output_path)
-    print(f"Bias-corrected temp saved to {output_path}")
+    print(f"Bias-corrected tmin saved to {output_path}")
     print("EQM for All Cells finished")
 
 if __name__ == "__main__":

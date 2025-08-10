@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=temp_CProfiler_DASK_AllCells
-#SBATCH --output=logs/bc/temp_CProfiler_DASK_AllCells_output-%j.txt
-#SBATCH --error=logs/bc/temp_CProfiler_DASK_AllCells_job_error-%j.txt
+#SBATCH --job-name=tmin_CProfiler_DASK_AllCells
+#SBATCH --output=logs/bc/tmin_CProfiler_DASK_AllCells_output-%j.txt
+#SBATCH --error=logs/bc/tmin_CProfiler_DASK_AllCells_job_error-%j.txt
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16
-#SBATCH --time=2-00:00:00
-#SBATCH --mem=256G
+#SBATCH --cpus-per-task=8
+#SBATCH --time=3-00:00:00
+#SBATCH --mem=200G
 #SBATCH --partition=cpu
 
 module load python
