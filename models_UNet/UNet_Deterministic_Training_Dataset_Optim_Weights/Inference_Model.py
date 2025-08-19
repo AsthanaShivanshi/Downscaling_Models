@@ -128,15 +128,32 @@ for t in range(n_time):
 
 for var in var_names:
     print(f"Saving {var}: shape {outputs_all[var].shape}, min: {np.nanmin(outputs_all[var])}, max: {np.nanmax(outputs_all[var])}, mean: {np.nanmean(outputs_all[var])}")
+    # For correct structure
+    eqm_path = os.path.join(EQM_DIR, eqm_files[var])
+    ds_in = xr.open_dataset(eqm_path)
+
+    dims = ds_in[var].dims  # ('time', 'N', 'E')
+    coords = {dim: ds_in[dim] for dim in dims if dim in ds_in.coords}
+
     da = xr.DataArray(
         outputs_all[var],
-        dims=("time", "lat", "lon"),
-        coords={
-            "time": coords["time"],
-            "lat": lat_1d,
-            "lon": lon_1d
-        },
-        name=var
+        dims=dims,
+        coords=coords,
+        name=var,
+        attrs=ds_in[var].attrs
     )
+
+    ds_out = da.to_dataset()
+
+    for coord in ["lat", "lon"]:
+        if coord in ds_in.variables:
+            ds_out[coord] = ds_in[coord]
+
+
+    if "time_bnds" in ds_in.variables:
+        ds_out["time_bnds"] = ds_in["time_bnds"]
+
+    ds_out.attrs = ds_in.attrs
+
     out_path = os.path.join(EQM_DIR, f"TRAINING_eqm_{var}_downscaled_r01.nc")
-    da.to_netcdf(out_path, mode="w")
+    ds_out.to_netcdf(out_path, mode="w")
