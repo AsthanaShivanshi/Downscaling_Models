@@ -145,11 +145,6 @@ for var in var_names:
 
     ds_out = da.to_dataset()
 
-    for coord in ["lat", "lon"]:
-        if coord in ds_in.variables:
-            ds_out[coord] = ds_in[coord]
-
-
     if "time_bnds" in ds_in.variables:
         ds_out["time_bnds"] = ds_in["time_bnds"]
 
