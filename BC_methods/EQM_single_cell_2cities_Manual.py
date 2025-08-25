@@ -9,21 +9,21 @@ plt.rcParams.update({
     "font.family": "serif",
     "font.serif": ["Times New Roman", "Times", "DejaVu Serif"],
     "font.size": 18,
-    "axes.labelsize": 22,
-    "axes.titlesize": 24,
-    "legend.fontsize": 18,
-    "xtick.labelsize": 18,
-    "ytick.labelsize": 18,
+    "axes.labelsize": 18,
+    "axes.titlesize": 20,
+    "legend.fontsize": 12,
+    "xtick.labelsize": 12,
+    "ytick.labelsize": 12,
 })
 
-model_path = f"{config.SCRATCH_DIR}/tmax_r01_HR_masked.nc"
-obs_path = f"{config.SCRATCH_DIR}/TmaxD_1971_2023.nc"
-output_path_template = f"{config.BC_DIR}/qm_tmax_r01_singlecell_{{city}}_output.nc"
-plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_tmax_r01_2cities_DJF.png"
+model_path = f"{config.SCRATCH_DIR}/temp_r01_HR_masked.nc"
+obs_path = f"{config.SCRATCH_DIR}/TabsD_1971_2023.nc"
+output_path_template = f"{config.BC_DIR}/qm_temp_r01_singlecell_{{city}}_output.nc"
+plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_temp_r01_2cities_DJF.png"
 
 print("Loading data")
-model_output = xr.open_dataset(model_path)["tmax"]
-obs_output = xr.open_dataset(obs_path)["TmaxD"]
+model_output = xr.open_dataset(model_path)["temp"]
+obs_output = xr.open_dataset(obs_path)["TabsD"]
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
 calib_mod = model_output.sel(time=slice("1981-01-01", "2010-12-31"))
 
@@ -45,7 +45,7 @@ def get_season(doy):
     else:
         return None
 
-city_colors = {"Zurich": "b", "Geneva": "g", "Locarno": "r"}
+city_colors = {"Zurich": "r", "Geneva": "b", "Locarno": "g"}
 
 fig, ax = plt.subplots(figsize=(10, 7))
 
@@ -84,10 +84,10 @@ for city, (target_lat, target_lon) in locations.items():
 
 ax.axhline(0, color="gray", linestyle="--")
 ax.set_xlabel("Quantile")
-ax.set_ylabel("Correction (Model - Observations) in degrees C")
-ax.set_title("Winter (DJF, seasonal) Mean Correction Function of Maximum Daily Temperatures for \nZurich and Geneva")
-ax.legend(loc="upper left")
+ax.set_ylabel("Mean DJF Correction")
+ax.set_title("Daily Precip DJF Mean Correction Fx")
+ax.legend(loc="lower left")
 ax.grid(True)
 fig.tight_layout()
 plt.savefig(plot_path, dpi=1000)
-print(f"Winter correction function plot for Zurich, Geneva, and Locarno saved to {plot_path}")
+print(f"DJF correction fx plot for Zurich, Geneva, and Locarno saved to {plot_path}")
