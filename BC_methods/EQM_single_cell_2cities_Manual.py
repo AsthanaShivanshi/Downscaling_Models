@@ -4,6 +4,18 @@ import matplotlib.pyplot as plt
 from SBCK import QM
 import config
 
+#Fontsize and name specs
+plt.rcParams.update({
+    "font.family": "serif",
+    "font.serif": ["Times New Roman", "Times", "DejaVu Serif"],
+    "font.size": 18,
+    "axes.labelsize": 22,
+    "axes.titlesize": 24,
+    "legend.fontsize": 18,
+    "xtick.labelsize": 18,
+    "ytick.labelsize": 18,
+})
+
 model_path = f"{config.SCRATCH_DIR}/tmax_r01_HR_masked.nc"
 obs_path = f"{config.SCRATCH_DIR}/TmaxD_1971_2023.nc"
 output_path_template = f"{config.BC_DIR}/qm_tmax_r01_singlecell_{{city}}_output.nc"
@@ -20,7 +32,8 @@ lon_vals = model_output['lon'].values
 
 locations = {
     "Zurich": (47.3769, 8.5417),
-    "Geneva": (46.2044, 6.1432)
+    "Geneva": (46.2044, 6.1432),
+    "Locarno": (46.6502, 8.7943)
 }
 
 calib_times = calib_mod['time'].values
@@ -32,7 +45,7 @@ def get_season(doy):
     else:
         return None
 
-city_colors = {"Zurich": "b", "Geneva": "g"}
+city_colors = {"Zurich": "b", "Geneva": "g", "Locarno": "r"}
 
 fig, ax = plt.subplots(figsize=(10, 7))
 
@@ -77,4 +90,4 @@ ax.legend(loc="upper left")
 ax.grid(True)
 fig.tight_layout()
 plt.savefig(plot_path, dpi=1000)
-print(f"Winter correction function plot for Zurich and Geneva saved to {plot_path}")
+print(f"Winter correction function plot for Zurich, Geneva, and Locarno saved to {plot_path}")
