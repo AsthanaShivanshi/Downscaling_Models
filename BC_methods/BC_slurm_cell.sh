@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=EQM_3cities_Manual
-#SBATCH --output=logs/bc/EQM_3cities_output-%j.txt
-#SBATCH --error=logs/bc/EQM_3cities_job_error-%j.txt
+#SBATCH --job-name=EQM_3cities_Precip
+#SBATCH --output=logs/bc/EQM_precip_output-%j.txt
+#SBATCH --error=logs/bc/EQM_precip_job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-00:00:00
