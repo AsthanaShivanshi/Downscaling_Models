@@ -16,14 +16,14 @@ plt.rcParams.update({
     "ytick.labelsize": 12,
 })
 
-model_path = f"{config.SCRATCH_DIR}/precip_r01_HR_masked.nc"
-obs_path = f"{config.SCRATCH_DIR}/RhiresD_1971_2023.nc"
-output_path_template = f"{config.BC_DIR}/qm_precip_r01_singlecell_{{city}}_output.nc"
-plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_precip_r01_2cities_DJF.png"
+model_path = f"{config.SCRATCH_DIR}/temp_r01_HR_masked.nc"
+obs_path = f"{config.SCRATCH_DIR}/TabsD_1971_2023.nc"
+output_path_template = f"{config.BC_DIR}/qm_temp_r01_singlecell_{{city}}_output.nc"
+plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_temp_r01_2cities_DJF.png"
 
 print("Loading data")
-model_output = xr.open_dataset(model_path)["precip"]
-obs_output = xr.open_dataset(obs_path)["RhiresD"]
+model_output = xr.open_dataset(model_path)["temp"]
+obs_output = xr.open_dataset(obs_path)["TabsD"]
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
 calib_mod = model_output.sel(time=slice("1981-01-01", "2010-12-31"))
 
@@ -85,7 +85,7 @@ for city, (target_lat, target_lon) in locations.items():
 ax.axhline(0, color="gray", linestyle="--")
 ax.set_xlabel("Quantile")
 ax.set_ylabel("Mean DJF Correction")
-ax.set_title("Daily Precip DJF Mean Correction Fx")
+ax.set_title("Daily Temperature DJF Mean Correction Fx")
 ax.legend(loc="lower left")
 ax.grid(True)
 fig.tight_layout()
