@@ -12,12 +12,15 @@ from directories import (
 )
 
 var_names = ["precip", "temp", "tmin", "tmax"]
+
 eqm_files = {
-    "precip": "eqm_precip_r01_allcells.nc",
-    "temp": "eqm_temp_r01_allcells.nc",
-    "tmin": "eqm_tmin_r01_allcells.nc",
-    "tmax": "eqm_tmax_r01_allcells.nc"
+    "precip": "precip_QM_BC_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_r01.nc",
+    "temp": "temp_QM_BC_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_r01.nc",
+    "tmin": "tmin_QM_BC_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_r01.nc",
+    "tmax": "tmax_QM_BC_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_r01.nc"
 }
+
+
 scaling_param_map = {
     "precip": "RhiresD",
     "temp": "TabsD",
