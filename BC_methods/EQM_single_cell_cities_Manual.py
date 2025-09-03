@@ -75,22 +75,25 @@ season_colors = {
     "SON": "orange"
 }
 
-fig, ax = plt.subplots(figsize=(10, 7))
-
 print(f"\nProcessing {target_city}...")
 dist = np.sqrt((lat_vals - target_lat)**2 + (lon_vals - target_lon)**2)
 i_city, j_city = np.unravel_index(np.argmin(dist), dist.shape)
 print(f"Closest grid cell to {target_city}: i={i_city}, j={j_city}")
 print(f"Location: lat={lat_vals[i_city, j_city]}, lon={lon_vals[i_city, j_city]}")
 
-# Corr fx for each DOY using 91d logic
+
+# Corr fx for each doy using 91d
 doy_corrections = []
 doy_seasons = []
+quantiles_inner = np.linspace(0.01, 0.99, 99)
+model_cell = calib_mod[:, i_city, j_city].values
+obs_cell = calib_obs[:, i_city, j_city].values
+
 for doy in range(1, 367):
     window_doys = ((calib_doys - doy + 366) % 366)
-    window_mask = (window_doys <= 45) | (window_doys >= (366 - 45))  #wraparound
-    obs_window = calib_obs[:, i_city, j_city].values[window_mask]
-    mod_window = calib_mod[:, i_city, j_city].values[window_mask]
+    window_mask = (window_doys <= 45) | (window_doys >= (366 - 45))
+    obs_window = obs_cell[window_mask]
+    mod_window = model_cell[window_mask]
     obs_window = obs_window[~np.isnan(obs_window)]
     mod_window = mod_window[~np.isnan(mod_window)]
     if obs_window.size == 0 or mod_window.size == 0:
@@ -99,38 +102,32 @@ for doy in range(1, 367):
         continue
     eqm = QM()
     eqm.fit(mod_window.reshape(-1, 1), obs_window.reshape(-1, 1))
-    quantiles = np.linspace(0.01, 0.99, 99)
-    mod_q = np.quantile(mod_window, quantiles)
-    obs_q = np.quantile(obs_window, quantiles)
-    ext_mod_q = np.concatenate([[mod_q[0]], mod_q, [mod_q[-1]]])
-    ext_obs_q = np.concatenate([[obs_q[0]], obs_q, [obs_q[-1]]])
-    ext_quantiles = np.linspace(0, 1, 101)
-    mapped_q = eqm.predict(ext_mod_q.reshape(-1, 1)).flatten()
-
-    # Flat extrapolation for tails
-    p1_mod = ext_mod_q[0]
-    p99_mod = ext_mod_q[-1]
-    p1_obs = ext_obs_q[0]
-    p99_obs = ext_obs_q[-1]
-
-    mapped_q[ext_mod_q < p1_mod] = p1_obs
-    mapped_q[ext_mod_q > p99_mod] = p99_obs
-
-    correction = mapped_q - ext_mod_q
+    # Quantiles for tails (inner)
+    mod_q_inner = np.quantile(mod_window, quantiles_inner)
+    obs_q_inner = np.quantile(obs_window, quantiles_inner)
+    # Extending to tails
+    mod_q = np.concatenate([[mod_q_inner[0]], mod_q_inner, [mod_q_inner[-1]]])
+    obs_q = np.concatenate([[obs_q_inner[0]], obs_q_inner, [obs_q_inner[-1]]])
+    quantiles = np.linspace(0, 1, 101)
+    mapped_q = eqm.predict(mod_q.reshape(-1, 1)).flatten()
+    mapped_q[0] = obs_q[0]
+    mapped_q[-1] = obs_q[-1]
+    correction = mapped_q - mod_q
     doy_corrections.append(correction)
+    doy_seasons.append(get_season(doy))
 
-doy_corrections = np.array(doy_corrections) 
-doy_seasons = np.array(doy_seasons)          
-
-#Plotting seasonwise corr
+doy_corrections = np.array(doy_corrections)  #(366, 101)
+doy_seasons = np.array(doy_seasons)
+quantiles = np.linspace(0, 1, 101)
 for season in ["DJF", "MAM", "JJA", "SON"]:
-    season_mask = doy_seasons == season
+    season_mask = (doy_seasons == season)
     if np.any(season_mask):
-        mean_corr = np.nanmean(doy_corrections[season_mask], axis=0)
+        mean_correction = np.nanmean(doy_corrections[season_mask], axis=0)
         ax.plot(
-            np.linspace(0, 1, 101), mean_corr,
-            label=f"{target_city} {season}",
-            color=season_colors[season]
+            quantiles, mean_correction,
+            label=season,
+            color=season_colors[season],
+            linestyle=season_linestyles[season]
         )
 
 ax.axhline(0, color="gray", linestyle="--")

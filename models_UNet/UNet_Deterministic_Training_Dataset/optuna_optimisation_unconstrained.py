@@ -24,6 +24,7 @@ def objective(trial):
         trial.suggest_float("tmin_weight", 0.1, 1.0),
         trial.suggest_float("tmax_weight", 0.1, 1.0)
     ]
+
     # Normalizing and taking all trials : unconstrained.: no channel wise constraints
     weights = [w / sum(initial_weights) for w in initial_weights]
     print("initial unnormalised weights:", initial_weights)
@@ -31,7 +32,7 @@ def objective(trial):
     trial.set_user_attr("normalized_weights", weights)
     trial.set_user_attr("weights", initial_weights)
     config = load_config("config.yaml", ".paths.yaml")
-    config["train"]["loss_weights"] = weights
+    config["train"]["loss_weights"] = weights 
 
     paths = config["data"]
     elevation_path = paths.get("static", {}).get("elevation", None)
