@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=EQM_3cities_Temp
-#SBATCH --output=logs/bc/EQM_temp_output-%j.txt
-#SBATCH --error=logs/bc/EQM_temp_job_error-%j.txt
+#SBATCH --job-name=EQM_3cities_TminD
+#SBATCH --output=logs/bc/EQM_tmin_output-%j.txt
+#SBATCH --error=logs/bc/EQM_tmin_job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --time=3-00:00:00
+#SBATCH --time=02:00:00
 #SBATCH --mem=128G
 #SBATCH --partition=cpu
 
