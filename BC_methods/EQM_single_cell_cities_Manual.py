@@ -17,7 +17,7 @@ plt.rcParams.update({
 })
 
 parser= argparse.ArgumentParser()
-parser.add_argument("--city", type=str, required=True, help="City name with first letter in Upper Case")
+parser.add_argument("--city", type=str, required=True, help="City name,,first letter upper case")
 parser.add_argument("--lat", type=float, required=True, help="City lat")
 parser.add_argument("--lon", type=float, required=True, help="City lon")
 args = parser.parse_args()
@@ -28,14 +28,14 @@ target_lon = args.lon
 
 locations= {target_city: (target_lat, target_lon)}
 
-model_path = f"{config.MODELS_DIR}/precip_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/precip_r01_coarse_masked.nc" 
-obs_path = f"{config.DATASETS_TRAINING_DIR}/RhiresD_step2_coarse.nc"
-output_path_template = f"{config.BC_DIR}/qm_precip_r01_singlecell_{{city}}_output.nc"
-plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_corr_fx_precip_allseasons_{target_city}.png"
+model_path = f"{config.MODELS_DIR}/tmax_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/tmax_r01_coarse_masked.nc" 
+obs_path = f"{config.DATASETS_TRAINING_DIR}/TmaxD_step2_coarse.nc"
+output_path_template = f"{config.BC_DIR}/qm_tmax_r01_singlecell_{{city}}_output.nc"
+plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_corr_fx_tmax_allseasons_{target_city}.png"
 
 print("Loading data")
-model_output = xr.open_dataset(model_path)["precip"]
-obs_output = xr.open_dataset(obs_path)["RhiresD"]
+model_output = xr.open_dataset(model_path)["tmax"]
+obs_output = xr.open_dataset(obs_path)["TmaxD"]
 
 #Control period
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
@@ -116,7 +116,7 @@ for season in ["DJF", "MAM", "JJA", "SON"]:
 ax.axhline(0, color="gray", linestyle="--")
 ax.set_xlabel("Quantile")
 ax.set_ylabel("Mean Correction: seasonwise")
-ax.set_title(f"Correction Fx of daily temperature for {target_city} at 12 kms resolution")
+ax.set_title(f"Correction Fx of daily max temperature: {target_city}")
 ax.legend(loc="lower left")
 ax.grid(True)
 fig.tight_layout()
