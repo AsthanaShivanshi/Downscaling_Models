@@ -28,14 +28,14 @@ target_lon = args.lon
 
 locations= {target_city: (target_lat, target_lon)}
 
-model_path = f"{config.MODELS_DIR}/tmax_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/tmax_r01_coarse_masked.nc" 
-obs_path = f"{config.DATASETS_TRAINING_DIR}/TmaxD_step2_coarse.nc"
-output_path_template = f"{config.BC_DIR}/qm_tmax_r01_singlecell_{{city}}_output.nc"
-plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_corr_fx_tmax_allseasons_{target_city}.png"
+model_path = f"{config.MODELS_DIR}/temp_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/temp_r01_coarse_masked.nc" 
+obs_path = f"{config.DATASETS_TRAINING_DIR}/TabsD_step2_coarse.nc"
+output_path_template = f"{config.BC_DIR}/qm_temp_r01_singlecell_{{city}}_output.nc"
+plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_corr_fx_temp_allseasons_{target_city}.png"
 
 print("Loading data")
-model_output = xr.open_dataset(model_path)["tmax"]
-obs_output = xr.open_dataset(obs_path)["TmaxD"]
+model_output = xr.open_dataset(model_path)["temp"]
+obs_output = xr.open_dataset(obs_path)["TabsD"]
 
 #Control period
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
@@ -83,32 +83,39 @@ i_city, j_city = np.unravel_index(np.argmin(dist), dist.shape)
 print(f"Closest grid cell to {target_city}: i={i_city}, j={j_city}")
 print(f"Location: lat={lat_vals[i_city, j_city]}, lon={lon_vals[i_city, j_city]}")
 
-for season in ["DJF", "MAM", "JJA", "SON"]:
-    season_corrections = []
-    for doy in range(1, 367):
-        if get_season(doy) != season:
-            continue
-        window_doys = ((calib_doys - doy + 366) % 366)
-        window_mask = (window_doys <= 45) | (window_doys >= (366 - 45))
-        obs_window = calib_obs[:, i_city, j_city].values[window_mask]
-        mod_window = calib_mod[:, i_city, j_city].values[window_mask]
-        obs_window = obs_window[~np.isnan(obs_window)]
-        mod_window = mod_window[~np.isnan(mod_window)]
-        if obs_window.size == 0 or mod_window.size == 0:
-            continue
-        quantiles = np.linspace(0.01, 0.99, 99)
-        obs_q = np.quantile(obs_window, quantiles)
-        mod_q = np.quantile(mod_window, quantiles)
-        obs_q = np.concatenate([[obs_q[0]], obs_q, [obs_q[-1]]])
-        mod_q = np.concatenate([[mod_q[0]], mod_q, [mod_q[-1]]])
-        correction = mod_q - obs_q
-        season_corrections.append(correction)
+# Corr fx for each DOY using 91d logic
+doy_corrections = []
+doy_seasons = []
+for doy in range(1, 367):
+    window_doys = ((calib_doys - doy + 366) % 366)
+    window_mask = (window_doys <= 45) | (window_doys >= (366 - 45))  #wraparound
+    obs_window = calib_obs[:, i_city, j_city].values[window_mask]
+    mod_window = calib_mod[:, i_city, j_city].values[window_mask]
+    obs_window = obs_window[~np.isnan(obs_window)]
+    mod_window = mod_window[~np.isnan(mod_window)]
+    if obs_window.size == 0 or mod_window.size == 0:
+        doy_corrections.append(np.full(101, np.nan))
+        doy_seasons.append(get_season(doy))
+        continue
+    eqm = QM()
+    eqm.fit(mod_window.reshape(-1, 1), obs_window.reshape(-1, 1))
+    quantiles = np.linspace(0, 1, 101)
+    mod_q = np.quantile(mod_window, quantiles)
+    mapped_q = eqm.predict(mod_q.reshape(-1, 1)).flatten()
+    correction = mapped_q - mod_q
+    doy_corrections.append(correction)
+    doy_seasons.append(get_season(doy))
 
-    if season_corrections:
-        mean_corr = np.mean(season_corrections, axis=0)
-        ext_q = np.linspace(0, 1, 101)
+doy_corrections = np.array(doy_corrections) 
+doy_seasons = np.array(doy_seasons)          
+
+#Plotting seasonwise corr
+for season in ["DJF", "MAM", "JJA", "SON"]:
+    season_mask = doy_seasons == season
+    if np.any(season_mask):
+        mean_corr = np.nanmean(doy_corrections[season_mask], axis=0)
         ax.plot(
-            ext_q, mean_corr,
+            np.linspace(0, 1, 101), mean_corr,
             label=f"{target_city} {season}",
             color=season_colors[season]
         )
@@ -116,7 +123,7 @@ for season in ["DJF", "MAM", "JJA", "SON"]:
 ax.axhline(0, color="gray", linestyle="--")
 ax.set_xlabel("Quantile")
 ax.set_ylabel("Mean Correction: seasonwise")
-ax.set_title(f"Correction Fx of daily max temperature: {target_city}")
+ax.set_title(f"Correction Fx of daily temperature: {target_city}")
 ax.legend(loc="lower left")
 ax.grid(True)
 fig.tight_layout()
