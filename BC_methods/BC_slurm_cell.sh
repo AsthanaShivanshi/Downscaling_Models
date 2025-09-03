@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=EQM_cities_Temp
+#SBATCH --job-name=EQM_3cities_Temp
 #SBATCH --output=logs/bc/EQM_temp_output-%j.txt
 #SBATCH --error=logs/bc/EQM_temp_job_error-%j.txt
 #SBATCH --ntasks=1
@@ -11,9 +11,6 @@
 module load python
 source environment.sh
 
-CITY="Locarno"
-LAT=46.1670
-LON=8.7943
 
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
@@ -22,5 +19,6 @@ export NUMEXPR_NUM_THREADS=$SLURM_CPUS_PER_TASK
 cd BC_methods
 
 echo "EQM for 2 cities started"
-python EQM_single_cell_cities_Manual.py --city $CITY --lat $LAT --lon $LON
-echo "EQM for 2 cities finished using SBCK"
+python EQM_single_cell_cities_Manual.py --city Zurich --lat 47.3769 --lon 8.5417
+python EQM_single_cell_cities_Manual.py --city Geneva --lat 46.2044 --lon 6.1432
+python EQM_single_cell_cities_Manual.py --city Locarno --lat 46.1670 --lon 8.7943

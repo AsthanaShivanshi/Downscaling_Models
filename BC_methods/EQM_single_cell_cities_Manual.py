@@ -8,9 +8,9 @@ import argparse
 plt.rcParams.update({
     "font.family": "serif",
     "font.serif": ["Times New Roman", "Times", "DejaVu Serif"],
-    "font.size": 18,
-    "axes.labelsize": 18,
-    "axes.titlesize": 20,
+    "font.size": 16,
+    "axes.labelsize": 16,
+    "axes.titlesize": 16,
     "legend.fontsize": 12,
     "xtick.labelsize": 12,
     "ytick.labelsize": 12,
@@ -28,14 +28,14 @@ target_lon = args.lon
 
 locations= {target_city: (target_lat, target_lon)}
 
-model_path = f"{config.MODELS_DIR}/temp_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/temp_r01_coarse_masked.nc" 
-obs_path = f"{config.DATASETS_TRAINING_DIR}/TabsD_step2_coarse.nc"
-output_path_template = f"{config.BC_DIR}/qm_temp_r01_singlecell_{{city}}_output.nc"
-plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_temp_r01_2cities_DJF.png"
+model_path = f"{config.MODELS_DIR}/precip_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/precip_r01_coarse_masked.nc" 
+obs_path = f"{config.DATASETS_TRAINING_DIR}/RhiresD_step2_coarse.nc"
+output_path_template = f"{config.BC_DIR}/qm_precip_r01_singlecell_{{city}}_output.nc"
+plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_corr_fx_precip_allseasons_{target_city}.png"
 
 print("Loading data")
-model_output = xr.open_dataset(model_path)["temp"]
-obs_output = xr.open_dataset(obs_path)["TabsD"]
+model_output = xr.open_dataset(model_path)["precip"]
+obs_output = xr.open_dataset(obs_path)["RhiresD"]
 
 #Control period
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
@@ -116,9 +116,9 @@ for season in ["DJF", "MAM", "JJA", "SON"]:
 ax.axhline(0, color="gray", linestyle="--")
 ax.set_xlabel("Quantile")
 ax.set_ylabel("Mean Correction: seasonwise")
-ax.set_title(f"Seasonal Correction Fx of Daily Temperature for {target_city} at 12 kms resolution")
+ax.set_title(f"Correction Fx of daily temperature for {target_city} at 12 kms resolution")
 ax.legend(loc="lower left")
 ax.grid(True)
 fig.tight_layout()
 plt.savefig(plot_path, dpi=1000)
-print(f"Seasonal correction function plot saved to {plot_path}")
+print(f"Correction function plot saved to {plot_path}")
