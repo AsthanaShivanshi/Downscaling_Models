@@ -11,38 +11,6 @@ def eqm_cell(model_cell, obs_cell, calib_start, calib_end, model_times, obs_time
     if ntime == 0 or np.all(np.isnan(model_cell)) or np.all(np.isnan(obs_cell)):
         return qm_series
 
-    # Convert to date only (ignore time-of-day)
-    model_dates = np.array(model_times, dtype='datetime64[D]')
-    obs_dates = np.array(obs_times, dtype='datetime64[D]')
-
-    # Calibration period mask for both
-    calib_dates = np.arange(calib_start, calib_end + np.timedelta64(1, 'D'), dtype='datetime64[D]')
-    model_calib_idx = np.in1d(model_dates, calib_dates)
-    obs_calib_idx = np.in1d(obs_dates, calib_dates)
-
-    # Only keeping overlapping dates during calibration
-    common_dates = np.intersect1d(model_dates[model_calib_idx], obs_dates[obs_calib_idx])
-    if len(common_dates) == 0:
-        return qm_series
-
-    model_common_idx = np.in1d(model_dates, common_dates)
-    obs_common_idx = np.in1d(obs_dates, common_dates)
-
-    calib_mod_cell = model_cell[model_common_idx]
-    calib_obs_cell = obs_cell[obs_common_idx]
-
-    # DOY for calibration and full model period
-    def get_doy(d): return (np.datetime64(d, 'D') - np.datetime64(str(d)[:4] + '-01-01', 'D')).astype(int) + 1
-    calib_doys = np.array([get_doy(d) for d in common_dates])
-    model_doys = np.array([get_doy(d) for d in model_dates])
-
-
-def eqm_cell(model_cell, obs_cell, calib_start, calib_end, model_times, obs_times):
-    ntime = model_cell.shape[0]
-    qm_series = np.full(ntime, np.nan, dtype=np.float32)
-    if ntime == 0 or np.all(np.isnan(model_cell)) or np.all(np.isnan(obs_cell)):
-        return qm_series
-
     model_dates = np.array(model_times, dtype='datetime64[D]')
     obs_dates = np.array(obs_times, dtype='datetime64[D]')
 
@@ -102,7 +70,7 @@ def main():
 
     model_path = f"{config.MODELS_DIR}/temp_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/temp_r01_coarse_masked.nc" 
     obs_path = f"{config.DATASETS_TRAINING_DIR}/TabsD_step2_coarse.nc"
-    output_path = f"{config.BIAS_CORRECTED_DIR}/EQM/eqm_temp_r01_allcells.nc"
+    output_path = f"{config.BIAS_CORRECTED_DIR}/EQM/temp_QM_BC_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_r01.nc"
 
     model_ds = xr.open_dataset(model_path)
     obs_ds = xr.open_dataset(obs_path)
