@@ -13,10 +13,10 @@ from directories import (
 
 var_names = ["precip", "temp", "tmin", "tmax"]
 eqm_files = {
-    "precip": "eqm_precip_r01_allcells.nc",
-    "temp": "eqm_temp_r01_allcells.nc",
-    "tmin": "eqm_tmin_r01_allcells.nc",
-    "tmax": "eqm_tmax_r01_allcells.nc"
+    "precip": "precip_BC_bicubic_r01.nc",
+    "temp": "temp_BC_bicubic_r01.nc",
+    "tmin": "tmin_BC_bicubic_r01.nc",
+    "tmax": "tmax_BC_bicubic_r01.nc"
 }
 scaling_param_map = {
     "precip": "precip",
@@ -73,6 +73,7 @@ for var in var_names:
 inputs_scaled = np.stack(inputs_scaled, axis=1)
 
 elevation_da = rioxarray.open_rasterio(ELEVATION_PATH)
+
 if elevation_da.ndim == 3:
     elevation_da = elevation_da.isel(band=0)
 elev_array = elevation_da.values

@@ -14,10 +14,10 @@ from directories import (
 var_names = ["precip", "temp", "tmin", "tmax"]
 
 eqm_files = {
-    "precip": "precip_QM_BC_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_r01.nc",
-    "temp": "temp_QM_BC_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_r01.nc",
-    "tmin": "tmin_QM_BC_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_r01.nc",
-    "tmax": "tmax_QM_BC_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_r01.nc"
+    "precip": "precip_BC_bicubic_r01.nc",
+    "temp": "temp_BC_bicubic_r01.nc",
+    "tmin": "tmin_BC_bicubic_r01.nc",
+    "tmax": "tmax_BC_bicubic_r01.nc"
 }
 
 
@@ -54,51 +54,30 @@ model_instance.eval()
 inputs_scaled = []
 coords = None
 
-
 for var in var_names:
     eqm_path = os.path.join(EQM_DIR, eqm_files[var])
     ds = xr.open_dataset(eqm_path)
     arr = ds[var].values if var in ds else ds[list(ds.data_vars)[0]].values
-
-    # Bicubically interp
-    if var == "precip":
-        #Ref files
-        ref_ds = xr.open_dataset(f"{DATASETS_TRAINING_DIR}/RhiresD_step3_interp.nc")
-    else:
-        ref_ds = xr.open_dataset(f"{DATASETS_TRAINING_DIR}/TabsD_step3_interp.nc")
-    ref_lat = ref_ds.lat.values
-    ref_lon = ref_ds.lon.values
-
-    arr_interp = xr.DataArray(
-        arr,
-        dims=("time", "lat", "lon"),
-        coords={"time": ds.time, "lat": ds.lat, "lon": ds.lon}
-    ).interp(
-        lat=ref_lat, lon=ref_lon, method="cubic"
-    ).values
-    print(f"{var} interpolated shape: {arr_interp.shape}, min: {np.nanmin(arr_interp)}, max: {np.nanmax(arr_interp)}, mean: {np.nanmean(arr_interp)}")
-
+    print(f"{var} input shape: {arr.shape}, min: {np.nanmin(arr)}, max: {np.nanmax(arr)}, mean: {np.nanmean(arr)}")
     params = json.load(open(os.path.join(SCALING_DIR, scaling_param_files[var])))
-
     if var == "precip":
-        arr_scaled = scale_precip(arr_interp, params["min"], params["max"])
+        arr_scaled = scale_precip(arr, params["min"], params["max"])
     else:
-        arr_scaled = scale_temp(arr_interp, params["mean"], params["std"])
-
+        arr_scaled = scale_temp(arr, params["mean"], params["std"])
     inputs_scaled.append(arr_scaled)
-
     if coords is None:
         coords = {
             "time": ds.time.values,
-            "lat": ref_lat,
-            "lon": ref_lon
+            "lat": ds.lat.values,
+            "lon": ds.lon.values
         }
-        eqm_lat = ref_lat
-        eqm_lon = ref_lon
+        eqm_lat = ds.lat.values
+        eqm_lon = ds.lon.values
 
 inputs_scaled = np.stack(inputs_scaled, axis=1)
 
 elevation_da = rioxarray.open_rasterio(ELEVATION_PATH)
+
 if elevation_da.ndim == 3:
     elevation_da = elevation_da.isel(band=0)
 elev_array = elevation_da.values
@@ -178,5 +157,5 @@ for var in var_names:
 
     ds_out.attrs = ds_in.attrs
 
-    out_path = os.path.join(EQM_DIR, f"TRAINING_QM_BC_{var}_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_downscaled_r01.nc")
+    out_path = os.path.join(EQM_DIR, f"DOWNSCALED_TRAINING_QM_BC_{var}_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_downscaled_r01.nc")
     ds_out.to_netcdf(out_path, mode="w")
