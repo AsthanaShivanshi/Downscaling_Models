@@ -151,5 +151,5 @@ for var in var_names:
 
     ds_out.attrs = ds_in.attrs
 
-    out_path = os.path.join(EQM_DIR, f"COMBINED_EQM_{var}_downscaled_r01.nc")
+    out_path = os.path.join(EQM_DIR, f"DOWNSCALED_COMBINED_QM_BC_{var}_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_downscaled_r01.nc") 
     ds_out.to_netcdf(out_path, mode="w")
