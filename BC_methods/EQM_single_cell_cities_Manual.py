@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from SBCK import QM
 import config
 import argparse
+from scipy.interpolate import interp1d
 
 plt.rcParams.update({
     "font.family": "serif",
@@ -89,6 +90,7 @@ quantiles_inner = np.linspace(0.01, 0.99, 99)
 model_cell = calib_mod[:, i_city, j_city].values
 obs_cell = calib_obs[:, i_city, j_city].values
 
+
 for doy in range(1, 367):
     window_doys = ((calib_doys - doy + 366) % 366)
     window_mask = (window_doys <= 45) | (window_doys >= (366 - 45))
@@ -102,17 +104,16 @@ for doy in range(1, 367):
         continue
     eqm = QM()
     eqm.fit(mod_window.reshape(-1, 1), obs_window.reshape(-1, 1))
-    # Quantiles for tails (inner)
+    quantiles_inner = np.linspace(0.01, 0.99, 99)
     mod_q_inner = np.quantile(mod_window, quantiles_inner)
     obs_q_inner = np.quantile(obs_window, quantiles_inner)
-    # Extending to tails
-    mod_q = np.concatenate([[mod_q_inner[0]], mod_q_inner, [mod_q_inner[-1]]])
-    obs_q = np.concatenate([[obs_q_inner[0]], obs_q_inner, [obs_q_inner[-1]]])
+    # Interpolation for tails
+    correction_inner = obs_q_inner - mod_q_inner
+    interp_corr = interp1d(
+        quantiles_inner, correction_inner, kind='linear', fill_value='extrapolate'
+    )
     quantiles = np.linspace(0, 1, 101)
-    mapped_q = eqm.predict(mod_q.reshape(-1, 1)).flatten()
-    mapped_q[0] = obs_q[0]
-    mapped_q[-1] = obs_q[-1]
-    correction = mapped_q - mod_q
+    correction = interp_corr(quantiles)
     doy_corrections.append(correction)
     doy_seasons.append(get_season(doy))
 
