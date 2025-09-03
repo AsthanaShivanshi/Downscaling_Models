@@ -99,12 +99,25 @@ for doy in range(1, 367):
         continue
     eqm = QM()
     eqm.fit(mod_window.reshape(-1, 1), obs_window.reshape(-1, 1))
-    quantiles = np.linspace(0, 1, 101)
+    quantiles = np.linspace(0.01, 0.99, 99)
     mod_q = np.quantile(mod_window, quantiles)
-    mapped_q = eqm.predict(mod_q.reshape(-1, 1)).flatten()
-    correction = mapped_q - mod_q
+    obs_q = np.quantile(obs_window, quantiles)
+    ext_mod_q = np.concatenate([[mod_q[0]], mod_q, [mod_q[-1]]])
+    ext_obs_q = np.concatenate([[obs_q[0]], obs_q, [obs_q[-1]]])
+    ext_quantiles = np.linspace(0, 1, 101)
+    mapped_q = eqm.predict(ext_mod_q.reshape(-1, 1)).flatten()
+
+    # Flat extrapolation for tails
+    p1_mod = ext_mod_q[0]
+    p99_mod = ext_mod_q[-1]
+    p1_obs = ext_obs_q[0]
+    p99_obs = ext_obs_q[-1]
+
+    mapped_q[ext_mod_q < p1_mod] = p1_obs
+    mapped_q[ext_mod_q > p99_mod] = p99_obs
+
+    correction = mapped_q - ext_mod_q
     doy_corrections.append(correction)
-    doy_seasons.append(get_season(doy))
 
 doy_corrections = np.array(doy_corrections) 
 doy_seasons = np.array(doy_seasons)          

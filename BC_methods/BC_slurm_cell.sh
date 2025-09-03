@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=EQM_3cities_TmaxD
-#SBATCH --output=logs/bc/EQM_tmax_output-%j.txt
-#SBATCH --error=logs/bc/EQM_tmax_job_error-%j.txt
+#SBATCH --job-name=EQM_3cities_TabsD
+#SBATCH --output=logs/bc/EQM_tabs_output-%j.txt
+#SBATCH --error=logs/bc/EQM_tabs_job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=02:00:00
