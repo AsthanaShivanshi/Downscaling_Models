@@ -29,14 +29,14 @@ target_lon = args.lon
 
 locations= {target_city: (target_lat, target_lon)}
 
-model_path = f"{config.MODELS_DIR}/temp_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/temp_r01_coarse_masked.nc" 
-obs_path = f"{config.DATASETS_TRAINING_DIR}/TabsD_step2_coarse.nc"
-output_path_template = f"{config.BC_DIR}/qm_temp_r01_singlecell_{{city}}_output.nc"
-plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_corr_fx_temp_allseasons_{target_city}.png"
+model_path = f"{config.MODELS_DIR}/precip_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/precip_r01_coarse_masked.nc" 
+obs_path = f"{config.DATASETS_TRAINING_DIR}/RhiresD_step2_coarse.nc"
+output_path_template = f"{config.BC_DIR}/qm_precip_r01_singlecell_{{city}}_output.nc"
+plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_corr_fx_precip_allseasons_{target_city}.png"
 
 print("Loading data")
-model_output = xr.open_dataset(model_path)["temp"]
-obs_output = xr.open_dataset(obs_path)["TabsD"]
+model_output = xr.open_dataset(model_path)["precip"]
+obs_output = xr.open_dataset(obs_path)["RhiresD"]
 
 #Control period
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
@@ -97,6 +97,8 @@ for doy in range(1, 367):
     mod_window = model_cell[window_mask]
     obs_window = obs_window[~np.isnan(obs_window)]
     mod_window = mod_window[~np.isnan(mod_window)]
+
+    #NaN window: moving on
     if obs_window.size == 0 or mod_window.size == 0:
         doy_corrections.append(np.full(101, np.nan))
         doy_seasons.append(get_season(doy))
@@ -109,21 +111,21 @@ for doy in range(1, 367):
     eqm = QM()
     eqm.fit(mod_q_inner.reshape(-1, 1), obs_q_inner.reshape(-1, 1))
 
-    #Corr fx using interp
-    quantiles = np.linspace(0, 1, 101)
-    mod_q = np.quantile(mod_window, quantiles)
-    mapped_q = eqm.predict(mod_q.reshape(-1, 1)).flatten()
+    #Correction using SBCK for inner quantiles
     correction_inner = obs_q_inner - mod_q_inner
+
+#Interp between quant res and at the ends for final corr fx
     interp_corr = interp1d(
         quantiles_inner, correction_inner, kind='linear', fill_value='extrapolate'
     )
+    quantiles= np.linspace(0, 1, 101)
     correction = interp_corr(quantiles)
     doy_corrections.append(correction)
     doy_seasons.append(get_season(doy))
 
 doy_corrections = np.array(doy_corrections)  #(366, 101)
 doy_seasons = np.array(doy_seasons)
-quantiles = np.linspace(0, 1, 101)
+
 for season in ["DJF", "MAM", "JJA", "SON"]:
     season_mask = (doy_seasons == season)
     if np.any(season_mask):
@@ -138,7 +140,7 @@ for season in ["DJF", "MAM", "JJA", "SON"]:
 ax.axhline(0, color="gray", linestyle="--")
 ax.set_xlabel("Quantile")
 ax.set_ylabel("Mean Correction: seasonwise")
-ax.set_title(f"Correction Fx of daily temperature: {target_city}")
+ax.set_title(f"Correction Fx of daily precipitation: {target_city}")
 ax.legend(loc="lower left")
 ax.grid(True)
 fig.tight_layout()
