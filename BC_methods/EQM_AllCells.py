@@ -75,14 +75,14 @@ def eqm_cell(model_cell, obs_cell, calib_start, calib_end, model_times, obs_time
 def main():
     print("EQM for All Cells started")
 
-    model_path = f"{config.MODELS_DIR}/temp_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/temp_r01_coarse_masked.nc" 
-    obs_path = f"{config.DATASETS_TRAINING_DIR}/TabsD_step2_coarse.nc"
-    output_path = f"{config.BIAS_CORRECTED_DIR}/EQM/temp_QM_BC_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_r01.nc"
+    model_path = f"{config.MODELS_DIR}/precip_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/precip_r01_coarse_masked.nc" 
+    obs_path = f"{config.DATASETS_TRAINING_DIR}/RhiresD_step2_coarse.nc"
+    output_path = f"{config.BIAS_CORRECTED_DIR}/EQM/precip_QM_BC_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_r01.nc"
 
     model_ds = xr.open_dataset(model_path)
     obs_ds = xr.open_dataset(obs_path)
-    model = model_ds["temp"]
-    obs = obs_ds["TabsD"]
+    model = model_ds["precip"]
+    obs = obs_ds["RhiresD"]
 
     ntime, nN, nE = model.shape
     qm_data = np.full(model.shape, np.nan, dtype=np.float32)
@@ -110,9 +110,9 @@ def main():
             idx += 1
 
     out_ds = model_ds.copy()
-    out_ds["temp"] = (("time", "N", "E"), qm_data)
+    out_ds["precip"] = (("time", "N", "E"), qm_data)
     out_ds.to_netcdf(output_path)
-    print(f"Bias-corrected temp saved to {output_path}")
+    print(f"Bias-corrected precip saved to {output_path}")
     print("EQM for All Cells finished")
 
 if __name__ == "__main__":
