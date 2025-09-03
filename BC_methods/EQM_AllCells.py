@@ -3,6 +3,7 @@ import numpy as np
 import config
 from SBCK import QM
 from joblib import Parallel, delayed
+from scipy.interpolate import interp1d
 
 def eqm_cell(model_cell, obs_cell, calib_start, calib_end, model_times, obs_times):
     ntime = model_cell.shape[0]
@@ -35,8 +36,38 @@ def eqm_cell(model_cell, obs_cell, calib_start, calib_end, model_times, obs_time
     calib_doys = np.array([get_doy(d) for d in common_dates])
     model_doys = np.array([get_doy(d) for d in model_dates])
 
+
+def eqm_cell(model_cell, obs_cell, calib_start, calib_end, model_times, obs_times):
+    ntime = model_cell.shape[0]
+    qm_series = np.full(ntime, np.nan, dtype=np.float32)
+    if ntime == 0 or np.all(np.isnan(model_cell)) or np.all(np.isnan(obs_cell)):
+        return qm_series
+
+    model_dates = np.array(model_times, dtype='datetime64[D]')
+    obs_dates = np.array(obs_times, dtype='datetime64[D]')
+
+    calib_dates = np.arange(calib_start, calib_end + np.timedelta64(1, 'D'), dtype='datetime64[D]')
+    model_calib_idx = np.in1d(model_dates, calib_dates)
+    obs_calib_idx = np.in1d(obs_dates, calib_dates)
+
+    common_dates = np.intersect1d(model_dates[model_calib_idx], obs_dates[obs_calib_idx])
+    if len(common_dates) == 0:
+        return qm_series
+
+    model_common_idx = np.in1d(model_dates, common_dates)
+    obs_common_idx = np.in1d(obs_dates, common_dates)
+
+    calib_mod_cell = model_cell[model_common_idx]
+    calib_obs_cell = obs_cell[obs_common_idx]
+
+    def get_doy(d): return (np.datetime64(d, 'D') - np.datetime64(str(d)[:4] + '-01-01', 'D')).astype(int) + 1
+    calib_doys = np.array([get_doy(d) for d in common_dates])
+    model_doys = np.array([get_doy(d) for d in model_dates])
+
+    quantiles = np.linspace(0, 1, 101)
+    quantiles_inner = np.linspace(0.01, 0.99, 99)
+
     for doy in range(1, 367):
-        # 91-d with wraparound
         window_doys = ((calib_doys - doy + 366) % 366)
         window_mask = (window_doys <= 45) | (window_doys >= (366 - 45))
         obs_window = calib_obs_cell[window_mask]
@@ -46,25 +77,22 @@ def eqm_cell(model_cell, obs_cell, calib_start, calib_end, model_times, obs_time
         if obs_window.size == 0 or mod_window.size == 0:
             continue
 
-        #quantile res: 99 with linear interp in between
-        quantiles= np.linspace(0.01,0.99,99)
-        mod_q= np.quantile(mod_window, quantiles)
-        obs_q= np.quantile(obs_window, quantiles)
-        eqm = QM()
-        eqm.fit(mod_window.reshape(-1, 1), obs_window.reshape(-1, 1))
+        mod_q_inner = np.quantile(mod_window, quantiles_inner)
+        obs_q_inner = np.quantile(obs_window, quantiles_inner)
+        correction_inner = obs_q_inner - mod_q_inner
+
+        interp_corr = interp1d(
+            quantiles_inner, correction_inner, kind='linear', fill_value='extrapolate'
+        )
+        correction = interp_corr(quantiles)
+
         indices = np.where(model_doys == doy)[0]
         if indices.size > 0:
             values = model_cell[indices]
-            mapped= eqm.predict(values.reshape(-1, 1)).flatten()
-
-            #Flat extrapolation for tails
-            p1_mod=mod_q[0]
-            p99_obs=obs_q[-1]
-            p1_obs=obs_q[0]
-            p99_mod=mod_q[-1]
-
-            mapped[values < p1_mod] = p1_obs
-            mapped[values > p99_mod] = p99_obs
+            # Map values to quantiles
+            value_quantiles = np.searchsorted(np.quantile(mod_window, quantiles), values, side='right') / 100.0
+            value_quantiles = np.clip(value_quantiles, 0, 1)
+            mapped = values + interp_corr(value_quantiles)
             qm_series[indices] = mapped
 
     return qm_series
