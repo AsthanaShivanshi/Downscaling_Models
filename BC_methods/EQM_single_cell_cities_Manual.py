@@ -16,7 +16,7 @@ plt.rcParams.update({
     "ytick.labelsize": 12,
 })
 
-model_path = f"{config.SCRATCH_DIR}/temp_r01_coarse_masked.nc"
+model_path = f"{config.MODELS_DIR}/temp_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/temp_r01_coarse_masked.nc" 
 obs_path = f"{config.DATASETS_TRAINING_DIR}/TabsD_step2_coarse.nc"
 output_path_template = f"{config.BC_DIR}/qm_temp_r01_singlecell_{{city}}_output.nc"
 plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_correction_function_temp_r01_2cities_DJF.png"
