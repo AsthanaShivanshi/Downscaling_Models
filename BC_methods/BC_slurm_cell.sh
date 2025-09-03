@@ -18,5 +18,5 @@ export NUMEXPR_NUM_THREADS=$SLURM_CPUS_PER_TASK
 cd BC_methods
 
 echo "EQM for 2 cities started"
-python EQM_single_cell_2cities_Manual.py --n_jobs $SLURM_CPUS_PER_TASK
+python EQM_single_cell_cities_Manual.py --n_jobs $SLURM_CPUS_PER_TASK
 echo "EQM for 2 cities finished using SBCK method"
