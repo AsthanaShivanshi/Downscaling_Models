@@ -8,7 +8,7 @@ from UNet import UNet
 import rioxarray
 from skimage.transform import resize
 from directories import (
-    EQM_DIR, SCALING_DIR, MODEL_PATH, CONFIG_PATH, ELEVATION_PATH
+    EQM_DIR, SCALING_DIR, MODEL_PATH, CONFIG_PATH, ELEVATION_PATH, DATASETS_TRAINING_DIR
 )
 
 var_names = ["precip", "temp", "tmin", "tmax"]
@@ -63,9 +63,9 @@ for var in var_names:
     # Bicubically interp
     if var == "precip":
         #Ref files
-        ref_ds = xr.open_dataset(f"{directories['DATASETS_TRAINING_DIR']}/RhiresD_step3_interp.nc")
+        ref_ds = xr.open_dataset(f"{DATASETS_TRAINING_DIR}/RhiresD_step3_interp.nc")
     else:
-        ref_ds = xr.open_dataset(f"{directories['DATASETS_TRAINING_DIR']}/TabsD_step3_interp.nc")
+        ref_ds = xr.open_dataset(f"{DATASETS_TRAINING_DIR}/TabsD_step3_interp.nc")
     ref_lat = ref_ds.lat.values
     ref_lon = ref_ds.lon.values
 
@@ -115,7 +115,7 @@ if elev_array.shape != target_shape:
         preserve_range=True,
         anti_aliasing=True
     )
-    
+
     print("Resized elev_array shape:", elev_array.shape)
 elev_array = elev_array.astype(np.float32)
 print("Final elev_array stats: min:", np.nanmin(elev_array), "max:", np.nanmax(elev_array), "mean:", np.nanmean(elev_array))
@@ -178,5 +178,5 @@ for var in var_names:
 
     ds_out.attrs = ds_in.attrs
 
-    out_path = os.path.join(EQM_DIR, f"TRAINING_EQM_{var}_downscaled_r01.nc")
+    out_path = os.path.join(EQM_DIR, f"TRAINING_QM_BC_{var}_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_downscaled_r01.nc")
     ds_out.to_netcdf(out_path, mode="w")
