@@ -53,25 +53,48 @@ model_instance.eval()
 
 inputs_scaled = []
 coords = None
+
+
 for var in var_names:
     eqm_path = os.path.join(EQM_DIR, eqm_files[var])
     ds = xr.open_dataset(eqm_path)
     arr = ds[var].values if var in ds else ds[list(ds.data_vars)[0]].values
-    print(f"{var} input shape: {arr.shape}, min: {np.nanmin(arr)}, max: {np.nanmax(arr)}, mean: {np.nanmean(arr)}")
-    params = json.load(open(os.path.join(SCALING_DIR, scaling_param_files[var])))
+
+    # Bicubically interp
     if var == "precip":
-        arr_scaled = scale_precip(arr, params["min"], params["max"])
+        #Ref files
+        ref_ds = xr.open_dataset(f"{directories['DATASETS_TRAINING_DIR']}/RhiresD_step3_interp.nc")
     else:
-        arr_scaled = scale_temp(arr, params["mean"], params["std"])
+        ref_ds = xr.open_dataset(f"{directories['DATASETS_TRAINING_DIR']}/TabsD_step3_interp.nc")
+    ref_lat = ref_ds.lat.values
+    ref_lon = ref_ds.lon.values
+
+    arr_interp = xr.DataArray(
+        arr,
+        dims=("time", "lat", "lon"),
+        coords={"time": ds.time, "lat": ds.lat, "lon": ds.lon}
+    ).interp(
+        lat=ref_lat, lon=ref_lon, method="cubic"
+    ).values
+    print(f"{var} interpolated shape: {arr_interp.shape}, min: {np.nanmin(arr_interp)}, max: {np.nanmax(arr_interp)}, mean: {np.nanmean(arr_interp)}")
+
+    params = json.load(open(os.path.join(SCALING_DIR, scaling_param_files[var])))
+
+    if var == "precip":
+        arr_scaled = scale_precip(arr_interp, params["min"], params["max"])
+    else:
+        arr_scaled = scale_temp(arr_interp, params["mean"], params["std"])
+
     inputs_scaled.append(arr_scaled)
+
     if coords is None:
         coords = {
             "time": ds.time.values,
-            "lat": ds.lat.values,
-            "lon": ds.lon.values
+            "lat": ref_lat,
+            "lon": ref_lon
         }
-        eqm_lat = ds.lat.values
-        eqm_lon = ds.lon.values
+        eqm_lat = ref_lat
+        eqm_lon = ref_lon
 
 inputs_scaled = np.stack(inputs_scaled, axis=1)
 
@@ -82,6 +105,7 @@ elev_array = elevation_da.values
 if elev_array.shape == (len(eqm_lon), len(eqm_lat)):
     elev_array = elev_array.T
     print("Transposed elev_array shape:", elev_array.shape)
+
 target_shape = (len(eqm_lat), inputs_scaled.shape[3])
 if elev_array.shape != target_shape:
     elev_array = resize(
@@ -91,6 +115,7 @@ if elev_array.shape != target_shape:
         preserve_range=True,
         anti_aliasing=True
     )
+    
     print("Resized elev_array shape:", elev_array.shape)
 elev_array = elev_array.astype(np.float32)
 print("Final elev_array stats: min:", np.nanmin(elev_array), "max:", np.nanmax(elev_array), "mean:", np.nanmean(elev_array))
