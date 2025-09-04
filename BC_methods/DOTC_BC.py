@@ -75,7 +75,10 @@ print("calib_mod_stack shape:", calib_mod_stack.shape)
 print("calib_obs_stack shape:", calib_obs_stack.shape)
 print("scenario_mod_stack shape:", scenario_mod_stack.shape)
 
-dotc = dOTC(bin_width=10)
+bin_width = np.array([5, 10, 5, 5])  # Bins separate for each var,,,,,,temp, precip, tmin, tmax
+bin_origin = np.array([0, 0, 0, 0])   
+
+dotc = dOTC(bin_width=bin_width, bin_origin=bin_origin)
 
 dotc.fit(calib_obs_stack, calib_mod_stack, scenario_mod_stack)
 
