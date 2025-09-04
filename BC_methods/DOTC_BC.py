@@ -1,0 +1,120 @@
+import xarray as xr
+import numpy as np
+import matplotlib.pyplot as plt
+from SBCK import DOTC
+import config
+import argparse
+
+plt.rcParams.update({
+    "font.family": "serif",
+    "font.serif": ["Times New Roman", "Times", "DejaVu Serif"],
+    "font.size": 16,
+    "axes.labelsize": 16,
+    "axes.titlesize": 16,
+    "legend.fontsize": 12,
+    "xtick.labelsize": 12,
+    "ytick.labelsize": 12,
+})
+
+parser= argparse.ArgumentParser()
+parser.add_argument("--city", type=str, required=True, help="City name, first letter upper case")
+parser.add_argument("--lat", type=float, required=True, help="City lat")
+parser.add_argument("--lon", type=float, required=True, help="City lon")
+args = parser.parse_args()
+
+target_city = args.city
+target_lat = args.lat
+target_lon = args.lon
+
+locations= {target_city: (target_lat, target_lon)}
+
+# Paths for all variables
+model_paths = [
+    f"{config.MODELS_DIR}/temp_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/temp_r01_coarse_masked.nc",
+    f"{config.MODELS_DIR}/precip_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/precip_r01_coarse_masked.nc",
+    f"{config.MODELS_DIR}/tmin_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/tmin_r01_coarse_masked.nc",
+    f"{config.MODELS_DIR}/tmax_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/tmax_r01_coarse_masked.nc"
+]
+obs_paths = [
+    f"{config.DATASETS_TRAINING_DIR}/TabsD_step2_coarse.nc",
+    f"{config.DATASETS_TRAINING_DIR}/PrecD_step2_coarse.nc",
+    f"{config.DATASETS_TRAINING_DIR}/TminD_step2_coarse.nc",
+    f"{config.DATASETS_TRAINING_DIR}/TmaxD_step2_coarse.nc"
+]
+var_names = ["temp", "precip", "tmin", "tmax"]
+obs_var_names = ["TabsD", "PrecD", "TminD", "TmaxD"]
+
+print("Loading data")
+model_datasets = [xr.open_dataset(p)[vn] for p, vn in zip(model_paths, var_names)]
+obs_datasets = [xr.open_dataset(p)[ovn] for p, ovn in zip(obs_paths, obs_var_names)]
+
+lat_vals = model_datasets[0]['lat'].values
+lon_vals = model_datasets[0]['lon'].values
+
+# Find city grid cell
+dist = np.sqrt((lat_vals - target_lat)**2 + (lon_vals - target_lon)**2)
+i_city, j_city = np.unravel_index(np.argmin(dist), dist.shape)
+print(f"Closest grid cell to {target_city}: i={i_city}, j={j_city}")
+print(f"Location: lat={lat_vals[i_city, j_city]}, lon={lon_vals[i_city, j_city]}")
+
+# Calibration period
+calib_start = "1981-01-01"
+calib_end = "2010-12-31"
+
+calib_mod_cells = [ds.sel(time=slice(calib_start, calib_end))[:, i_city, j_city].values for ds in model_datasets]
+calib_obs_cells = [ds.sel(time=slice(calib_start, calib_end))[:, i_city, j_city].values for ds in obs_datasets]
+
+# Stack for DOTC
+calib_mod_stack = np.stack(calib_mod_cells, axis=1)  # shape (ntime, 4)
+calib_obs_stack = np.stack(calib_obs_cells, axis=1)  # shape (ntime, 4)
+
+# Fit DOTC
+dotc = DOTC()
+dotc.fit(calib_mod_stack, calib_obs_stack)
+
+# Apply to full period
+full_mod_cells = [ds[:, i_city, j_city].values for ds in model_datasets]
+full_mod_stack = np.stack(full_mod_cells, axis=1)  # shape (ntime_full, 4)
+corrected_stack = dotc.predict(full_mod_stack)     # shape (ntime_full, 4)
+
+# Save corrected output as NetCDF
+output_path = output_path_template.format(city=target_city)
+coords = {
+    "time": model_datasets[0]['time'].values,
+    "lat": [lat_vals[i_city, j_city]],
+    "lon": [lon_vals[i_city, j_city]]
+}
+data_vars = {
+    var: (("time", "lat", "lon"), corrected_stack[:, idx].reshape(-1, 1, 1))
+    for idx, var in enumerate(var_names)
+}
+ds_out = xr.Dataset(data_vars, coords=coords)
+ds_out.to_netcdf(output_path)
+print(f"Corrected output saved to {output_path}")
+
+# Plot CDFs for each variable
+for idx, var in enumerate(var_names):
+    plt.figure(figsize=(8, 6))
+    model_vals = full_mod_stack[:, idx][~np.isnan(full_mod_stack[:, idx])]
+    obs_vals = obs_datasets[idx][:, i_city, j_city].values
+    obs_vals = obs_vals[~np.isnan(obs_vals)]
+    corr_vals = corrected_stack[:, idx][~np.isnan(corrected_stack[:, idx])]
+
+    for vals, label, color in [
+        (model_vals, "Model (Coarse)", "blue"),
+        (obs_vals, "Observations", "green"),
+        (corr_vals, "Corrected Output", "red")
+    ]:
+        sorted_vals = np.sort(vals)
+        cdf = np.arange(1, len(sorted_vals)+1) / len(sorted_vals)
+        plt.plot(sorted_vals, cdf, label=label, color=color)
+
+    plt.xlabel(var)
+    plt.ylabel("CDF")
+    plt.title(f"CDFs for {target_city} - {var}")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    cdf_plot_path = output_path.replace(".nc", f"_cdf_{var}.png")
+    plt.savefig(cdf_plot_path, dpi=300)
+    print(f"CDF plot saved to {cdf_plot_path}")
