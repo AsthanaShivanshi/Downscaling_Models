@@ -1,7 +1,7 @@
 import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
-from SBCK import DOTC
+from SBCK import dOTC
 import config
 import argparse
 
@@ -28,7 +28,7 @@ target_lon = args.lon
 
 locations= {target_city: (target_lat, target_lon)}
 
-# Paths for all variables
+# Four variables: model and obs paths
 model_paths = [
     f"{config.MODELS_DIR}/temp_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/temp_r01_coarse_masked.nc",
     f"{config.MODELS_DIR}/precip_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/precip_r01_coarse_masked.nc",
@@ -44,41 +44,35 @@ obs_paths = [
 var_names = ["temp", "precip", "tmin", "tmax"]
 obs_var_names = ["TabsD", "PrecD", "TminD", "TmaxD"]
 
-print("Loading data")
 model_datasets = [xr.open_dataset(p)[vn] for p, vn in zip(model_paths, var_names)]
 obs_datasets = [xr.open_dataset(p)[ovn] for p, ovn in zip(obs_paths, obs_var_names)]
 
 lat_vals = model_datasets[0]['lat'].values
 lon_vals = model_datasets[0]['lon'].values
 
-# Find city grid cell
 dist = np.sqrt((lat_vals - target_lat)**2 + (lon_vals - target_lon)**2)
 i_city, j_city = np.unravel_index(np.argmin(dist), dist.shape)
 print(f"Closest grid cell to {target_city}: i={i_city}, j={j_city}")
 print(f"Location: lat={lat_vals[i_city, j_city]}, lon={lon_vals[i_city, j_city]}")
 
-# Calibration period
 calib_start = "1981-01-01"
 calib_end = "2010-12-31"
 
 calib_mod_cells = [ds.sel(time=slice(calib_start, calib_end))[:, i_city, j_city].values for ds in model_datasets]
 calib_obs_cells = [ds.sel(time=slice(calib_start, calib_end))[:, i_city, j_city].values for ds in obs_datasets]
 
-# Stack for DOTC
-calib_mod_stack = np.stack(calib_mod_cells, axis=1)  # shape (ntime, 4)
-calib_obs_stack = np.stack(calib_obs_cells, axis=1)  # shape (ntime, 4)
+# Stacking for MBC (DOTC) 
+calib_mod_stack = np.stack(calib_mod_cells, axis=1) 
+calib_obs_stack = np.stack(calib_obs_cells, axis=1) 
 
-# Fit DOTC
-dotc = DOTC()
+dotc = dOTC()
 dotc.fit(calib_mod_stack, calib_obs_stack)
 
-# Apply to full period
 full_mod_cells = [ds[:, i_city, j_city].values for ds in model_datasets]
-full_mod_stack = np.stack(full_mod_cells, axis=1)  # shape (ntime_full, 4)
-corrected_stack = dotc.predict(full_mod_stack)     # shape (ntime_full, 4)
+full_mod_stack = np.stack(full_mod_cells, axis=1) 
+corrected_stack = dotc.predict(full_mod_stack)   
 
-# Save corrected output as NetCDF
-output_path = output_path_template.format(city=target_city)
+output_path = f"{config.OUTPUTS_DIR}/DOTC_{target_city}_4vars_corrected.nc"
 coords = {
     "time": model_datasets[0]['time'].values,
     "lat": [lat_vals[i_city, j_city]],
@@ -92,7 +86,7 @@ ds_out = xr.Dataset(data_vars, coords=coords)
 ds_out.to_netcdf(output_path)
 print(f"Corrected output saved to {output_path}")
 
-# Plot CDFs for each variable
+# CDFs
 for idx, var in enumerate(var_names):
     plt.figure(figsize=(8, 6))
     model_vals = full_mod_stack[:, idx][~np.isnan(full_mod_stack[:, idx])]
@@ -101,9 +95,9 @@ for idx, var in enumerate(var_names):
     corr_vals = corrected_stack[:, idx][~np.isnan(corrected_stack[:, idx])]
 
     for vals, label, color in [
-        (model_vals, "Model (Coarse)", "blue"),
-        (obs_vals, "Observations", "green"),
-        (corr_vals, "Corrected Output", "red")
+        (model_vals, "Coarse Model", "blue"),
+        (obs_vals, "Obs", "green"),
+        (corr_vals, "Corrected", "red")
     ]:
         sorted_vals = np.sort(vals)
         cdf = np.arange(1, len(sorted_vals)+1) / len(sorted_vals)
@@ -116,5 +110,5 @@ for idx, var in enumerate(var_names):
     plt.grid(True)
     plt.tight_layout()
     cdf_plot_path = output_path.replace(".nc", f"_cdf_{var}.png")
-    plt.savefig(cdf_plot_path, dpi=300)
+    plt.savefig(cdf_plot_path, dpi=1000)
     print(f"CDF plot saved to {cdf_plot_path}")

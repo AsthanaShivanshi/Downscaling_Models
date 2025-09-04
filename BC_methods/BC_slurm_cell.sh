@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=EQM_3cities_TabsD
-#SBATCH --output=logs/bc/EQM_tabs_output-%j.txt
-#SBATCH --error=logs/bc/EQM_tabs_job_error-%j.txt
+#SBATCH --job-name=DOTC_3cities_TabsD
+#SBATCH --output=logs/bc/DOTC_tabs_output-%j.txt
+#SBATCH --error=logs/bc/DOTC_tabs_job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=02:00:00
@@ -18,7 +18,10 @@ export NUMEXPR_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 cd BC_methods
 
-echo "EQM for 2 cities started"
-python EQM_single_cell_cities.py --city Zurich --lat 47.3769 --lon 8.5417
-python EQM_single_cell_cities.py --city Geneva --lat 46.2044 --lon 6.1432
-python EQM_single_cell_cities.py --city Locarno --lat 46.1670 --lon 8.7943
+#echo "EQM for 2 cities started"
+#python EQM_single_cell_cities.py --city Zurich --lat 47.3769 --lon 8.5417
+#python EQM_single_cell_cities.py --city Geneva --lat 46.2044 --lon 6.1432
+#python EQM_single_cell_cities.py --city Locarno --lat 46.1670 --lon 8.7943
+
+echo "DOTC for single city started"
+python DOTC_BC.py --city Zurich --lat 47.3769 --lon 8.5417
