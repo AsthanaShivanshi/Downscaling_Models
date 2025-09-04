@@ -65,16 +65,24 @@ calib_obs_cells = [ds.sel(time=slice(calib_start, calib_end))[:, i_city, j_city]
 calib_mod_stack = np.stack(calib_mod_cells, axis=1) 
 calib_obs_stack = np.stack(calib_obs_cells, axis=1) 
 
-dotc = dOTC()
+
 scenario_start = "2011-01-01"
 scenario_end = "2099-12-31"
 scenario_mod_cells = [ds.sel(time=slice(scenario_start, scenario_end))[:, i_city, j_city].values for ds in model_datasets]
 scenario_mod_stack = np.stack(scenario_mod_cells, axis=1)
+
+print("calib_mod_stack shape:", calib_mod_stack.shape)
+print("calib_obs_stack shape:", calib_obs_stack.shape)
+print("scenario_mod_stack shape:", scenario_mod_stack.shape)
+
+dotc = dOTC()
+
 dotc.fit(calib_obs_stack, calib_mod_stack, scenario_mod_stack)
 
 corrected_stack = dotc.predict(scenario_mod_stack)
 
-output_path = f"{config.OUTPUTS_DIR}/DOTC_{target_city}_4vars_corrected.nc"
+output_path = f"{config.OUTPUTS_MODELS_DIR}/DOTC_{target_city}_4vars_corrected.nc"
+
 coords = {
     "time": model_datasets[0].sel(time=slice(scenario_start, scenario_end))['time'].values,
     "lat": [lat_vals[i_city, j_city]],
@@ -113,5 +121,5 @@ for idx, var in enumerate(var_names):
     plt.grid(True)
     plt.tight_layout()
     cdf_plot_path = output_path.replace(".nc", f"_cdf_{var}.png")
-    plt.savefig(cdf_plot_path, dpi=300)
+    plt.savefig(cdf_plot_path, dpi=1000)
     print(f"CDF plot saved to {cdf_plot_path}")
