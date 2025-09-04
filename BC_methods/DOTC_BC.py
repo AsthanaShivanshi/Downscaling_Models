@@ -28,7 +28,7 @@ target_lon = args.lon
 
 locations= {target_city: (target_lat, target_lon)}
 
-# Four variables: model and obs paths
+# Four vars: model and obs paths
 model_paths = [
     f"{config.MODELS_DIR}/temp_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/temp_r01_coarse_masked.nc",
     f"{config.MODELS_DIR}/precip_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/precip_r01_coarse_masked.nc",
@@ -75,7 +75,21 @@ print("calib_mod_stack shape:", calib_mod_stack.shape)
 print("calib_obs_stack shape:", calib_obs_stack.shape)
 print("scenario_mod_stack shape:", scenario_mod_stack.shape)
 
-bin_width = np.array([5, 10, 5, 5])  # Bins separate for each var,,,,,,temp, precip, tmin, tmax
+
+#Estimating bin width for each var
+
+desired_bins = 100 
+
+bin_width = []
+for arr in calib_obs_cells:
+    arr = arr[~np.isnan(arr)]
+    data_range = np.max(arr) - np.min(arr)
+    width = data_range / desired_bins
+    bin_width.append(width)
+
+bin_width = np.array(bin_width)
+print("Estimated bin_widths for temp, precip, tmin and tmax respectively:", bin_width)
+
 bin_origin = np.array([0, 0, 0, 0])   
 
 dotc = dOTC(bin_width=bin_width, bin_origin=bin_origin)
