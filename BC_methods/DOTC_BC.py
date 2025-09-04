@@ -75,7 +75,7 @@ print("calib_mod_stack shape:", calib_mod_stack.shape)
 print("calib_obs_stack shape:", calib_obs_stack.shape)
 print("scenario_mod_stack shape:", scenario_mod_stack.shape)
 
-dotc = dOTC()
+dotc = dOTC(bin_width=10)
 
 dotc.fit(calib_obs_stack, calib_mod_stack, scenario_mod_stack)
 
