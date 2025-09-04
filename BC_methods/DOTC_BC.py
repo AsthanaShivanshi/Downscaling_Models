@@ -16,7 +16,7 @@ plt.rcParams.update({
     "ytick.labelsize": 12,
 })
 
-parser= argparse.ArgumentParser()
+parser = argparse.ArgumentParser()
 parser.add_argument("--city", type=str, required=True, help="City name, first letter upper case")
 parser.add_argument("--lat", type=float, required=True, help="City lat")
 parser.add_argument("--lon", type=float, required=True, help="City lon")
@@ -26,9 +26,8 @@ target_city = args.city
 target_lat = args.lat
 target_lon = args.lon
 
-locations= {target_city: (target_lat, target_lon)}
+locations = {target_city: (target_lat, target_lon)}
 
-# Four vars: model and obs paths
 model_paths = [
     f"{config.MODELS_DIR}/temp_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/temp_r01_coarse_masked.nc",
     f"{config.MODELS_DIR}/precip_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/precip_r01_coarse_masked.nc",
@@ -57,46 +56,50 @@ print(f"Location: lat={lat_vals[i_city, j_city]}, lon={lon_vals[i_city, j_city]}
 
 calib_start = "1981-01-01"
 calib_end = "2010-12-31"
+scenario_start = "2011-01-01"
+scenario_end = "2099-12-31"
 
 calib_mod_cells = [ds.sel(time=slice(calib_start, calib_end))[:, i_city, j_city].values for ds in model_datasets]
 calib_obs_cells = [ds.sel(time=slice(calib_start, calib_end))[:, i_city, j_city].values for ds in obs_datasets]
+calib_times = model_datasets[0].sel(time=slice(calib_start, calib_end))['time'].values
 
-# Stacking for MBC (DOTC) 
-calib_mod_stack = np.stack(calib_mod_cells, axis=1) 
-calib_obs_stack = np.stack(calib_obs_cells, axis=1) 
-
-
-scenario_start = "2011-01-01"
-scenario_end = "2099-12-31"
 scenario_mod_cells = [ds.sel(time=slice(scenario_start, scenario_end))[:, i_city, j_city].values for ds in model_datasets]
+scenario_times = model_datasets[0].sel(time=slice(scenario_start, scenario_end))['time'].values
+
+calib_mod_stack = np.stack(calib_mod_cells, axis=1)
+calib_obs_stack = np.stack(calib_obs_cells, axis=1)
 scenario_mod_stack = np.stack(scenario_mod_cells, axis=1)
 
 print("calib_mod_stack shape:", calib_mod_stack.shape)
 print("calib_obs_stack shape:", calib_obs_stack.shape)
 print("scenario_mod_stack shape:", scenario_mod_stack.shape)
 
+window_size = 91
+half_window = window_size // 2
+n_features = len(var_names)
+corrected_stack = np.full_like(scenario_mod_stack, np.nan)
 
-#Estimating bin width for each var
+calib_doys = xr.DataArray(calib_times).dt.dayofyear.values
+scenario_doys = xr.DataArray(scenario_times).dt.dayofyear.values
 
-desired_bins = 100 
+for doy in range(1, 367):
+    window_diffs = (calib_doys - doy + 366) % 366
+    window_mask = (window_diffs <= half_window) | (window_diffs >= (366 - half_window))
+    calib_mod_win = calib_mod_stack[window_mask]
+    calib_obs_win = calib_obs_stack[window_mask]
 
-bin_width = []
-for arr in calib_obs_cells:
-    arr = arr[~np.isnan(arr)]
-    data_range = np.max(arr) - np.min(arr)
-    width = data_range / desired_bins
-    bin_width.append(width)
+    # scenario indices for this DOY
+    scenario_mask = (scenario_doys == doy)
+    scenario_mod_win = scenario_mod_stack[scenario_mask]
 
-bin_width = np.array(bin_width)
-print("Estimated bin_widths for temp, precip, tmin and tmax respectively:", bin_width)
+    if calib_mod_win.shape[0] == 0 or calib_obs_win.shape[0] == 0 or scenario_mod_win.shape[0] == 0:
+        continue
 
-bin_origin = np.array([0, 0, 0, 0])   
+    dotc = dOTC(bin_width=None, bin_origin=None) #Autoestimation of bin size
+    dotc.fit(calib_obs_win, calib_mod_win, scenario_mod_win)
+    corrected_win = dotc.predict(scenario_mod_win)
 
-dotc = dOTC(bin_width=bin_width, bin_origin=bin_origin)
-
-dotc.fit(calib_obs_stack, calib_mod_stack, scenario_mod_stack)
-
-corrected_stack = dotc.predict(scenario_mod_stack)
+    corrected_stack[scenario_mask] = corrected_win
 
 output_path = f"{config.OUTPUTS_MODELS_DIR}/DOTC_{target_city}_4vars_corrected.nc"
 
@@ -114,7 +117,8 @@ ds_out = xr.Dataset(data_vars, coords=coords)
 ds_out.to_netcdf(output_path)
 print(f"Corrected output saved to {output_path}")
 
-# CDFs
+
+
 for idx, var in enumerate(var_names):
     plt.figure(figsize=(8, 6))
     model_vals = scenario_mod_stack[:, idx][~np.isnan(scenario_mod_stack[:, idx])]
