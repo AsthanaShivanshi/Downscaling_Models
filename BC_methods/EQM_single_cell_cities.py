@@ -124,6 +124,23 @@ for doy in range(1, 367):
     doy_seasons.append(get_season(doy))
 
 doy_corrections = np.array(doy_corrections)  #(366, 101)
+full_model_cell = model_output[:, i_city, j_city].values
+full_times = model_output['time'].values
+full_doys = xr.DataArray(full_times).dt.dayofyear.values
+
+corrected_cell = np.full_like(full_model_cell, np.nan)
+
+for idx, (val, doy) in enumerate(zip(full_model_cell, full_doys)):
+    correction = doy_corrections[doy-1]  
+    mod_window = model_cell[((calib_doys - doy + 366) % 366 <= 45) | ((calib_doys - doy + 366) % 366 >= (366 - 45))]
+    mod_window = mod_window[~np.isnan(mod_window)]
+    if mod_window.size == 0 or np.isnan(val):
+        continue
+    mod_q = np.quantile(mod_window, np.linspace(0, 1, 101))
+    value_quantile = np.searchsorted(mod_q, val, side='right') / 100.0
+    value_quantile = np.clip(value_quantile, 0, 1)
+    interp_corr = interp1d(np.linspace(0, 1, 101), correction, kind='linear', fill_value='extrapolate')
+    corrected_cell[idx] = val + interp_corr(value_quantile)
 doy_seasons = np.array(doy_seasons)
 
 for season in ["DJF", "MAM", "JJA", "SON"]:
@@ -146,3 +163,29 @@ ax.grid(True)
 fig.tight_layout()
 plt.savefig(plot_path, dpi=1000)
 print(f"Correction function plot saved to {plot_path}")
+
+#For CDF of obs, model and corrected model
+plt.figure(figsize=(8, 6))
+model_vals = full_model_cell[~np.isnan(full_model_cell)]
+obs_vals = obs_output[:, i_city, j_city].values
+obs_vals = obs_vals[~np.isnan(obs_vals)]
+corr_vals = corrected_cell[~np.isnan(corrected_cell)]
+
+for vals, label, color in [
+    (model_vals, "Model (Coarse)", "blue"),
+    (obs_vals, "Observations", "green"),
+    (corr_vals, "Corrected Output", "red")
+]:
+    sorted_vals = np.sort(vals)
+    cdf = np.arange(1, len(sorted_vals)+1) / len(sorted_vals)
+    plt.plot(sorted_vals, cdf, label=label, color=color)
+
+plt.xlabel("Temperature (°C)")
+plt.ylabel("CDF")
+plt.title(f"CDFs for {target_city}")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+cdf_plot_path = plot_path.replace("corr_fx_temp_allseasons", "cdf_temp_singlecell")
+plt.savefig(cdf_plot_path, dpi=1000)
+print(f"CDF plot saved to {cdf_plot_path}")
