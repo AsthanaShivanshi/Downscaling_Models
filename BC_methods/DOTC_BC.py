@@ -37,12 +37,12 @@ model_paths = [
 ]
 obs_paths = [
     f"{config.DATASETS_TRAINING_DIR}/TabsD_step2_coarse.nc",
-    f"{config.DATASETS_TRAINING_DIR}/PrecD_step2_coarse.nc",
+    f"{config.DATASETS_TRAINING_DIR}/RhiresD_step2_coarse.nc",
     f"{config.DATASETS_TRAINING_DIR}/TminD_step2_coarse.nc",
     f"{config.DATASETS_TRAINING_DIR}/TmaxD_step2_coarse.nc"
 ]
 var_names = ["temp", "precip", "tmin", "tmax"]
-obs_var_names = ["TabsD", "PrecD", "TminD", "TmaxD"]
+obs_var_names = ["TabsD", "RhiresD", "TminD", "TmaxD"]
 
 model_datasets = [xr.open_dataset(p)[vn] for p, vn in zip(model_paths, var_names)]
 obs_datasets = [xr.open_dataset(p)[ovn] for p, ovn in zip(obs_paths, obs_var_names)]
@@ -66,18 +66,21 @@ calib_mod_stack = np.stack(calib_mod_cells, axis=1)
 calib_obs_stack = np.stack(calib_obs_cells, axis=1) 
 
 dotc = dOTC()
-dotc.fit(calib_mod_stack, calib_obs_stack)
+scenario_start = "2011-01-01"
+scenario_end = "2099-12-31"
+scenario_mod_cells = [ds.sel(time=slice(scenario_start, scenario_end))[:, i_city, j_city].values for ds in model_datasets]
+scenario_mod_stack = np.stack(scenario_mod_cells, axis=1)
+dotc.fit(calib_obs_stack, calib_mod_stack, scenario_mod_stack)
 
-full_mod_cells = [ds[:, i_city, j_city].values for ds in model_datasets]
-full_mod_stack = np.stack(full_mod_cells, axis=1) 
-corrected_stack = dotc.predict(full_mod_stack)   
+corrected_stack = dotc.predict(scenario_mod_stack)
 
 output_path = f"{config.OUTPUTS_DIR}/DOTC_{target_city}_4vars_corrected.nc"
 coords = {
-    "time": model_datasets[0]['time'].values,
+    "time": model_datasets[0].sel(time=slice(scenario_start, scenario_end))['time'].values,
     "lat": [lat_vals[i_city, j_city]],
     "lon": [lon_vals[i_city, j_city]]
 }
+
 data_vars = {
     var: (("time", "lat", "lon"), corrected_stack[:, idx].reshape(-1, 1, 1))
     for idx, var in enumerate(var_names)
@@ -89,14 +92,14 @@ print(f"Corrected output saved to {output_path}")
 # CDFs
 for idx, var in enumerate(var_names):
     plt.figure(figsize=(8, 6))
-    model_vals = full_mod_stack[:, idx][~np.isnan(full_mod_stack[:, idx])]
-    obs_vals = obs_datasets[idx][:, i_city, j_city].values
+    model_vals = scenario_mod_stack[:, idx][~np.isnan(scenario_mod_stack[:, idx])]
+    obs_vals = obs_datasets[idx].sel(time=slice(calib_start, calib_end))[:, i_city, j_city].values
     obs_vals = obs_vals[~np.isnan(obs_vals)]
     corr_vals = corrected_stack[:, idx][~np.isnan(corrected_stack[:, idx])]
 
     for vals, label, color in [
         (model_vals, "Coarse Model", "blue"),
-        (obs_vals, "Obs", "green"),
+        (obs_vals, "Obs (calib)", "green"),
         (corr_vals, "Corrected", "red")
     ]:
         sorted_vals = np.sort(vals)
@@ -110,5 +113,5 @@ for idx, var in enumerate(var_names):
     plt.grid(True)
     plt.tight_layout()
     cdf_plot_path = output_path.replace(".nc", f"_cdf_{var}.png")
-    plt.savefig(cdf_plot_path, dpi=1000)
+    plt.savefig(cdf_plot_path, dpi=300)
     print(f"CDF plot saved to {cdf_plot_path}")
