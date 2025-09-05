@@ -113,7 +113,7 @@ for doy in range(1, 367):
     eqm.fit(mod_q_inner.reshape(-1, 1), obs_q_inner.reshape(-1, 1))
 
     #Correction using SBCK for inner quantiles
-    correction_inner = obs_q_inner - mod_q_inner
+    correction_inner = (eqm.predict(mod_q_inner.reshape(-1, 1)).flatten()) - mod_q_inner
 
 #Interp between quant res and at the ends for final corr fx
     interp_corr = interp1d(
@@ -188,8 +188,8 @@ model_vals_scen = model_vals_scen[~np.isnan(model_vals_scen)]
 corr_vals_scen = corrected_cell[(full_times >= np.datetime64(scenario_start)) & (full_times <= np.datetime64(scenario_end))]
 corr_vals_scen = corr_vals_scen[~np.isnan(corr_vals_scen)]
 
-ks_model_calib = scipy.stats.kstest(obs_vals_calib, model_vals_calib)
-ks_corr_calib = scipy.stats.kstest(obs_vals_calib, corr_vals_calib)
+ks_model_calib = scipy.stats.ks_2samp(obs_vals_calib, model_vals_calib)
+ks_corr_calib = scipy.stats.ks_2samp(obs_vals_calib, corr_vals_calib)
 
 fig, axes = plt.subplots(1, 2, figsize=(16, 6))
 
