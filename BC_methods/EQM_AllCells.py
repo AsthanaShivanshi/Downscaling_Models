@@ -35,6 +35,7 @@ def eqm_cell(model_cell, obs_cell, calib_start, calib_end, model_times, obs_time
     quantiles_inner = np.linspace(0.01, 0.99, 99)
 
     doy_corrections = []
+    
     for doy in range(1, 367):
         window_doys = ((calib_doys - doy + 366) % 366)
         window_mask = (window_doys <= 45) | (window_doys >= (366 - 45))
@@ -50,8 +51,8 @@ def eqm_cell(model_cell, obs_cell, calib_start, calib_end, model_times, obs_time
         mod_q_inner = np.quantile(mod_window, quantiles_inner)
         obs_q_inner = np.quantile(obs_window, quantiles_inner)
         eqm = QM()
-        eqm.fit(mod_q_inner.reshape(-1, 1), obs_q_inner.reshape(-1, 1))
-        correction_inner = obs_q_inner - mod_q_inner
+        eqm.fit(obs_q_inner.reshape(-1, 1), mod_q_inner.reshape(-1, 1))
+        correction_inner = eqm.predict(mod_q_inner.reshape(-1, 1)).flatten() - mod_q_inner
         interp_corr = interp1d(
             quantiles_inner, correction_inner, kind='linear', fill_value='extrapolate'
         )
