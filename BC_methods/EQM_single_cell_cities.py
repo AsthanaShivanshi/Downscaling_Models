@@ -29,14 +29,14 @@ target_lon = args.lon
 
 locations= {target_city: (target_lat, target_lon)}
 
-model_path = f"{config.MODELS_DIR}/precip_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/precip_r01_coarse_masked.nc" 
-obs_path = f"{config.DATASETS_TRAINING_DIR}/RhiresD_step2_coarse.nc"
-output_path_template = f"{config.BC_DIR}/qm_precip_r01_singlecell_{{city}}_output.nc"
-plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_corr_fx_precip_allseasons_{target_city}.png"
+model_path = f"{config.MODELS_DIR}/temp_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/temp_r01_coarse_masked.nc" 
+obs_path = f"{config.DATASETS_TRAINING_DIR}/TabsD_step2_coarse.nc"
+output_path_template = f"{config.BC_DIR}/qm_temp_r01_singlecell_{{city}}_output.nc"
+plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_corr_fx_temp_allseasons_{target_city}.png"
 
 print("Loading data")
-model_output = xr.open_dataset(model_path)["precip"]
-obs_output = xr.open_dataset(obs_path)["RhiresD"]
+model_output = xr.open_dataset(model_path)["temp"]
+obs_output = xr.open_dataset(obs_path)["TabsD"]
 
 #Control period
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
@@ -157,7 +157,7 @@ for season in ["DJF", "MAM", "JJA", "SON"]:
 ax.axhline(0, color="gray", linestyle="--")
 ax.set_xlabel("Quantile Level")
 ax.set_ylabel("Seasonal mean of Correction Fx (°C)")
-ax.set_title(f"Correction Fx of daily precipitation with EQM BC: {target_city}")
+ax.set_title(f"Correction Fx of daily temperature with EQM BC: {target_city}")
 ax.legend(loc="lower left")
 ax.grid(True)
 fig.tight_layout()
@@ -180,12 +180,12 @@ for vals, label, color in [
     cdf = np.arange(1, len(sorted_vals)+1) / len(sorted_vals)
     plt.plot(sorted_vals, cdf, label=label, color=color)
 
-plt.xlabel("Precipitation (mm/day)")
+plt.xlabel("Mean Temperature (°C)")
 plt.ylabel("CDF")
 plt.title(f"CDFs for {target_city}: EQM BC")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
-cdf_plot_path = plot_path.replace("corr_fx_precip_allseasons", "cdf_precip_singlecell")
+cdf_plot_path = plot_path.replace("corr_fx_temp_allseasons", "cdf_temp_singlecell")
 plt.savefig(cdf_plot_path, dpi=1000)
 print(f"CDF plot saved to {cdf_plot_path}")
