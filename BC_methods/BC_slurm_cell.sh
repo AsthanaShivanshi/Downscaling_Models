@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=BC_DTC/EQM_cities_TabsD
+#SBATCH --job-name=BC_DoTC/EQM_cities_TabsD
 #SBATCH --output=logs/bc/BC_tabs_output-%j.txt
 #SBATCH --error=logs/bc/BC_tabs_job_error-%j.txt
 #SBATCH --ntasks=1

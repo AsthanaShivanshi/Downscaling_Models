@@ -117,16 +117,16 @@ ds_out = xr.Dataset(data_vars, coords=coords)
 ds_out.to_netcdf(output_path)
 print(f"Corrected output saved to {output_path}")
 
-
-
 for idx, var in enumerate(var_names):
     plt.figure(figsize=(8, 6))
-    model_vals = scenario_mod_stack[:, idx][~np.isnan(scenario_mod_stack[:, idx])]
+    # Use calibration period for all metrics
+    model_vals = model_datasets[idx].sel(time=slice(calib_start, calib_end))[:, i_city, j_city].values
     obs_vals = obs_datasets[idx].sel(time=slice(calib_start, calib_end))[:, i_city, j_city].values
+    model_vals = model_vals[~np.isnan(model_vals)]
     obs_vals = obs_vals[~np.isnan(obs_vals)]
-    corr_vals = corrected_stack[:, idx][~np.isnan(corrected_stack[:, idx])]
+    corr_vals = corrected_stack[(scenario_times >= np.datetime64(calib_start)) & (scenario_times <= np.datetime64(calib_end)), idx]
+    corr_vals = corr_vals[~np.isnan(corr_vals)]
 
-    # Wasserstein 
     emd_model = scipy.stats.wasserstein_distance(obs_vals, model_vals)
     emd_corr = scipy.stats.wasserstein_distance(obs_vals, corr_vals)
 

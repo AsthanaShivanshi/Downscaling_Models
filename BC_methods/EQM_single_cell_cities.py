@@ -165,15 +165,17 @@ fig.tight_layout()
 plt.savefig(plot_path, dpi=1000)
 print(f"Correction function plot saved to {plot_path}")
 
-#CDFs obs, model and corrected mdoel
-plt.figure(figsize=(8, 6))
-model_vals = full_model_cell[~np.isnan(full_model_cell)]
-obs_vals = obs_output[:, i_city, j_city].values
+
+# CDFs from calibration period
+calib_start = "1981-01-01"
+calib_end = "2010-12-31"
+model_vals = model_output.sel(time=slice(calib_start, calib_end))[:, i_city, j_city].values
+obs_vals = obs_output.sel(time=slice(calib_start, calib_end))[:, i_city, j_city].values
+model_vals = model_vals[~np.isnan(model_vals)]
 obs_vals = obs_vals[~np.isnan(obs_vals)]
-corr_vals = corrected_cell[~np.isnan(corrected_cell)]
+corr_vals = corrected_cell[(full_times >= np.datetime64(calib_start)) & (full_times <= np.datetime64(calib_end))]
+corr_vals = corr_vals[~np.isnan(corr_vals)]
 
-
-# Wasserstein
 emd_model = scipy.stats.wasserstein_distance(obs_vals, model_vals)
 emd_corr = scipy.stats.wasserstein_distance(obs_vals, corr_vals)
 
