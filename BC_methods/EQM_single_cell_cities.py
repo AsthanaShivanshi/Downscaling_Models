@@ -203,7 +203,7 @@ for vals, label, color in [
 
 axes[0].set_xlabel("Mean Temperature (°C)")
 axes[0].set_ylabel("CDF")
-axes[0].set_title(f"CDFs (1981-2010) for {target_city}: EQM BC")
+axes[0].set_title(f"CDFs (calibration period) for {target_city}: EQM BC")
 axes[0].legend()
 axes[0].grid(True)
 
@@ -219,7 +219,7 @@ for vals, label, color in [
 
 axes[1].set_xlabel("Mean Temperature (°C)")
 axes[1].set_ylabel("CDF")
-axes[1].set_title(f"CDFs (calibration and scenario periods) for {target_city}: EQM BC")
+axes[1].set_title(f"CDFs (scenario periods) for {target_city}: EQM BC")
 axes[1].legend()
 axes[1].grid(True)
 

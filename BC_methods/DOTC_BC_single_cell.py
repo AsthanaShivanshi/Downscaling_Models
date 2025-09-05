@@ -2,7 +2,7 @@ import scipy
 import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
-from SBCK import dOTC
+from SBCK import dOTC,OTC #For non stationary, and stationary BC
 import config
 import argparse
 import scipy.stats
@@ -36,12 +36,15 @@ model_paths = [
     f"{config.MODELS_DIR}/tmin_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/tmin_r01_coarse_masked.nc",
     f"{config.MODELS_DIR}/tmax_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/tmax_r01_coarse_masked.nc"
 ]
+
+
 obs_paths = [
     f"{config.DATASETS_TRAINING_DIR}/TabsD_step2_coarse.nc",
     f"{config.DATASETS_TRAINING_DIR}/RhiresD_step2_coarse.nc",
     f"{config.DATASETS_TRAINING_DIR}/TminD_step2_coarse.nc",
     f"{config.DATASETS_TRAINING_DIR}/TmaxD_step2_coarse.nc"
 ]
+
 var_names = ["temp", "precip", "tmin", "tmax"]
 obs_var_names = ["TabsD", "RhiresD", "TminD", "TmaxD"]
 
@@ -68,66 +71,66 @@ calib_times = model_datasets[0].sel(time=slice(calib_start, calib_end))['time'].
 scenario_mod_cells = [ds.sel(time=slice(scenario_start, scenario_end))[:, i_city, j_city].values for ds in model_datasets]
 scenario_times = model_datasets[0].sel(time=slice(scenario_start, scenario_end))['time'].values
 
+
+# Prepare calibration and scenario stacks
 calib_mod_stack = np.stack(calib_mod_cells, axis=1)
 calib_obs_stack = np.stack(calib_obs_cells, axis=1)
 scenario_mod_stack = np.stack(scenario_mod_cells, axis=1)
 
-print("calib_mod_stack shape:", calib_mod_stack.shape)
-print("calib_obs_stack shape:", calib_obs_stack.shape)
-print("scenario_mod_stack shape:", scenario_mod_stack.shape)
+# --- Stationary correction for calibration period ---
+otc = OTC()
+otc.fit(calib_mod_stack, calib_obs_stack)
+calib_corrected_stack = otc.predict(calib_mod_stack)
 
-
-n_features = len(var_names)
-corrected_stack = np.full_like(scenario_mod_stack, np.nan)
-
+# --- Non-stationary correction for scenario period ---
+scenario_corrected_stack = np.full_like(scenario_mod_stack, np.nan)
 calib_doys = xr.DataArray(calib_times).dt.dayofyear.values
 scenario_doys = xr.DataArray(scenario_times).dt.dayofyear.values
 
-# DOTC to calibration period
-calib_corrected_stack = np.full_like(calib_mod_stack, np.nan)
-
 for doy in range(1, 367):
+    # Moving window from calibration
     window_diffs = (calib_doys - doy + 366) % 366
     window_mask = (window_diffs <= 45) | (window_diffs >= (366 - 45))
     calib_mod_win = calib_mod_stack[window_mask]
     calib_obs_win = calib_obs_stack[window_mask]
-    calib_mask = (calib_doys == doy)
-    calib_mod_win_for_pred = calib_mod_stack[calib_mask]
+    scenario_mask = (scenario_doys == doy)
+    scenario_mod_win_for_pred = scenario_mod_stack[scenario_mask]
 
-    if calib_mod_win.shape[0] == 0 or calib_obs_win.shape[0] == 0 or calib_mod_win_for_pred.shape[0] == 0:
+    if calib_mod_win.shape[0] == 0 or calib_obs_win.shape[0] == 0 or scenario_mod_win_for_pred.shape[0] == 0:
         continue
 
     dotc = dOTC(bin_width=None, bin_origin=None)
-    dotc.fit(calib_obs_win, calib_mod_win, calib_mod_win_for_pred)
-    corrected_win = dotc.predict(calib_mod_win_for_pred)
-    calib_corrected_stack[calib_mask] = corrected_win
+    dotc.fit(calib_obs_win, calib_mod_win, scenario_mod_win_for_pred)
+    corrected_scenario = dotc.predict(scenario_mod_win_for_pred)
+    scenario_corrected_stack[scenario_mask] = corrected_scenario
 
+# --- Save scenario corrected output ---
 output_path = f"{config.OUTPUTS_MODELS_DIR}/DOTC_{target_city}_4vars_corrected.nc"
-
 coords = {
     "time": model_datasets[0].sel(time=slice(scenario_start, scenario_end))['time'].values,
     "lat": [lat_vals[i_city, j_city]],
     "lon": [lon_vals[i_city, j_city]]
 }
-
 data_vars = {
-    var: (("time", "lat", "lon"), corrected_stack[:, idx].reshape(-1, 1, 1))
+    var: (("time", "lat", "lon"), scenario_corrected_stack[:, idx].reshape(-1, 1, 1))
     for idx, var in enumerate(var_names)
 }
 ds_out = xr.Dataset(data_vars, coords=coords)
 ds_out.to_netcdf(output_path)
 print(f"Corrected output saved to {output_path}")
 
-
+# --- Plot CDFs for calibration and scenario periods ---
 for idx, var in enumerate(var_names):
-    # calibration and scenario
+    # Calibration
     model_vals_calib = calib_mod_stack[:, idx]
     obs_vals_calib = calib_obs_stack[:, idx]
     corr_vals_calib = calib_corrected_stack[:, idx]
 
+    # Scenario
     scenario_model_vals = scenario_mod_stack[:, idx]
-    scenario_corr_vals = corrected_stack[:, idx]
+    scenario_corr_vals = scenario_corrected_stack[:, idx]
 
+    # Remove NaNs
     model_vals_calib = model_vals_calib[~np.isnan(model_vals_calib)]
     obs_vals_calib = obs_vals_calib[~np.isnan(obs_vals_calib)]
     corr_vals_calib = corr_vals_calib[~np.isnan(corr_vals_calib)]
@@ -142,7 +145,7 @@ for idx, var in enumerate(var_names):
 
     fig, axes = plt.subplots(1, 2, figsize=(16, 6))
 
-    # Left: Calib
+    # Left: Calibration
     for vals, label, color in [
         (model_vals_calib, f"Model (Coarse,1981-2010) [KS={ks_model_calib.statistic:.3f}]", "red"),
         (obs_vals_calib, "Observations (1981-2010)", "black"),
@@ -159,15 +162,15 @@ for idx, var in enumerate(var_names):
                        "Minimum Temperature (°C)" if var == "tmin" else
                        "Maximum Temperature (°C)")
     axes[0].set_ylabel("CDF")
-    axes[0].set_title(f"CDFs (1981-2010) for {target_city} - {var}: DOTC BC")
+    axes[0].set_title(f"CDFs (calibration period) for {target_city} - {var}: OTC BC")
     axes[0].legend()
     axes[0].grid(True)
 
     # Right: Scenario
     for vals, label, color in [
-        (scenario_model_vals, f"Model (Coarse, 2011-2099)]", "red"),
+        (scenario_model_vals, f"Model (Coarse, 2011-2099)", "red"),
         (obs_vals_calib, "Observations (1981-2010)", "black"),
-        (scenario_corr_vals, f"Corrected Output (2011-2099)]", "green")
+        (scenario_corr_vals, f"Corrected Output (2011-2099)", "green")
     ]:
         if len(vals) == 0:
             continue
@@ -180,7 +183,7 @@ for idx, var in enumerate(var_names):
                        "Minimum Temperature (°C)" if var == "tmin" else
                        "Maximum Temperature (°C)")
     axes[1].set_ylabel("CDF")
-    axes[1].set_title(f"CDFs (2011-2099) for {target_city} - {var}: DOTC BC")
+    axes[1].set_title(f"CDFs (scenario period) for {target_city} - {var}: dOTC BC")
     axes[1].legend()
     axes[1].grid(True)
 
