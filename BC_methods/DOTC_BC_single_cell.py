@@ -93,7 +93,7 @@ for doy in range(1, 367):
     if calib_mod_win.shape[0] == 0 or calib_obs_win.shape[0] == 0 or scenario_mod_win.shape[0] == 0:
         continue
 
-    dotc = dOTC(bin_width=None, bin_origin=None) #Autoestimation of bin size
+    dotc = dOTC(bin_width=None, bin_origin=None) #Autoestimation bin size
     dotc.fit(calib_obs_win, calib_mod_win, scenario_mod_win)
     corrected_win = dotc.predict(scenario_mod_win)
 
@@ -125,15 +125,19 @@ for idx, var in enumerate(var_names):
     corr_vals = corrected_stack[:, idx][~np.isnan(corrected_stack[:, idx])]
 
     for vals, label, color in [
-        (model_vals, "Coarse Model", "blue"),
-        (obs_vals, "Obs (calib)", "green"),
-        (corr_vals, "Corrected", "red")
+        (model_vals, "Model (Coarse)", "blue"),
+        (obs_vals, "Observations", "green"),
+        (corr_vals, "Corrected Output", "red")
     ]:
         sorted_vals = np.sort(vals)
         cdf = np.arange(1, len(sorted_vals)+1) / len(sorted_vals)
         plt.plot(sorted_vals, cdf, label=label, color=color)
 
-    plt.xlabel(var)
+    plt.xlabel("Mean Temperature (°C)" if var == "temp" else
+                "Precipitation (mm/day)" if var == "precip" else
+                "Minimum Temperature (°C)" if var == "tmin" else
+               "Maximum Temperature (°C)")
+    
     plt.ylabel("CDF")
     plt.title(f"CDFs for {target_city} - {var}: DOTC BC")
     plt.legend()

@@ -18,8 +18,8 @@ export NUMEXPR_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 cd BC_methods
 
-echo "EQM for single cell started"
-python EQM_single_cell_cities.py --city Zurich --lat 47.3769 --lon 8.5417
+#echo "EQM for single cell started"
+#python EQM_single_cell_cities.py --city Zurich --lat 47.3769 --lon 8.5417
 
-#echo "DOTC for single cell started"
-#python DOTC_BC_single_cell.py --city Zurich --lat 47.3769 --lon 8.5417
+echo "DOTC for single cell started"
+python DOTC_BC_single_cell.py --city Zurich --lat 47.3769 --lon 8.5417
