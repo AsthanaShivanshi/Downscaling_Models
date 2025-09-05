@@ -39,7 +39,7 @@ print("Loading data")
 model_output = xr.open_dataset(model_path)["temp"]
 obs_output = xr.open_dataset(obs_path)["TabsD"]
 
-#Control period
+#Control 
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
 calib_mod = model_output.sel(time=slice("1981-01-01", "2010-12-31"))
 
@@ -99,13 +99,13 @@ for doy in range(1, 367):
     obs_window = obs_window[~np.isnan(obs_window)]
     mod_window = mod_window[~np.isnan(mod_window)]
 
-    #NaN window: moving on
+   
     if obs_window.size == 0 or mod_window.size == 0:
         doy_corrections.append(np.full(101, np.nan))
         doy_seasons.append(get_season(doy))
         continue
 
-    # QM on inner quantiles
+    # QM inner quantiles
     quantiles_inner = np.linspace(0.01, 0.99, 99)
     mod_q_inner = np.quantile(mod_window, quantiles_inner)
     obs_q_inner = np.quantile(obs_window, quantiles_inner)
@@ -175,15 +175,15 @@ obs_vals = obs_vals[~np.isnan(obs_vals)]
 corr_vals = corrected_cell[(full_times >= np.datetime64(calib_start)) & (full_times <= np.datetime64(calib_end))]
 corr_vals = corr_vals[~np.isnan(corr_vals)]
 
-emd_model = scipy.stats.wasserstein_distance(obs_vals, model_vals)
-emd_corr = scipy.stats.wasserstein_distance(obs_vals, corr_vals)
+ks_model = scipy.stats.kstest(obs_vals, model_vals)
+ks_corr = scipy.stats.kstest(obs_vals, corr_vals)
 
 plt.figure(figsize=(8, 6))
 
 for vals, label, color in [
-    (model_vals, f"Model (Coarse) [Wasserstein={emd_model:.3f}]", "blue"),
+    (model_vals, f"Model (Coarse) [KS={ks_model.statistic:.3f}]", "blue"),
     (obs_vals, "Observations", "green"),
-    (corr_vals, f"Corrected Output [Wasserstein={emd_corr:.3f}]", "red")
+    (corr_vals, f"Corrected Output [KS={ks_corr.statistic:.3f}]", "red")
 ]:
     sorted_vals = np.sort(vals)
     cdf = np.arange(1, len(sorted_vals)+1) / len(sorted_vals)
@@ -191,7 +191,7 @@ for vals, label, color in [
 
 plt.xlabel("Mean Temperature (°C)")
 plt.ylabel("CDF")
-plt.title(f"CDFs for {target_city}: EQM BC")
+plt.title(f"CDFs for {target_city}: EQM BC along with KS stats")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
