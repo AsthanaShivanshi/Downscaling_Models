@@ -157,7 +157,7 @@ for season in ["DJF", "MAM", "JJA", "SON"]:
 ax.axhline(0, color="gray", linestyle="--")
 ax.set_xlabel("Quantile Level")
 ax.set_ylabel("Seasonal mean of Correction Fx (°C)")
-ax.set_title(f"Correction Fx of daily temperature: {target_city}")
+ax.set_title(f"Correction Fx of daily temperature with EQM BC: {target_city}")
 ax.legend(loc="lower left")
 ax.grid(True)
 fig.tight_layout()
@@ -182,7 +182,7 @@ for vals, label, color in [
 
 plt.xlabel("Temperature (°C)")
 plt.ylabel("CDF")
-plt.title(f"CDFs for {target_city}")
+plt.title(f"CDFs for {target_city}: EQM BC")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
