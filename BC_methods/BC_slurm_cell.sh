@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=DOTC_3cities_TabsD
-#SBATCH --output=logs/bc/DOTC_tabs_output-%j.txt
-#SBATCH --error=logs/bc/DOTC_tabs_job_error-%j.txt
+#SBATCH --job-name=BC_DTC/EQM_cities_TmaxD
+#SBATCH --output=logs/bc/BC_tmax_output-%j.txt
+#SBATCH --error=logs/bc/BC_tmax_job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=02:00:00
@@ -20,9 +20,6 @@ cd BC_methods
 
 echo "EQM for single cell started"
 python EQM_single_cell_cities.py --city Zurich --lat 47.3769 --lon 8.5417
-#python EQM_single_cell_cities.py --city Geneva --lat 46.2044 --lon 6.1432
-python EQM_single_cell_cities.py --city Locarno --lat 46.1670 --lon 8.7943
 
 echo "DOTC for single cell started"
 python DOTC_BC_single_cell.py --city Zurich --lat 47.3769 --lon 8.5417
-python DOTC_BC_single_cell.py --city Locarno --lat 46.1670 --lon 8.7943

@@ -31,7 +31,7 @@ locations = {target_city: (target_lat, target_lon)}
 model_paths = [
     f"{config.MODELS_DIR}/temp_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/temp_r01_coarse_masked.nc",
     f"{config.MODELS_DIR}/precip_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/precip_r01_coarse_masked.nc",
-    f"{config.MODELS_DIR}/tmin_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/tmin_r01_coarse_masked.nc",
+    f"{config.MODELS_DIR}/tmax_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/tmin_r01_coarse_masked.nc",
     f"{config.MODELS_DIR}/tmax_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/tmax_r01_coarse_masked.nc"
 ]
 obs_paths = [
@@ -74,8 +74,6 @@ print("calib_mod_stack shape:", calib_mod_stack.shape)
 print("calib_obs_stack shape:", calib_obs_stack.shape)
 print("scenario_mod_stack shape:", scenario_mod_stack.shape)
 
-window_size = 91
-half_window = window_size // 2
 n_features = len(var_names)
 corrected_stack = np.full_like(scenario_mod_stack, np.nan)
 
@@ -84,7 +82,7 @@ scenario_doys = xr.DataArray(scenario_times).dt.dayofyear.values
 
 for doy in range(1, 367):
     window_diffs = (calib_doys - doy + 366) % 366
-    window_mask = (window_diffs <= half_window) | (window_diffs >= (366 - half_window))
+    window_mask = (window_diffs <= 45) | (window_diffs >= (366 - 45))
     calib_mod_win = calib_mod_stack[window_mask]
     calib_obs_win = calib_obs_stack[window_mask]
 
