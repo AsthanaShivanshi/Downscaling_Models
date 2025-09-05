@@ -129,13 +129,13 @@ for idx, var in enumerate(var_names):
     obs_vals = obs_vals[~np.isnan(obs_vals)]
     corr_vals = corr_vals[~np.isnan(corr_vals)]
 
-    emd_model = scipy.stats.wasserstein_distance(obs_vals, model_vals)
-    emd_corr = scipy.stats.wasserstein_distance(obs_vals, corr_vals)
+    ks_model = scipy.stats.kstest(obs_vals, model_vals)
+    ks_corr = scipy.stats.kstest(obs_vals, corr_vals)
 
     for vals, label, color in [
-        (model_vals, f"Model (Coarse) [Wasserstein={emd_model:.3f}]", "blue"),
+        (model_vals, f"Model (Coarse) [KS={ks_model.statistic:.3f}]", "blue"),
         (obs_vals, "Observations", "green"),
-        (corr_vals, f"Corrected Output [Wasserstein={emd_corr:.3f}]", "red")
+        (corr_vals, f"Corrected Output [KS={ks_corr.statistic:.3f}]", "red")
     ]:
         if len(vals) == 0:
             continue
@@ -148,7 +148,7 @@ for idx, var in enumerate(var_names):
                 "Minimum Temperature (°C)" if var == "tmin" else
                "Maximum Temperature (°C)")
     plt.ylabel("CDF")
-    plt.title(f"CDFs for {target_city} - {var}: DOTC BC")
+    plt.title(f"CDFs for {target_city} - {var}: DOTC BC with KS stats")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
