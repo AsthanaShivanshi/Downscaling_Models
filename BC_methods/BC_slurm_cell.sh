@@ -22,6 +22,6 @@ echo "EQM for single cell started"
 python EQM_single_cell_cities.py --city Zurich --lat 47.3769 --lon 8.5417
 python EQM_single_cell_cities.py --city Locarno --lat 46.1670 --lon 8.7943
 
-echo "DOTC for single cell started"
-python DOTC_BC_single_cell.py --city Zurich --lat 47.3769 --lon 8.5417
-python DOTC_BC_single_cell.py --city Locarno --lat 46.1670 --lon 8.7943
+#echo "DOTC for single cell started"
+#python DOTC_BC_single_cell.py --city Zurich --lat 47.3769 --lon 8.5417
+#python DOTC_BC_single_cell.py --city Locarno --lat 46.1670 --lon 8.7943

@@ -30,14 +30,14 @@ target_lon = args.lon
 
 locations= {target_city: (target_lat, target_lon)}
 
-model_path = f"{config.MODELS_DIR}/temp_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/temp_r01_coarse_masked.nc" 
-obs_path = f"{config.DATASETS_TRAINING_DIR}/TabsD_step2_coarse.nc"
-output_path_template = f"{config.BC_DIR}/qm_temp_r01_singlecell_{{city}}_output.nc"
-plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_corr_fx_temp_allseasons_{target_city}.png"
+model_path = f"{config.MODELS_DIR}/precip_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/precip_r01_coarse_masked.nc" 
+obs_path = f"{config.DATASETS_TRAINING_DIR}/RhiresD_step2_coarse.nc"
+output_path_template = f"{config.BC_DIR}/qm_precip_r01_singlecell_{{city}}_output.nc"
+plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_corr_fx_precip_allseasons_{target_city}.png"
 
 print("Loading data")
-model_output = xr.open_dataset(model_path)["temp"]
-obs_output = xr.open_dataset(obs_path)["TabsD"]
+model_output = xr.open_dataset(model_path)["precip"]
+obs_output = xr.open_dataset(obs_path)["RhiresD"]
 
 #Control 
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
@@ -132,16 +132,20 @@ full_doys = xr.DataArray(full_times).dt.dayofyear.values
 corrected_cell = np.full_like(full_model_cell, np.nan)
 
 for idx, (val, doy) in enumerate(zip(full_model_cell, full_doys)):
-    correction = doy_corrections[doy-1]  
     mod_window = model_cell[((calib_doys - doy + 366) % 366 <= 45) | ((calib_doys - doy + 366) % 366 >= (366 - 45))]
+    obs_window = obs_cell[((calib_doys - doy + 366) % 366 <= 45) | ((calib_doys - doy + 366) % 366 >= (366 - 45))]
     mod_window = mod_window[~np.isnan(mod_window)]
-    if mod_window.size == 0 or np.isnan(val):
+    obs_window = obs_window[~np.isnan(obs_window)]
+    if mod_window.size == 0 or obs_window.size == 0 or np.isnan(val):
         continue
     mod_q = np.quantile(mod_window, np.linspace(0, 1, 101))
+    obs_q = np.quantile(obs_window, np.linspace(0, 1, 101))
     value_quantile = np.searchsorted(mod_q, val, side='right') / 100.0
     value_quantile = np.clip(value_quantile, 0, 1)
-    interp_corr = interp1d(np.linspace(0, 1, 101), correction, kind='linear', fill_value='extrapolate')
+    correction_fx = doy_corrections[doy - 1]  # doy runs from 1 to 366, array index from 0
+    interp_corr = interp1d(np.linspace(0, 1, 101), correction_fx, kind='linear', fill_value='extrapolate')
     corrected_cell[idx] = val + interp_corr(value_quantile)
+
 doy_seasons = np.array(doy_seasons)
 
 for season in ["DJF", "MAM", "JJA", "SON"]:
@@ -157,8 +161,8 @@ for season in ["DJF", "MAM", "JJA", "SON"]:
 
 ax.axhline(0, color="gray", linestyle="--")
 ax.set_xlabel("Quantile Level")
-ax.set_ylabel("Seasonal mean of Correction Fx (°C)")
-ax.set_title(f"Correction Fx of daily temperature with EQM BC: {target_city}")
+ax.set_ylabel("Seasonal mean of Correction Fx (mm/day)")
+ax.set_title(f"Correction Fx of daily precipitation with EQM BC: {target_city}")
 ax.legend(loc="lower left")
 ax.grid(True)
 fig.tight_layout()
@@ -199,7 +203,7 @@ for vals, label, color in [
     cdf = np.arange(1, len(sorted_vals)+1) / len(sorted_vals)
     axes[0].plot(sorted_vals, cdf, label=label, color=color)
 
-axes[0].set_xlabel("Mean Temperature (°C)")
+axes[0].set_xlabel("Precipitation (mm/day)")
 axes[0].set_ylabel("CDF")
 axes[0].set_title(f"CDFs (cal period : 1981-2010) for {target_city}: EQM BC")
 axes[0].legend()
@@ -215,13 +219,13 @@ for vals, label, color in [
     cdf = np.arange(1, len(sorted_vals)+1) / len(sorted_vals)
     axes[1].plot(sorted_vals, cdf, label=label, color=color)
 
-axes[1].set_xlabel("Mean Temperature (°C)")
+axes[1].set_xlabel("Precipitation (mm/day)")
 axes[1].set_ylabel("CDF")
 axes[1].set_title(f"CDFs (scenario period : 2011-2099) for {target_city}: EQM BC")
 axes[1].legend()
 axes[1].grid(True)
 
 fig.tight_layout()
-cdf_plot_path = plot_path.replace("corr_fx_temp_allseasons", "cdf_temp_singlecell_twopanel")
+cdf_plot_path = plot_path.replace("corr_fx_precip_allseasons", "cdf_precip_singlecell_twopanel")
 plt.savefig(cdf_plot_path, dpi=1000)
 print(f"Two-panel CDF plot saved to {cdf_plot_path}")
