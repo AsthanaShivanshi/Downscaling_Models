@@ -120,38 +120,71 @@ print(f"Corrected output saved to {output_path}")
 
 
 for idx, var in enumerate(var_names):
-    plt.figure(figsize=(8, 6))
-    # Calibration 1981-2010
-    model_vals = calib_mod_stack[:, idx]
-    obs_vals = calib_obs_stack[:, idx]
-    corr_vals = calib_corrected_stack[:, idx]
-    model_vals = model_vals[~np.isnan(model_vals)]
-    obs_vals = obs_vals[~np.isnan(obs_vals)]
-    corr_vals = corr_vals[~np.isnan(corr_vals)]
+    # calibration and scenario
+    model_vals_calib = calib_mod_stack[:, idx]
+    obs_vals_calib = calib_obs_stack[:, idx]
+    corr_vals_calib = calib_corrected_stack[:, idx]
 
-    ks_model = scipy.stats.kstest(obs_vals, model_vals)
-    ks_corr = scipy.stats.kstest(obs_vals, corr_vals)
+    scenario_model_vals = scenario_mod_stack[:, idx]
+    scenario_corr_vals = corrected_stack[:, idx]
 
+    model_vals_calib = model_vals_calib[~np.isnan(model_vals_calib)]
+    obs_vals_calib = obs_vals_calib[~np.isnan(obs_vals_calib)]
+    corr_vals_calib = corr_vals_calib[~np.isnan(corr_vals_calib)]
+    scenario_model_vals = scenario_model_vals[~np.isnan(scenario_model_vals)]
+    scenario_corr_vals = scenario_corr_vals[~np.isnan(scenario_corr_vals)]
+
+    # KS
+    ks_model_calib = scipy.stats.kstest(obs_vals_calib, model_vals_calib)
+    ks_corr_calib = scipy.stats.kstest(obs_vals_calib, corr_vals_calib)
+    ks_model_scen = scipy.stats.kstest(obs_vals_calib, scenario_model_vals)
+    ks_corr_scen = scipy.stats.kstest(obs_vals_calib, scenario_corr_vals)
+
+    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+
+    # Left: Calib
     for vals, label, color in [
-        (model_vals, f"Model (Coarse) [KS={ks_model.statistic:.3f}]", "blue"),
-        (obs_vals, "Observations", "green"),
-        (corr_vals, f"Corrected Output [KS={ks_corr.statistic:.3f}]", "red")
+        (model_vals_calib, f"Model (Coarse,1981-2010) [KS={ks_model_calib.statistic:.3f}]", "red"),
+        (obs_vals_calib, "Observations (1981-2010)", "black"),
+        (corr_vals_calib, f"Corrected Output (1981-2010) [KS={ks_corr_calib.statistic:.3f}]", "green")
     ]:
         if len(vals) == 0:
             continue
         sorted_vals = np.sort(vals)
         cdf = np.arange(1, len(sorted_vals)+1) / len(sorted_vals)
-        plt.plot(sorted_vals, cdf, label=label, color=color)
+        axes[0].plot(sorted_vals, cdf, label=label, color=color)
 
-    plt.xlabel("Mean Temperature (°C)" if var == "temp" else
-                "Precipitation (mm/day)" if var == "precip" else
-                "Minimum Temperature (°C)" if var == "tmin" else
-               "Maximum Temperature (°C)")
-    plt.ylabel("CDF")
-    plt.title(f"CDFs (1981-2010) for {target_city} - {var}: DOTC BC with KS stats")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    cdf_plot_path = output_path.replace(".nc", f"_cdf_{var}.png")
+    axes[0].set_xlabel("Mean Temperature (°C)" if var == "temp" else
+                       "Precipitation (mm/day)" if var == "precip" else
+                       "Minimum Temperature (°C)" if var == "tmin" else
+                       "Maximum Temperature (°C)")
+    axes[0].set_ylabel("CDF")
+    axes[0].set_title(f"CDFs (1981-2010) for {target_city} - {var}: DOTC BC")
+    axes[0].legend()
+    axes[0].grid(True)
+
+    # Right: Scenario
+    for vals, label, color in [
+        (scenario_model_vals, f"Model (Coarse, 2011-2099)]", "red"),
+        (obs_vals_calib, "Observations (1981-2010)", "black"),
+        (scenario_corr_vals, f"Corrected Output (2011-2099)]", "green")
+    ]:
+        if len(vals) == 0:
+            continue
+        sorted_vals = np.sort(vals)
+        cdf = np.arange(1, len(sorted_vals)+1) / len(sorted_vals)
+        axes[1].plot(sorted_vals, cdf, label=label, color=color)
+
+    axes[1].set_xlabel("Mean Temperature (°C)" if var == "temp" else
+                       "Precipitation (mm/day)" if var == "precip" else
+                       "Minimum Temperature (°C)" if var == "tmin" else
+                       "Maximum Temperature (°C)")
+    axes[1].set_ylabel("CDF")
+    axes[1].set_title(f"CDFs (2011-2099) for {target_city} - {var}: DOTC BC")
+    axes[1].legend()
+    axes[1].grid(True)
+
+    fig.tight_layout()
+    cdf_plot_path = output_path.replace(".nc", f"_cdf_twopanel_{var}.png")
     plt.savefig(cdf_plot_path, dpi=1000)
-    print(f"CDF plot saved to {cdf_plot_path}")
+    print(f"Two-panel CDF plot saved to {cdf_plot_path}")
