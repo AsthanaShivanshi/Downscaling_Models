@@ -29,14 +29,14 @@ target_lon = args.lon
 
 locations= {target_city: (target_lat, target_lon)}
 
-model_path = f"{config.MODELS_DIR}/temp_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/temp_r01_coarse_masked.nc" 
-obs_path = f"{config.DATASETS_TRAINING_DIR}/TabsD_step2_coarse.nc"
-output_path_template = f"{config.BC_DIR}/qm_temp_r01_singlecell_{{city}}_output.nc"
-plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_corr_fx_temp_allseasons_{target_city}.png"
+model_path = f"{config.MODELS_DIR}/tmax_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/tmax_r01_coarse_masked.nc" 
+obs_path = f"{config.DATASETS_TRAINING_DIR}/TmaxD_step2_coarse.nc"
+output_path_template = f"{config.BC_DIR}/qm_tmax_r01_singlecell_{{city}}_output.nc"
+plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_corr_fx_tmax_allseasons_{target_city}.png"
 
 print("Loading data")
-model_output = xr.open_dataset(model_path)["temp"]
-obs_output = xr.open_dataset(obs_path)["TabsD"]
+model_output = xr.open_dataset(model_path)["tmax"]
+obs_output = xr.open_dataset(obs_path)["TmaxD"]
 
 #Control period
 calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
@@ -157,14 +157,14 @@ for season in ["DJF", "MAM", "JJA", "SON"]:
 ax.axhline(0, color="gray", linestyle="--")
 ax.set_xlabel("Quantile Level")
 ax.set_ylabel("Seasonal mean of Correction Fx (°C)")
-ax.set_title(f"Correction Fx of daily temperature with EQM BC: {target_city}")
+ax.set_title(f"Correction Fx of daily max temperature with EQM BC: {target_city}")
 ax.legend(loc="lower left")
 ax.grid(True)
 fig.tight_layout()
 plt.savefig(plot_path, dpi=1000)
 print(f"Correction function plot saved to {plot_path}")
 
-#For CDF of obs, model and corrected model
+#CDFs obs, model and corrected mdoel
 plt.figure(figsize=(8, 6))
 model_vals = full_model_cell[~np.isnan(full_model_cell)]
 obs_vals = obs_output[:, i_city, j_city].values
@@ -180,12 +180,12 @@ for vals, label, color in [
     cdf = np.arange(1, len(sorted_vals)+1) / len(sorted_vals)
     plt.plot(sorted_vals, cdf, label=label, color=color)
 
-plt.xlabel("Temperature (°C)")
+plt.xlabel("Max Temperature (°C)")
 plt.ylabel("CDF")
 plt.title(f"CDFs for {target_city}: EQM BC")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
-cdf_plot_path = plot_path.replace("corr_fx_temp_allseasons", "cdf_temp_singlecell")
+cdf_plot_path = plot_path.replace("corr_fx_tmax_allseasons", "cdf_tmax_singlecell")
 plt.savefig(cdf_plot_path, dpi=1000)
 print(f"CDF plot saved to {cdf_plot_path}")
