@@ -131,9 +131,9 @@ for idx, var in enumerate(var_names):
     emd_corr = scipy.stats.wasserstein_distance(obs_vals, corr_vals)
 
     for vals, label, color in [
-        (model_vals, f"Model (Coarse) [EMD={emd_model:.3f}]", "blue"),
+        (model_vals, f"Model (Coarse) [Wasserstein={emd_model:.3f}]", "blue"),
         (obs_vals, "Observations", "green"),
-        (corr_vals, f"Corrected Output [EMD={emd_corr:.3f}]", "red")
+        (corr_vals, f"Corrected Output [Wasserstein={emd_corr:.3f}]", "red")
     ]:
         sorted_vals = np.sort(vals)
         cdf = np.arange(1, len(sorted_vals)+1) / len(sorted_vals)

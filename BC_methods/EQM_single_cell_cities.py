@@ -172,18 +172,20 @@ obs_vals = obs_output[:, i_city, j_city].values
 obs_vals = obs_vals[~np.isnan(obs_vals)]
 corr_vals = corrected_cell[~np.isnan(corrected_cell)]
 
-# KS stats for comparing corrected model
-ks_model = scipy.stats.ks_2samp(obs_vals, model_vals).statistic
-ks_corr = scipy.stats.ks_2samp(obs_vals, corr_vals).statistic
+
+# Wasserstein
+emd_model = scipy.stats.wasserstein_distance(obs_vals, model_vals)
+emd_corr = scipy.stats.wasserstein_distance(obs_vals, corr_vals)
 
 for vals, label, color in [
-    (model_vals, f"Model (Coarse) [KS={ks_model:.3f}]", "blue"),
+    (model_vals, f"Model (Coarse) [Wasserstein={emd_model:.3f}]", "blue"),
     (obs_vals, "Observations", "green"),
-    (corr_vals, f"Corrected Output [KS={ks_corr:.3f}]", "red")
+    (corr_vals, f"Corrected Output [Wasserstein={emd_corr:.3f}]", "red")
 ]:
     sorted_vals = np.sort(vals)
     cdf = np.arange(1, len(sorted_vals)+1) / len(sorted_vals)
     plt.plot(sorted_vals, cdf, label=label, color=color)
+
 
 plt.xlabel("Mean Temperature (°C)")
 plt.ylabel("CDF")
