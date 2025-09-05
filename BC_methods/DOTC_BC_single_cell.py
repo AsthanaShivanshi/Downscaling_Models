@@ -76,30 +76,31 @@ print("calib_mod_stack shape:", calib_mod_stack.shape)
 print("calib_obs_stack shape:", calib_obs_stack.shape)
 print("scenario_mod_stack shape:", scenario_mod_stack.shape)
 
+
 n_features = len(var_names)
 corrected_stack = np.full_like(scenario_mod_stack, np.nan)
 
 calib_doys = xr.DataArray(calib_times).dt.dayofyear.values
 scenario_doys = xr.DataArray(scenario_times).dt.dayofyear.values
 
+# DOTC to calibration period
+calib_corrected_stack = np.full_like(calib_mod_stack, np.nan)
+
 for doy in range(1, 367):
     window_diffs = (calib_doys - doy + 366) % 366
     window_mask = (window_diffs <= 45) | (window_diffs >= (366 - 45))
     calib_mod_win = calib_mod_stack[window_mask]
     calib_obs_win = calib_obs_stack[window_mask]
+    calib_mask = (calib_doys == doy)
+    calib_mod_win_for_pred = calib_mod_stack[calib_mask]
 
-    # scenario indices for this DOY
-    scenario_mask = (scenario_doys == doy)
-    scenario_mod_win = scenario_mod_stack[scenario_mask]
-
-    if calib_mod_win.shape[0] == 0 or calib_obs_win.shape[0] == 0 or scenario_mod_win.shape[0] == 0:
+    if calib_mod_win.shape[0] == 0 or calib_obs_win.shape[0] == 0 or calib_mod_win_for_pred.shape[0] == 0:
         continue
 
-    dotc = dOTC(bin_width=None, bin_origin=None) #Autoestimation bin size
-    dotc.fit(calib_obs_win, calib_mod_win, scenario_mod_win)
-    corrected_win = dotc.predict(scenario_mod_win)
-
-    corrected_stack[scenario_mask] = corrected_win
+    dotc = dOTC(bin_width=None, bin_origin=None)
+    dotc.fit(calib_obs_win, calib_mod_win, calib_mod_win_for_pred)
+    corrected_win = dotc.predict(calib_mod_win_for_pred)
+    calib_corrected_stack[calib_mask] = corrected_win
 
 output_path = f"{config.OUTPUTS_MODELS_DIR}/DOTC_{target_city}_4vars_corrected.nc"
 
@@ -117,14 +118,15 @@ ds_out = xr.Dataset(data_vars, coords=coords)
 ds_out.to_netcdf(output_path)
 print(f"Corrected output saved to {output_path}")
 
+
 for idx, var in enumerate(var_names):
     plt.figure(figsize=(8, 6))
-    # Use calibration period for all metrics
-    model_vals = model_datasets[idx].sel(time=slice(calib_start, calib_end))[:, i_city, j_city].values
-    obs_vals = obs_datasets[idx].sel(time=slice(calib_start, calib_end))[:, i_city, j_city].values
+    # Calibration 1981-2010
+    model_vals = calib_mod_stack[:, idx]
+    obs_vals = calib_obs_stack[:, idx]
+    corr_vals = calib_corrected_stack[:, idx]
     model_vals = model_vals[~np.isnan(model_vals)]
     obs_vals = obs_vals[~np.isnan(obs_vals)]
-    corr_vals = corrected_stack[(scenario_times >= np.datetime64(calib_start)) & (scenario_times <= np.datetime64(calib_end)), idx]
     corr_vals = corr_vals[~np.isnan(corr_vals)]
 
     emd_model = scipy.stats.wasserstein_distance(obs_vals, model_vals)
@@ -135,6 +137,8 @@ for idx, var in enumerate(var_names):
         (obs_vals, "Observations", "green"),
         (corr_vals, f"Corrected Output [Wasserstein={emd_corr:.3f}]", "red")
     ]:
+        if len(vals) == 0:
+            continue
         sorted_vals = np.sort(vals)
         cdf = np.arange(1, len(sorted_vals)+1) / len(sorted_vals)
         plt.plot(sorted_vals, cdf, label=label, color=color)
@@ -143,7 +147,6 @@ for idx, var in enumerate(var_names):
                 "Precipitation (mm/day)" if var == "precip" else
                 "Minimum Temperature (°C)" if var == "tmin" else
                "Maximum Temperature (°C)")
-    
     plt.ylabel("CDF")
     plt.title(f"CDFs for {target_city} - {var}: DOTC BC")
     plt.legend()
