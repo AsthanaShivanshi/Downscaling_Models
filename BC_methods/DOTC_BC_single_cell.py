@@ -95,7 +95,7 @@ for doy in range(1, 367):
     if calib_mod_win.shape[0] == 0 or calib_obs_win.shape[0] == 0 or calib_mod_win_for_pred.shape[0] == 0:
         continue
 
-    otc = OTC()
+    otc = OTC(bin_width=None, bin_origin=None)
     otc.fit(calib_mod_win, calib_obs_win)
     corrected_calib = otc.predict(calib_mod_win_for_pred)
     calib_corrected_stack[calib_mask] = corrected_calib
@@ -153,8 +153,8 @@ for idx, var in enumerate(var_names):
     scenario_corr_vals = scenario_corr_vals[~np.isnan(scenario_corr_vals)]
 
     # KS
-    ks_model_calib = scipy.stats.kstest(obs_vals_calib, model_vals_calib)
-    ks_corr_calib = scipy.stats.kstest(obs_vals_calib, corr_vals_calib)
+    ks_model_calib = scipy.stats.ks_2samp(obs_vals_calib, model_vals_calib)
+    ks_corr_calib = scipy.stats.ks_2samp(obs_vals_calib, corr_vals_calib)
 
     fig, axes = plt.subplots(1, 2, figsize=(16, 6))
 
