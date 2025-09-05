@@ -2,7 +2,7 @@ import scipy
 import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
-from SBCK import dOTC,OTC #For non stationary, and stationary BC
+from SBCK import dOTC, OTC
 import config
 import argparse
 import scipy.stats
@@ -37,7 +37,6 @@ model_paths = [
     f"{config.MODELS_DIR}/tmax_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/tmax_r01_coarse_masked.nc"
 ]
 
-
 obs_paths = [
     f"{config.DATASETS_TRAINING_DIR}/TabsD_step2_coarse.nc",
     f"{config.DATASETS_TRAINING_DIR}/RhiresD_step2_coarse.nc",
@@ -71,24 +70,34 @@ calib_times = model_datasets[0].sel(time=slice(calib_start, calib_end))['time'].
 scenario_mod_cells = [ds.sel(time=slice(scenario_start, scenario_end))[:, i_city, j_city].values for ds in model_datasets]
 scenario_times = model_datasets[0].sel(time=slice(scenario_start, scenario_end))['time'].values
 
-
-# Prepare calibration and scenario stacks
 calib_mod_stack = np.stack(calib_mod_cells, axis=1)
 calib_obs_stack = np.stack(calib_obs_cells, axis=1)
 scenario_mod_stack = np.stack(scenario_mod_cells, axis=1)
 
-# --- Stationary correction for calibration period ---
-otc = OTC()
-otc.fit(calib_mod_stack, calib_obs_stack)
-calib_corrected_stack = otc.predict(calib_mod_stack)
-
-# --- Non-stationary correction for scenario period ---
+calib_corrected_stack = np.full_like(calib_mod_stack, np.nan)
 scenario_corrected_stack = np.full_like(scenario_mod_stack, np.nan)
 calib_doys = xr.DataArray(calib_times).dt.dayofyear.values
 scenario_doys = xr.DataArray(scenario_times).dt.dayofyear.values
 
+# --- Seasonal OTC for calibration period ---
 for doy in range(1, 367):
-    # Moving window from calibration
+    window_diffs = (calib_doys - doy + 366) % 366
+    window_mask = (window_diffs <= 45) | (window_diffs >= (366 - 45))
+    calib_mod_win = calib_mod_stack[window_mask]
+    calib_obs_win = calib_obs_stack[window_mask]
+    calib_mask = (calib_doys == doy)
+    calib_mod_win_for_pred = calib_mod_stack[calib_mask]
+
+    if calib_mod_win.shape[0] == 0 or calib_obs_win.shape[0] == 0 or calib_mod_win_for_pred.shape[0] == 0:
+        continue
+
+    otc = OTC()
+    otc.fit(calib_mod_win, calib_obs_win)
+    corrected_calib = otc.predict(calib_mod_win_for_pred)
+    calib_corrected_stack[calib_mask] = corrected_calib
+
+# --- Seasonal dOTC for scenario period ---
+for doy in range(1, 367):
     window_diffs = (calib_doys - doy + 366) % 366
     window_mask = (window_diffs <= 45) | (window_diffs >= (366 - 45))
     calib_mod_win = calib_mod_stack[window_mask]
@@ -162,7 +171,7 @@ for idx, var in enumerate(var_names):
                        "Minimum Temperature (°C)" if var == "tmin" else
                        "Maximum Temperature (°C)")
     axes[0].set_ylabel("CDF")
-    axes[0].set_title(f"CDFs (calibration period) for {target_city} - {var}: OTC BC")
+    axes[0].set_title(f"CDFs (calibration period) for {target_city} - {var}: Seasonal OTC BC")
     axes[0].legend()
     axes[0].grid(True)
 
@@ -183,7 +192,7 @@ for idx, var in enumerate(var_names):
                        "Minimum Temperature (°C)" if var == "tmin" else
                        "Maximum Temperature (°C)")
     axes[1].set_ylabel("CDF")
-    axes[1].set_title(f"CDFs (scenario period) for {target_city} - {var}: dOTC BC")
+    axes[1].set_title(f"CDFs (scenario period) for {target_city} - {var}: Seasonal dOTC BC")
     axes[1].legend()
     axes[1].grid(True)
 
