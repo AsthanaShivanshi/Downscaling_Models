@@ -165,7 +165,6 @@ fig.tight_layout()
 plt.savefig(plot_path, dpi=1000)
 print(f"Correction function plot saved to {plot_path}")
 
-
 # CDFs from calibration period
 calib_start = "1981-01-01"
 calib_end = "2010-12-31"
@@ -179,6 +178,8 @@ corr_vals = corr_vals[~np.isnan(corr_vals)]
 emd_model = scipy.stats.wasserstein_distance(obs_vals, model_vals)
 emd_corr = scipy.stats.wasserstein_distance(obs_vals, corr_vals)
 
+plt.figure(figsize=(8, 6))
+
 for vals, label, color in [
     (model_vals, f"Model (Coarse) [Wasserstein={emd_model:.3f}]", "blue"),
     (obs_vals, "Observations", "green"),
@@ -187,7 +188,6 @@ for vals, label, color in [
     sorted_vals = np.sort(vals)
     cdf = np.arange(1, len(sorted_vals)+1) / len(sorted_vals)
     plt.plot(sorted_vals, cdf, label=label, color=color)
-
 
 plt.xlabel("Mean Temperature (°C)")
 plt.ylabel("CDF")
