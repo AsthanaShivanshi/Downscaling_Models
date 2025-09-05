@@ -165,36 +165,65 @@ fig.tight_layout()
 plt.savefig(plot_path, dpi=1000)
 print(f"Correction function plot saved to {plot_path}")
 
-# CDFs from calibration period
+
+# CDFs for calibration and scenario periods
 calib_start = "1981-01-01"
 calib_end = "2010-12-31"
-model_vals = model_output.sel(time=slice(calib_start, calib_end))[:, i_city, j_city].values
-obs_vals = obs_output.sel(time=slice(calib_start, calib_end))[:, i_city, j_city].values
-model_vals = model_vals[~np.isnan(model_vals)]
-obs_vals = obs_vals[~np.isnan(obs_vals)]
-corr_vals = corrected_cell[(full_times >= np.datetime64(calib_start)) & (full_times <= np.datetime64(calib_end))]
-corr_vals = corr_vals[~np.isnan(corr_vals)]
+scenario_start = "2011-01-01"
+scenario_end = "2099-12-31"
 
-ks_model = scipy.stats.kstest(obs_vals, model_vals)
-ks_corr = scipy.stats.kstest(obs_vals, corr_vals)
+model_vals_calib = model_output.sel(time=slice(calib_start, calib_end))[:, i_city, j_city].values
+obs_vals_calib = obs_output.sel(time=slice(calib_start, calib_end))[:, i_city, j_city].values
+model_vals_calib = model_vals_calib[~np.isnan(model_vals_calib)]
+obs_vals_calib = obs_vals_calib[~np.isnan(obs_vals_calib)]
+corr_vals_calib = corrected_cell[(full_times >= np.datetime64(calib_start)) & (full_times <= np.datetime64(calib_end))]
+corr_vals_calib = corr_vals_calib[~np.isnan(corr_vals_calib)]
 
-plt.figure(figsize=(8, 6))
+model_vals_scen = model_output.sel(time=slice(scenario_start, scenario_end))[:, i_city, j_city].values
+model_vals_scen = model_vals_scen[~np.isnan(model_vals_scen)]
+corr_vals_scen = corrected_cell[(full_times >= np.datetime64(scenario_start)) & (full_times <= np.datetime64(scenario_end))]
+corr_vals_scen = corr_vals_scen[~np.isnan(corr_vals_scen)]
 
+ks_model_calib = scipy.stats.kstest(obs_vals_calib, model_vals_calib)
+ks_corr_calib = scipy.stats.kstest(obs_vals_calib, corr_vals_calib)
+ks_model_scen = scipy.stats.kstest(obs_vals_calib, model_vals_scen)
+ks_corr_scen = scipy.stats.kstest(obs_vals_calib, corr_vals_scen)
+
+fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+
+# Left: Calib
 for vals, label, color in [
-    (model_vals, f"Model (Coarse) [KS={ks_model.statistic:.3f}]", "blue"),
-    (obs_vals, "Observations", "green"),
-    (corr_vals, f"Corrected Output [KS={ks_corr.statistic:.3f}]", "red")
+    (model_vals_calib, f"Model (Coarse,1981-2010) [KS={ks_model_calib.statistic:.3f}]", "red"),
+    (obs_vals_calib, "Observations (1981-2010)", "black"),
+    (corr_vals_calib, f"Corrected Output (1981-2010) [KS={ks_corr_calib.statistic:.3f}]", "green")
 ]:
     sorted_vals = np.sort(vals)
     cdf = np.arange(1, len(sorted_vals)+1) / len(sorted_vals)
-    plt.plot(sorted_vals, cdf, label=label, color=color)
+    axes[0].plot(sorted_vals, cdf, label=label, color=color)
 
-plt.xlabel("Mean Temperature (°C)")
-plt.ylabel("CDF")
-plt.title(f"CDFs (1981-2010) for {target_city}: EQM BC along with KS stats")
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
-cdf_plot_path = plot_path.replace("corr_fx_temp_allseasons", "cdf_temp_singlecell")
+axes[0].set_xlabel("Mean Temperature (°C)")
+axes[0].set_ylabel("CDF")
+axes[0].set_title(f"CDFs (1981-2010) for {target_city}: EQM BC")
+axes[0].legend()
+axes[0].grid(True)
+
+# Right: Scenario 
+for vals, label, color in [
+    (model_vals_scen, f"Model (Coarse, 2011-2099)", "red"),
+    (obs_vals_calib, "Observations (1981-2010)", "black"),
+    (corr_vals_scen, f"Corrected Output (2011-2099)", "green")
+]:
+    sorted_vals = np.sort(vals)
+    cdf = np.arange(1, len(sorted_vals)+1) / len(sorted_vals)
+    axes[1].plot(sorted_vals, cdf, label=label, color=color)
+
+axes[1].set_xlabel("Mean Temperature (°C)")
+axes[1].set_ylabel("CDF")
+axes[1].set_title(f"CDFs (calibration and scenario periods) for {target_city}: EQM BC")
+axes[1].legend()
+axes[1].grid(True)
+
+fig.tight_layout()
+cdf_plot_path = plot_path.replace("corr_fx_temp_allseasons", "cdf_temp_singlecell_twopanel")
 plt.savefig(cdf_plot_path, dpi=1000)
-print(f"CDF plot saved to {cdf_plot_path}")
+print(f"Two-panel CDF plot saved to {cdf_plot_path}")
