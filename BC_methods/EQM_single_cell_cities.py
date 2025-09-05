@@ -191,7 +191,7 @@ for vals, label, color in [
 
 plt.xlabel("Mean Temperature (°C)")
 plt.ylabel("CDF")
-plt.title(f"CDFs for {target_city}: EQM BC along with KS stats")
+plt.title(f"CDFs (1981-2010) for {target_city}: EQM BC along with KS stats")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()

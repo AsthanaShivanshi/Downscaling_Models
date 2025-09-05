@@ -148,7 +148,7 @@ for idx, var in enumerate(var_names):
                 "Minimum Temperature (°C)" if var == "tmin" else
                "Maximum Temperature (°C)")
     plt.ylabel("CDF")
-    plt.title(f"CDFs for {target_city} - {var}: DOTC BC with KS stats")
+    plt.title(f"CDFs (1981-2010) for {target_city} - {var}: DOTC BC with KS stats")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
