@@ -166,7 +166,7 @@ plt.savefig(plot_path, dpi=1000)
 print(f"Correction function plot saved to {plot_path}")
 
 
-# CDFs for calibration and scenario periods
+# CDFs
 calib_start = "1981-01-01"
 calib_end = "2010-12-31"
 scenario_start = "2011-01-01"
@@ -186,8 +186,6 @@ corr_vals_scen = corr_vals_scen[~np.isnan(corr_vals_scen)]
 
 ks_model_calib = scipy.stats.kstest(obs_vals_calib, model_vals_calib)
 ks_corr_calib = scipy.stats.kstest(obs_vals_calib, corr_vals_calib)
-ks_model_scen = scipy.stats.kstest(obs_vals_calib, model_vals_scen)
-ks_corr_scen = scipy.stats.kstest(obs_vals_calib, corr_vals_scen)
 
 fig, axes = plt.subplots(1, 2, figsize=(16, 6))
 
@@ -203,7 +201,7 @@ for vals, label, color in [
 
 axes[0].set_xlabel("Mean Temperature (°C)")
 axes[0].set_ylabel("CDF")
-axes[0].set_title(f"CDFs (calibration period) for {target_city}: EQM BC")
+axes[0].set_title(f"CDFs (cal period : 1981-2010) for {target_city}: EQM BC")
 axes[0].legend()
 axes[0].grid(True)
 
@@ -219,7 +217,7 @@ for vals, label, color in [
 
 axes[1].set_xlabel("Mean Temperature (°C)")
 axes[1].set_ylabel("CDF")
-axes[1].set_title(f"CDFs (scenario periods) for {target_city}: EQM BC")
+axes[1].set_title(f"CDFs (scenario period : 2011-2099) for {target_city}: EQM BC")
 axes[1].legend()
 axes[1].grid(True)
 
