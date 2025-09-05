@@ -137,7 +137,7 @@ for idx, var in enumerate(var_names):
 
     plt.xlabel(var)
     plt.ylabel("CDF")
-    plt.title(f"CDFs for {target_city} - {var}")
+    plt.title(f"CDFs for {target_city} - {var}: DOTC BC")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
