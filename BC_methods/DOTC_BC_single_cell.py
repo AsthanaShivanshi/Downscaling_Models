@@ -2,7 +2,7 @@ import scipy
 import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
-from SBCK import dOTC, OTC #OTC for calibration period
+from SBCK import dOTC 
 import config
 import argparse
 import scipy.stats
@@ -55,17 +55,17 @@ lon_vals = model_datasets[0]['lon'].values
 
 dist = np.sqrt((lat_vals - target_lat)**2 + (lon_vals - target_lon)**2)
 
-#Choosing the nearest grid cell for the city
+#Grid cell : Euclidean
 i_city, j_city = np.unravel_index(np.argmin(dist), dist.shape)
 print(f"Closest grid cell to {target_city}: i={i_city}, j={j_city}")
 print(f"Location: lat={lat_vals[i_city, j_city]}, lon={lon_vals[i_city, j_city]}")
-
 
 
 calib_start = "1981-01-01"
 calib_end = "2010-12-31"
 scenario_start = "2011-01-01"
 scenario_end = "2099-12-31"
+
 
 calib_mod_cells = [ds.sel(time=slice(calib_start, calib_end))[:, i_city, j_city].values for ds in model_datasets]
 calib_obs_cells = [ds.sel(time=slice(calib_start, calib_end))[:, i_city, j_city].values for ds in obs_datasets]
@@ -78,74 +78,59 @@ calib_mod_stack = np.stack(calib_mod_cells, axis=1)
 calib_obs_stack = np.stack(calib_obs_cells, axis=1)
 scenario_mod_stack = np.stack(scenario_mod_cells, axis=1)
 
-calib_corrected_stack = np.full_like(calib_mod_stack, np.nan)
-scenario_corrected_stack = np.full_like(scenario_mod_stack, np.nan)
+full_mod_stack = np.concatenate([calib_mod_stack, scenario_mod_stack], axis=0)
+full_times = np.concatenate([calib_times, scenario_times])
+full_doys = xr.DataArray(full_times).dt.dayofyear.values
 calib_doys = xr.DataArray(calib_times).dt.dayofyear.values
-scenario_doys = xr.DataArray(scenario_times).dt.dayofyear.values
 
-#Seasonal OTC : stationary
+full_corrected_stack = np.full_like(full_mod_stack, np.nan) #Nan array for storing corrected values
+
+# Apply dOTC for doy
 for doy in range(1, 367):
     window_diffs = (calib_doys - doy + 366) % 366
     window_mask = (window_diffs <= 45) | (window_diffs >= (366 - 45))
     calib_mod_win = calib_mod_stack[window_mask]
     calib_obs_win = calib_obs_stack[window_mask]
-    calib_mask = (calib_doys == doy)
-    calib_mod_win_for_pred = calib_mod_stack[calib_mask]
+    full_mask = (full_doys == doy)
+    full_mod_win_for_pred = full_mod_stack[full_mask]
 
-    if calib_mod_win.shape[0] == 0 or calib_obs_win.shape[0] == 0 or calib_mod_win_for_pred.shape[0] == 0:
-        continue
-
-    otc = OTC(bin_width=None, bin_origin=None)
-    otc.fit(calib_mod_win, calib_obs_win)
-    corrected_calib = otc.predict(calib_mod_win_for_pred)
-    calib_corrected_stack[calib_mask] = corrected_calib
-
-# dOTC: scenario period
-for doy in range(1, 367):
-    window_diffs = (calib_doys - doy + 366) % 366
-    window_mask = (window_diffs <= 45) | (window_diffs >= (366 - 45))
-    calib_mod_win = calib_mod_stack[window_mask]
-    calib_obs_win = calib_obs_stack[window_mask]
-    scenario_mask = (scenario_doys == doy)
-    scenario_mod_win_for_pred = scenario_mod_stack[scenario_mask]
-
-    if calib_mod_win.shape[0] == 0 or calib_obs_win.shape[0] == 0 or scenario_mod_win_for_pred.shape[0] == 0:
+    if calib_mod_win.shape[0] == 0 or calib_obs_win.shape[0] == 0 or full_mod_win_for_pred.shape[0] == 0:
         continue
 
     dotc = dOTC(bin_width=None, bin_origin=None)
-    dotc.fit(calib_obs_win, calib_mod_win, scenario_mod_win_for_pred)
-    corrected_scenario = dotc.predict(scenario_mod_win_for_pred)
-    scenario_corrected_stack[scenario_mask] = corrected_scenario
-
-
-#Concatenating scenario and calibration period into one time series
-full_corrected_stack = np.concatenate([calib_corrected_stack, scenario_corrected_stack], axis=0)
-full_times = np.concatenate([calib_times, scenario_times])
+    dotc.fit(calib_obs_win, calib_mod_win, full_mod_win_for_pred)
+    corrected_full = dotc.predict(full_mod_win_for_pred) #not only the 2011-2099 scenario period, corr applied to full period
+    full_corrected_stack[full_mask] = corrected_full
 
 coords = {
     "time": full_times,
     "lat": [lat_vals[i_city, j_city]],
     "lon": [lon_vals[i_city, j_city]]
 }
+
+
 data_vars = {
     var: (("time", "lat", "lon"), full_corrected_stack[:, idx].reshape(-1, 1, 1))
     for idx, var in enumerate(var_names)
 }
+
+
 ds_out = xr.Dataset(data_vars, coords=coords)
 output_path = f"{config.OUTPUTS_MODELS_DIR}/DOTC_{target_city}_4vars_corrected.nc"
 ds_out.to_netcdf(output_path)
-print(f"Full corrected output (1981-2099) saved to {output_path}")
 
-# CDFs,. calib and scenario
+
+
+# CDFs, calib and scenario
 for idx, var in enumerate(var_names):
     # 1981-2010
     model_vals_calib = calib_mod_stack[:, idx]
     obs_vals_calib = calib_obs_stack[:, idx]
-    corr_vals_calib = calib_corrected_stack[:, idx]
+    corr_vals_calib = full_corrected_stack[:calib_mod_stack.shape[0], idx]
 
     # 2011-2099
     scenario_model_vals = scenario_mod_stack[:, idx]
-    scenario_corr_vals = scenario_corrected_stack[:, idx]
+    scenario_corr_vals = full_corrected_stack[calib_mod_stack.shape[0]:, idx]
     model_vals_calib = model_vals_calib[~np.isnan(model_vals_calib)]
     obs_vals_calib = obs_vals_calib[~np.isnan(obs_vals_calib)]
     corr_vals_calib = corr_vals_calib[~np.isnan(corr_vals_calib)]
@@ -175,7 +160,7 @@ for idx, var in enumerate(var_names):
                        "Minimum Temperature (°C)" if var == "tmin" else
                        "Maximum Temperature (°C)")
     axes[0].set_ylabel("CDF")
-    axes[0].set_title(f"CDFs (calibration period) for {target_city} - {var}: OTC BC")
+    axes[0].set_title(f"CDFs (calibration period) for {target_city} - {var}: dOTC BC")
     axes[0].legend()
     axes[0].grid(True)
 
@@ -203,4 +188,4 @@ for idx, var in enumerate(var_names):
     fig.tight_layout()
     cdf_plot_path = output_path.replace(".nc", f"_cdf_twopanel_{var}.png")
     plt.savefig(cdf_plot_path, dpi=1000)
-    print(f"Two-panel CDF plot saved to {cdf_plot_path}")
+    print(f"Two-panel CDF plot for {var} saved to {cdf_plot_path}")
