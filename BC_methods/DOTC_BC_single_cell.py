@@ -83,9 +83,16 @@ full_times = np.concatenate([calib_times, scenario_times])
 full_doys = xr.DataArray(full_times).dt.dayofyear.values
 calib_doys = xr.DataArray(calib_times).dt.dayofyear.values
 
+# precip clipping to non negative vals
+if "precip" in var_names:
+    precip_idx = var_names.index("precip")
+    calib_obs_stack[:, precip_idx] = np.clip(calib_obs_stack[:, precip_idx], 0, None)
+    calib_mod_stack[:, precip_idx] = np.clip(calib_mod_stack[:, precip_idx], 0, None)
+    scenario_mod_stack[:, precip_idx] = np.clip(scenario_mod_stack[:, precip_idx], 0, None)
+    full_mod_stack[:, precip_idx] = np.clip(full_mod_stack[:, precip_idx], 0, None)
+
 full_corrected_stack = np.full_like(full_mod_stack, np.nan) #Nan array for storing corrected values
 
-# Apply dOTC for doy
 for doy in range(1, 367):
     window_diffs = (calib_doys - doy + 366) % 366
     window_mask = (window_diffs <= 45) | (window_diffs >= (366 - 45))
@@ -100,6 +107,11 @@ for doy in range(1, 367):
     dotc = dOTC(bin_width=None, bin_origin=None)
     dotc.fit(calib_obs_win, calib_mod_win, full_mod_win_for_pred)
     corrected_full = dotc.predict(full_mod_win_for_pred) #not only the 2011-2099 scenario period, corr applied to full period
+
+    if "precip" in var_names:
+        precip_idx = var_names.index("precip")
+        corrected_full[:, precip_idx] = np.clip(corrected_full[:, precip_idx], 0, None)
+
     full_corrected_stack[full_mask] = corrected_full
 
 coords = {
@@ -108,18 +120,14 @@ coords = {
     "lon": [lon_vals[i_city, j_city]]
 }
 
-
 data_vars = {
     var: (("time", "lat", "lon"), full_corrected_stack[:, idx].reshape(-1, 1, 1))
     for idx, var in enumerate(var_names)
 }
 
-
 ds_out = xr.Dataset(data_vars, coords=coords)
 output_path = f"{config.OUTPUTS_MODELS_DIR}/DOTC_{target_city}_4vars_corrected.nc"
 ds_out.to_netcdf(output_path)
-
-
 
 # CDFs, calib and scenario
 for idx, var in enumerate(var_names):
@@ -185,7 +193,8 @@ for idx, var in enumerate(var_names):
     axes[1].legend()
     axes[1].grid(True)
 
-#Common x axis
+
+#Common x lim
     all_vals = np.concatenate([model_vals_calib, obs_vals_calib, corr_vals_calib, scenario_model_vals, scenario_corr_vals])
     xmin, xmax = np.nanmin(all_vals), np.nanmax(all_vals)
     axes[0].set_xlim(xmin, xmax)
