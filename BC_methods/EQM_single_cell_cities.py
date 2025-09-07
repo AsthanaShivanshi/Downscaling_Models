@@ -229,6 +229,13 @@ axes[1].set_title(f"CDFs (scenario period : 2011-2099) for {target_city}: EQM BC
 axes[1].legend()
 axes[1].grid(True)
 
+
+# For comparability, common x axis.
+all_vals = np.concatenate([model_vals_calib, obs_vals_calib, corr_vals_calib, model_vals_scen, corr_vals_scen])
+xmin, xmax = np.nanmin(all_vals), np.nanmax(all_vals)
+axes[0].set_xlim(xmin, xmax)
+axes[1].set_xlim(xmin, xmax)
+
 fig.tight_layout()
 cdf_plot_path = plot_path.replace("corr_fx_temp_allseasons", "cdf_temp_singlecell_twopanel")
 plt.savefig(cdf_plot_path, dpi=1000)

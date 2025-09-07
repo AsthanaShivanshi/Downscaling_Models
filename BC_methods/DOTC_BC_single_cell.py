@@ -185,6 +185,12 @@ for idx, var in enumerate(var_names):
     axes[1].legend()
     axes[1].grid(True)
 
+#Common x axis
+    all_vals = np.concatenate([model_vals_calib, obs_vals_calib, corr_vals_calib, scenario_model_vals, scenario_corr_vals])
+    xmin, xmax = np.nanmin(all_vals), np.nanmax(all_vals)
+    axes[0].set_xlim(xmin, xmax)
+    axes[1].set_xlim(xmin, xmax)
+
     fig.tight_layout()
     cdf_plot_path = output_path.replace(".nc", f"_cdf_twopanel_{var}.png")
     plt.savefig(cdf_plot_path, dpi=1000)
