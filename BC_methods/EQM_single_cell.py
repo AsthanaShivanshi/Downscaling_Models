@@ -18,225 +18,128 @@ plt.rcParams.update({
     "ytick.labelsize": 12,
 })
 
-parser= argparse.ArgumentParser()
-parser.add_argument("--city", type=str, required=True, help="City name,,first letter uppercase")
-parser.add_argument("--lat", type=float, required=True, help="city lat")
-parser.add_argument("--lon", type=float, required=True, help="city lon")
+parser = argparse.ArgumentParser()
+parser.add_argument("--city", type=str, required=True, help="City name, first letter uppercase")
+parser.add_argument("--lat", type=float, required=True, help="City lat")
+parser.add_argument("--lon", type=float, required=True, help="City lon")
 args = parser.parse_args()
 
 target_city = args.city
 target_lat = args.lat
 target_lon = args.lon
 
-locations= {target_city: (target_lat, target_lon)}
+locations = {target_city: (target_lat, target_lon)}
 
-model_path = f"{config.MODELS_DIR}/temp_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/temp_r01_coarse_masked.nc" 
-obs_path = f"{config.DATASETS_TRAINING_DIR}/TabsD_step2_coarse.nc"
-output_path_template = f"{config.BC_DIR}/qm_temp_r01_singlecell_{{city}}_output.nc"
-plot_path = f"{config.OUTPUTS_MODELS_DIR}/qm_corr_fx_temp_allseasons_{target_city}.png"
+model_paths = [
+    f"{config.MODELS_DIR}/temp_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/temp_r01_coarse_masked.nc",
+    f"{config.MODELS_DIR}/precip_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/precip_r01_coarse_masked.nc",
+    f"{config.MODELS_DIR}/tmin_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/tmin_r01_coarse_masked.nc",
+    f"{config.MODELS_DIR}/tmax_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/tmax_r01_coarse_masked.nc"
+]
 
-model_output = xr.open_dataset(model_path)["temp"]
-obs_output = xr.open_dataset(obs_path)["TabsD"]
+obs_paths = [
+    f"{config.DATASETS_TRAINING_DIR}/TabsD_step2_coarse.nc",
+    f"{config.DATASETS_TRAINING_DIR}/RhiresD_step2_coarse.nc",
+    f"{config.DATASETS_TRAINING_DIR}/TminD_step2_coarse.nc",
+    f"{config.DATASETS_TRAINING_DIR}/TmaxD_step2_coarse.nc"
+]
 
-#Control 
-calib_obs = obs_output.sel(time=slice("1981-01-01", "2010-12-31"))
-calib_mod = model_output.sel(time=slice("1981-01-01", "2010-12-31"))
+var_names = ["temp", "precip", "tmin", "tmax"]
+obs_var_names = ["TabsD", "RhiresD", "TminD", "TmaxD"]
 
-lat_vals = model_output['lat'].values
-lon_vals = model_output['lon'].values
+output_path = f"{config.OUTPUTS_MODELS_DIR}/EQM_{target_city}_4vars_corrected.nc"
 
-calib_times = calib_obs['time'].values #time array for doy period
-calib_doys = xr.DataArray(calib_times).dt.dayofyear.values
+lat_vals = xr.open_dataset(model_paths[0])['lat'].values
+lon_vals = xr.open_dataset(model_paths[0])['lon'].values
 
-def get_season(doy):
-    if doy >= 335 or doy <= 59:
-        return "DJF"
-    elif 60 <= doy <= 151:
-        return "MAM"
-    elif 152 <= doy <= 243:
-        return "JJA"
-    elif 244 <= doy <= 334:
-        return "SON"
-    else:
-        return None
-
-season_linestyles = {
-    "DJF": "-",
-    "MAM": "--",
-    "JJA": "-.",
-    "SON": ":"
-}
-
-fig, ax = plt.subplots(figsize=(10, 7))
-
-season_colors = {
-    "DJF": "b",
-    "MAM": "g",
-    "JJA": "r",
-    "SON": "orange"
-}
-
-print(f"\nProcessing {target_city}...")
-
-#Closest cell:  Euclidean distance
 dist = np.sqrt((lat_vals - target_lat)**2 + (lon_vals - target_lon)**2)
 i_city, j_city = np.unravel_index(np.argmin(dist), dist.shape)
 print(f"Closest grid cell to {target_city}: i={i_city}, j={j_city}")
 print(f"Location: lat={lat_vals[i_city, j_city]}, lon={lon_vals[i_city, j_city]}")
 
-# Corr fx. doy with 91d window and wraparound
-doy_corrections = []
-doy_seasons = []
-quantiles = np.linspace(0, 1, 101)
-model_cell = calib_mod[:, i_city, j_city].values #Selecting all time for particular cell
-obs_cell = calib_obs[:, i_city, j_city].values
-
-for doy in range(1, 367):
-    window_doys = ((calib_doys - doy + 366) % 366)
-    window_mask = (window_doys <= 45) | (window_doys >= (366 - 45))
-    obs_window = obs_cell[window_mask]
-    mod_window = model_cell[window_mask]
-    #NaN handling
-    obs_window = obs_window[~np.isnan(obs_window)]
-    mod_window = mod_window[~np.isnan(mod_window)]
-
-    quantiles_inner = np.linspace(0.01, 0.99, 99) #quantile res for inner QM
-    obs_q_inner = np.quantile(obs_window, quantiles_inner)
-    mod_q_inner = np.quantile(mod_window, quantiles_inner)
-
-    #Initialising and fitting SBCK.QM object 
-    eqm = QM()
-    eqm.fit(obs_q_inner.reshape(-1, 1), mod_q_inner.reshape(-1, 1)) #.fit(obs, mod)
-
-    #Inner corr fx non interpolated
-    correction_inner = eqm.predict(mod_q_inner.reshape(-1, 1)).flatten() - mod_q_inner
-    
-    
-    #Helper to interpolate to full quantile range
-    interp_corr = interp1d(
-        quantiles_inner, correction_inner, kind='linear', fill_value='extrapolate'
-    )
-
-
-    correction = interp_corr(quantiles)
-    doy_corrections.append(correction)
-
-
-
-    doy_seasons.append(get_season(doy))
-
-doy_corrections = np.array(doy_corrections)  #(366 days, 100 quantiles)
-
-full_model_cell = model_output[:, i_city, j_city].values
-full_times = model_output['time'].values
-full_doys = xr.DataArray(full_times).dt.dayofyear.values
-
-#Initialising Nan array for BC values
-corrected_cell = np.full_like(full_model_cell, np.nan)
-
-for idx, (val, doy) in enumerate(zip(full_model_cell, full_doys)): #Looping over all timesteps in the full model series for the doy for model grid cell
-    window_doys = ((calib_doys - doy + 366) % 366)
-    window_mask = (window_doys <= 45) | (window_doys >= (366 - 45))
-    mod_window = model_cell[window_mask]
-    obs_window = obs_cell[window_mask]
-    mod_window = mod_window[~np.isnan(mod_window)]
-    obs_window = obs_window[~np.isnan(obs_window)]
-    if mod_window.size == 0 or obs_window.size == 0 or np.isnan(val):
-        continue
-    mod_q = np.quantile(mod_window, quantiles)
-    # Interpolation 
-    value_quantile = np.interp(val, mod_q, quantiles)
-    value_quantile = np.clip(value_quantile, 0, 1)
-    correction_fx = doy_corrections[doy - 1]  # doy runs from 1 to 366, array index from 0
-    interp_corr = interp1d(quantiles, correction_fx, kind='linear', fill_value='extrapolate')
-    corrected_cell[idx] = val + interp_corr(value_quantile)
-
-doy_seasons = np.array(doy_seasons)
-
-for season in ["DJF", "MAM", "JJA", "SON"]:
-    season_mask = (doy_seasons == season)
-    if np.any(season_mask):
-        mean_correction = np.nanmean(doy_corrections[season_mask], axis=0)
-        ax.plot(
-            quantiles, mean_correction,
-            label=season,
-            color=season_colors[season],
-            linestyle=season_linestyles[season]
-        )
-
-ax.axhline(0, color="gray", linestyle="--")
-ax.set_xlabel("Quantile Level")
-ax.set_ylabel("Seasonal mean of Correction Fx (°C)")
-ax.set_title(f"Correction Fx of daily temperature with EQM BC: {target_city}")
-ax.legend(loc="lower left")
-ax.grid(True)
-fig.tight_layout()
-plt.savefig(plot_path, dpi=1000)
-print(f"Correction function plot saved to {plot_path}")
-
-# CDFs
 calib_start = "1981-01-01"
 calib_end = "2010-12-31"
 scenario_start = "2011-01-01"
 scenario_end = "2099-12-31"
 
-model_vals_calib = model_output.sel(time=slice(calib_start, calib_end))[:, i_city, j_city].values
-obs_vals_calib = obs_output.sel(time=slice(calib_start, calib_end))[:, i_city, j_city].values
-model_vals_calib = model_vals_calib[~np.isnan(model_vals_calib)]
-obs_vals_calib = obs_vals_calib[~np.isnan(obs_vals_calib)]
-corr_vals_calib = corrected_cell[(full_times >= np.datetime64(calib_start)) & (full_times <= np.datetime64(calib_end))]
-corr_vals_calib = corr_vals_calib[~np.isnan(corr_vals_calib)]
+data_vars = {}
+for model_path, obs_path, var, obs_var in zip(model_paths, obs_paths, var_names, obs_var_names):
+    print(f"\nProcessing {var} for {target_city}...")
 
-model_vals_scen = model_output.sel(time=slice(scenario_start, scenario_end))[:, i_city, j_city].values
-model_vals_scen = model_vals_scen[~np.isnan(model_vals_scen)]
-corr_vals_scen = corrected_cell[(full_times >= np.datetime64(scenario_start)) & (full_times <= np.datetime64(scenario_end))]
-corr_vals_scen = corr_vals_scen[~np.isnan(corr_vals_scen)]
+    model_output = xr.open_dataset(model_path)[var]
+    obs_output = xr.open_dataset(obs_path)[obs_var]
 
-ks_model_calib = scipy.stats.ks_2samp(obs_vals_calib, model_vals_calib)
-ks_corr_calib = scipy.stats.ks_2samp(obs_vals_calib, corr_vals_calib)
+    calib_obs = obs_output.sel(time=slice(calib_start, calib_end))
+    calib_mod = model_output.sel(time=slice(calib_start, calib_end))
 
-fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+    calib_times = calib_obs['time'].values
+    calib_doys = xr.DataArray(calib_times).dt.dayofyear.values
 
-# Left: Calib
-for vals, label, color in [
-    (model_vals_calib, f"Model (Coarse,1981-2010) [KS={ks_model_calib.statistic:.3f}]", "red"),
-    (obs_vals_calib, "Observations (1981-2010)", "black"),
-    (corr_vals_calib, f"Corrected Output (1981-2010) [KS={ks_corr_calib.statistic:.3f}]", "green")
-]:
-    sorted_vals = np.sort(vals)
-    cdf = np.arange(1, len(sorted_vals)+1) / len(sorted_vals)
-    axes[0].plot(sorted_vals, cdf, label=label, color=color)
+    quantiles = np.linspace(0, 1, 101)
+    model_cell = calib_mod[:, i_city, j_city].values
+    obs_cell = calib_obs[:, i_city, j_city].values
 
-axes[0].set_xlabel("Daily Temperature (°C)")
-axes[0].set_ylabel("CDF")
-axes[0].set_title(f"CDFs (cal period : 1981-2010) for {target_city}: EQM BC")
-axes[0].legend()
-axes[0].grid(True)
+    # Precip clipping to non-negative
+    if var == "precip":
+        model_cell = np.clip(model_cell, 0, None)
+        obs_cell = np.clip(obs_cell, 0, None)
 
-# Right: Scenario 
-for vals, label, color in [
-    (model_vals_scen, f"Model (Coarse, 2011-2099)", "red"),
-    (obs_vals_calib, "Observations (1981-2010)", "black"),
-    (corr_vals_scen, f"Corrected Output (2011-2099)", "green")
-]:
-    sorted_vals = np.sort(vals)
-    cdf = np.arange(1, len(sorted_vals)+1) / len(sorted_vals)
-    axes[1].plot(sorted_vals, cdf, label=label, color=color)
+    doy_corrections = []
+    for doy in range(1, 367):
+        window_doys = ((calib_doys - doy + 366) % 366)
+        window_mask = (window_doys <= 45) | (window_doys >= (366 - 45))
+        obs_window = obs_cell[window_mask]
+        mod_window = model_cell[window_mask]
+        obs_window = obs_window[~np.isnan(obs_window)]
+        mod_window = mod_window[~np.isnan(mod_window)]
 
-axes[1].set_xlabel("Daily Temperature (°C)")
-axes[1].set_ylabel("CDF")
-axes[1].set_title(f"CDFs (scenario period : 2011-2099) for {target_city}: EQM BC")
-axes[1].legend()
-axes[1].grid(True)
+        quantiles_inner = np.linspace(0.01, 0.99, 99)
+        obs_q_inner = np.quantile(obs_window, quantiles_inner)
+        mod_q_inner = np.quantile(mod_window, quantiles_inner)
 
+        eqm = QM()
+        eqm.fit(obs_q_inner.reshape(-1, 1), mod_q_inner.reshape(-1, 1))
+        correction_inner = eqm.predict(mod_q_inner.reshape(-1, 1)).flatten() - mod_q_inner
+        interp_corr = interp1d(
+            quantiles_inner, correction_inner, kind='linear', fill_value='extrapolate'
+        )
+        correction = interp_corr(quantiles)
+        doy_corrections.append(correction)
 
-# For comparability, common x axis.
-all_vals = np.concatenate([model_vals_calib, obs_vals_calib, corr_vals_calib, model_vals_scen, corr_vals_scen])
-xmin, xmax = np.nanmin(all_vals), np.nanmax(all_vals)
-axes[0].set_xlim(xmin, xmax)
-axes[1].set_xlim(xmin, xmax)
+    doy_corrections = np.array(doy_corrections)  # (366 days, 101 quantiles)
 
-fig.tight_layout()
-cdf_plot_path = plot_path.replace("corr_fx_temp_allseasons", "cdf_temp_singlecell_twopanel")
-plt.savefig(cdf_plot_path, dpi=1000)
-print(f"Two-panel CDF plot saved to {cdf_plot_path}")
+    full_model_cell = model_output[:, i_city, j_city].values
+    full_times = model_output['time'].values
+    full_doys = xr.DataArray(full_times).dt.dayofyear.values
+
+    corrected_cell = np.full_like(full_model_cell, np.nan)
+    for idx, (val, doy) in enumerate(zip(full_model_cell, full_doys)):
+        window_doys = ((calib_doys - doy + 366) % 366)
+        window_mask = (window_doys <= 45) | (window_doys >= (366 - 45))
+        mod_window = model_cell[window_mask]
+        obs_window = obs_cell[window_mask]
+        mod_window = mod_window[~np.isnan(mod_window)]
+        obs_window = obs_window[~np.isnan(obs_window)]
+        if mod_window.size == 0 or obs_window.size == 0 or np.isnan(val):
+            continue
+        mod_q = np.quantile(mod_window, quantiles)
+        value_quantile = np.interp(val, mod_q, quantiles)
+        value_quantile = np.clip(value_quantile, 0, 1)
+        correction_fx = doy_corrections[doy - 1]
+        interp_corr = interp1d(quantiles, correction_fx, kind='linear', fill_value='extrapolate')
+        corrected_val = val + interp_corr(value_quantile)
+        if var == "precip":
+            corrected_val = np.clip(corrected_val, 0, None)
+        corrected_cell[idx] = corrected_val
+
+    data_vars[var] = (("time", "lat", "lon"), corrected_cell.reshape(-1, 1, 1))
+
+coords = {
+    "time": full_times,
+    "lat": [lat_vals[i_city, j_city]],
+    "lon": [lon_vals[i_city, j_city]]
+}
+
+ds_out = xr.Dataset(data_vars, coords=coords)
+ds_out.to_netcdf(output_path)
+print(f"All four corrected variables saved to {output_path}")
