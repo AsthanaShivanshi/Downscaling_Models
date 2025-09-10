@@ -49,7 +49,7 @@ obs_files = [
 obs_datasets = [xr.open_dataset(p)[vn] for p, vn in zip(obs_files, obs_var_names)]
 lat_vals = obs_datasets[0]['lat'].values
 lon_vals = obs_datasets[0]['lon'].values
-dist = np.sqrt((lat_vals - lat)**2 + (lon_vals - lon)**2)
+dist = np.sqrt((lat_vals - target_lat)**2 + (lon_vals - target_lon)**2)
 i_city, j_city = np.unravel_index(np.argmin(dist), dist.shape)
 
 #Calibration : 1981-2010
@@ -67,7 +67,7 @@ for v_idx, var in enumerate(var_names):
         bc_vals = ds_bc[var].sel(time=slice(calib_start, calib_end))[:, 0, 0].values
         bc_vals = bc_vals[~np.isnan(bc_vals)]
         # Residuals (model-cal obs)
-        residuals = bc_vals - obs_vals
+        residuals = bc_vals - obs_vals 
         # CDF
         sorted_res = np.sort(residuals)
         cdf = np.arange(1, len(sorted_res)+1) / len(sorted_res)
@@ -75,7 +75,7 @@ for v_idx, var in enumerate(var_names):
         cvm = cramervonmises_2samp(obs_vals, bc_vals)
         ax.plot(sorted_res, cdf, label=f"{method} (CvM={cvm.statistic:.3f})")
     ax.set_title(var)
-    ax.set_xlabel("Residual (BC output - obs for calibration period (1981-2010))")
+    ax.set_xlabel("Residuals after (BC output - Spatial Analysis at 12 kms): Calibration (1981-2010)")
     ax.set_ylabel("CDF")
     ax.legend()
     ax.grid(True)
