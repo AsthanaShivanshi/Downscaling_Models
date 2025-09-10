@@ -66,21 +66,28 @@ for v_idx, var in enumerate(var_names):
         ds_bc = xr.open_dataset(bc_files[method])
         bc_vals = ds_bc[var].sel(time=slice(calib_start, calib_end))[:, 0, 0].values
         bc_vals = bc_vals[~np.isnan(bc_vals)]
-        # Residuals (model-cal obs)
-        residuals = bc_vals - obs_vals 
-        # CDF
-        sorted_res = np.sort(residuals)
-        cdf = np.arange(1, len(sorted_res)+1) / len(sorted_res)
-        # CvM 2 samp
+
+        all_vals= np.sort(np.unique(np.concatenate((obs_vals, bc_vals))))
+
+        #CDFs
+        obs_cdf = np.searchsorted(np.sort(obs_vals), all_vals, side='right') / len(obs_vals)
+        bc_cdf = np.searchsorted(np.sort(bc_vals), all_vals, side='right') / len(bc_vals)
+        
+        # Difference
+        cdf_diff = bc_cdf - obs_cdf
+        
+        # CvM statistic
         cvm = cramervonmises_2samp(obs_vals, bc_vals)
-        ax.plot(sorted_res, cdf, label=f"{method} (CvM={cvm.statistic:.3f})")
+        
+        ax.plot(all_vals, cdf_diff, label=f"{method} (CvM={cvm.statistic:.3f})")
+
     ax.set_title(var)
-    ax.set_xlabel("Residuals after (BC output - Spatial Analysis at 12 kms): Calibration (1981-2010)")
-    ax.set_ylabel("CDF")
+    ax.set_xlabel("Value")
+    ax.set_ylabel("Corrected Model CDF - Obs CDF (1981-2010)")
     ax.legend()
     ax.grid(True)
 
-fig.suptitle(f"CDF for Bias of residuals (BC model- observations) for {target_city} ({target_lat:.2f}, {target_lon:.2f}) - Calibration Period")
+fig.suptitle(f"CDF Difference (Corrected model - Observations) for {target_city} ({target_lat:.2f}, {target_lon:.2f}) - Calibration Period")
 fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-plt.savefig(f"{config.OUTPUTS_MODELS_DIR}/Residual_CDFs_{target_city}_1981_2010.png", dpi=300)
+plt.savefig(f"{config.OUTPUTS_MODELS_DIR}/Residual_CDFs_{target_city}_1981_2010.png", dpi=1000)
 print(f"Saved plot to {config.OUTPUTS_MODELS_DIR}/Residual_CDFs_{target_city}_1981_2010.png")
