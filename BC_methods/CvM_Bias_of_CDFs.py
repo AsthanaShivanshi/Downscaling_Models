@@ -76,18 +76,18 @@ for v_idx, var in enumerate(var_names):
         # Difference
         cdf_diff = bc_cdf - obs_cdf
         
-        # CvM statistic
+        # CvM
         cvm = cramervonmises_2samp(obs_vals, bc_vals)
         
         ax.plot(all_vals, cdf_diff, label=f"{method} (CvM={cvm.statistic:.3f})")
 
     ax.set_title(var)
     ax.set_xlabel("Value")
-    ax.set_ylabel("Corrected Model CDF - Obs CDF (1981-2010)")
+    ax.set_ylabel("delta CDF")
     ax.legend()
     ax.grid(True)
 
-fig.suptitle(f"CDF Difference (Corrected model - Observations) for {target_city} ({target_lat:.2f}, {target_lon:.2f}) - Calibration Period")
+fig.suptitle(f"Residual CDF (Corrected Model-Observations) for {target_city} ({target_lat:.2f}, {target_lon:.2f}) - 1981-2010")
 fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 plt.savefig(f"{config.OUTPUTS_MODELS_DIR}/Residual_CDFs_{target_city}_1981_2010.png", dpi=1000)
 print(f"Saved plot to {config.OUTPUTS_MODELS_DIR}/Residual_CDFs_{target_city}_1981_2010.png")
