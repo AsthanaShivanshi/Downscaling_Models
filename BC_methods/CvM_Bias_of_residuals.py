@@ -39,10 +39,10 @@ bc_files = {
     "DOTC": f"{config.OUTPUTS_MODELS_DIR}/DOTC_{target_city}_4vars_corrected.nc"
 }
 obs_files = [
-    f"/work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/data/TabsD_step2_coarse.nc",
-    f"/work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling_Models/data/RhiresD_step2_coarse.nc",
-    f"/work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling_Models/data/TminD_step2_coarse.nc",
-    f"/work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling_Models/data/TmaxD_step2_coarse.nc"
+    f"{config.DATASETS_TRAINING_DIR}/TabsD_step2_coarse.nc",
+    f"{config.DATASETS_TRAINING_DIR}/RhiresD_step2_coarse.nc",
+    f"{config.DATASETS_TRAINING_DIR}/TminD_step2_coarse.nc",
+    f"{config.DATASETS_TRAINING_DIR}/TmaxD_step2_coarse.nc"
 ]
 
 # closest grid
