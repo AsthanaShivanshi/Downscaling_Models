@@ -19,13 +19,13 @@ export NUMEXPR_NUM_THREADS=$SLURM_CPUS_PER_TASK
 cd BC_methods
 
 echo "EQM for single cell started"
-python EQM_single_cell_cities.py --city Zurich --lat 47.3769 --lon 8.5417
-python EQM_single_cell_cities.py --city Locarno --lat 46.1670 --lon 8.7943
+python EQM_single_cell.py --city Zurich --lat 47.3769 --lon 8.5417
+python EQM_single_cell.py --city Locarno --lat 46.1670 --lon 8.7943
 
-echo "DOTC for single cell started"
-python DOTC_BC_single_cell.py --city Zurich --lat 47.3769 --lon 8.5417
-python DOTC_BC_single_cell.py --city Locarno --lat 46.1670 --lon 8.7943
+#echo "DOTC for single cell started"
+#python DOTC_BC_single_cell.py --city Zurich --lat 47.3769 --lon 8.5417
+#python DOTC_BC_single_cell.py --city Locarno --lat 46.1670 --lon 8.7943
 
-echo "QDM for single cell started"
-python QDM_single_cell.py --city Zurich --lat 47.3769 --lon 8.5417
-python QDM_single_cell.py --city Locarno --lat 46.1670 --lon 8.7943
+#echo "QDM for single cell started"
+#python QDM_single_cell.py --city Zurich --lat 47.3769 --lon 8.5417
+#python QDM_single_cell.py --city Locarno --lat 46.1670 --lon 8.7943
