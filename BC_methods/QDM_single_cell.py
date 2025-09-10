@@ -141,10 +141,9 @@ for idx, var in enumerate(var_names):
     # Clip precip
     if var == "precip":
         corrected_full = np.clip(corrected_full, 0, None)
-    # Corr values
+    # Corr 
     full_corrected_stack[:, idx] = corrected_full.flatten()
 
-    # CDFs
     model_vals_calib = X0.flatten()
     obs_vals_calib = Y0.flatten()
     corr_vals_calib = corrected_full[:calib_mod_stack.shape[0]].flatten()
@@ -157,7 +156,7 @@ for idx, var in enumerate(var_names):
 
     fig, axes = plt.subplots(1, 2, figsize=(16, 6))
 
-    #1981-2010
+    # CDFs
     for vals, label, color in [
         (model_vals_calib, f"Model (Coarse,1981-2010) [KS={ks_model_calib.statistic:.3f}]", "red"),
         (obs_vals_calib, "Observations (1981-2010)", "black"),
@@ -199,7 +198,7 @@ for idx, var in enumerate(var_names):
     axes[1].legend()
     axes[1].grid(True)
 
-    # x lim
+    #  common x lim
     all_vals = np.concatenate([model_vals_calib, obs_vals_calib, corr_vals_calib, scenario_model_vals, scenario_corr_vals])
     xmin, xmax = np.nanmin(all_vals), np.nanmax(all_vals)
     axes[0].set_xlim(xmin, xmax)
