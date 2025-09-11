@@ -56,16 +56,18 @@ data:
 
 datamodule:
   _target_: Training_LDM.DownscalingDataModule
-  train_input: ${data.train.input}
-  train_target: ${data.train.target}
-  val_input: ${data.val.input}
-  val_target: ${data.val.target}
-  test_input: ${data.test.input}
-  test_target: ${data.test.target}
+  train_input: ${data.train.input.precip}
+  train_target: ${data.train.target.precip}
+  val_input: ${data.val.input.precip}
+  val_target: ${data.val.target.precip}
+  test_input: ${data.test.input.precip}
+  test_target: ${data.test.target.precip}
   elevation: ${data.static.elevation}
   batch_size: ${experiment.batch_size}
   num_workers: ${experiment.num_workers}
-  preprocessing: ${preprocessing}
+  preprocessing:
+    variables: ${variables}
+    preprocessing: ${preprocessing}
 
 model:
   _target_: Training_LDM.models.ldm_module.LatentDiffusion
