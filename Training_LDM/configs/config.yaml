@@ -1,9 +1,11 @@
+defaults:
+  - paths: paths.yaml
+
 experiment:
   batch_size: 32
   num_workers: 4
-  quick_test: false #Alternative true would set it into smoke test mode, not for training or inference, just checking everything is alright
-# Input channels: [precip, temp, temp_min, temp_max, elevation]
-# Output channels: [precip, temp, temp_min, temp_max]
+  quick_test: false
+
 variables:
   input:
     precip: RhiresD
@@ -20,7 +22,6 @@ preprocessing:
   nan_to_num: true
   nan_value : 0.0
 
-
 train:
   num_epochs: 200
   checkpoint_path: training_model_huber_weights.pth
@@ -29,29 +30,47 @@ train:
   in_channels: 5
   out_channels: 4
   optimizer: "Adam"
-  loss_fn: "huber"   # or "mse"
-  huber_delta: 0.005  #Modified threshold, default is 1.0
-  #loss_fn: "MSE"
+  loss_fn: "huber"
+  huber_delta: 0.005
   scheduler: "ReduceLROnPlateau"
   scheduler_mode: "min"
   scheduler_factor: 0.8
-  scheduler_patience: 2 # Waiting for N epochs for no improvement
+  scheduler_patience: 2
   early_stopping_patience: 5
-  #scheduler: "CyclicLR"
-  #scheduler_mode: "triangular2"
-  #base_lr: 1e-4
-  #max_lr: 1e-3
-  #step_size_up: 208
-
-  #scheduler: "StepLR"
-  #gamma: 0.1
-  #step_size: 2 #Every 2 epochs, it is reducing the learning rate by 10 percent. Customisable and overridable
-   #How was step size chosen? Numer of iterations(training batches) per epoch= len(training_set)/batch_size
-  #So following from above, step size up= Number iter per epoch/2
-  wandb_project: "UNet_Deterministic"
+  wandb_project: "LDM_res"
   wandb_run_name: "Training_Dataset"
-  loss_weights_unnormalized: [0.8933313583890515,0.2564166994780495,0.10337292899377522,0.3295689287624428]
-  loss_weights: [0.5644386493972359,0.16201322630975604,0.06531470755790045,0.2082334167351075] #these are scaling factors taken from shorter training dataset
-# After unconstrained_04 from the training runs, elbow of precip and total loss in minimisation.
-#Placeholder for the paths in the untracked .paths.yaml file
-data: {}
+
+data:
+  train:
+    input: ${paths.data.train.input}
+    target: ${paths.data.train.target}
+  val:
+    input: ${paths.data.val.input}
+    target: ${paths.data.val.target}
+  test:
+    input: ${paths.data.test.input}
+    target: ${paths.data.test.target}
+  static:
+    elevation: ${paths.data.static.elevation}
+
+
+datamodule:
+  _target_: Training_LDM.DownscalingDataModule
+  train_input: ${data.train.input}
+  train_target: ${data.train.target}
+  val_input: ${data.val.input}
+  val_target: ${data.val.target}
+  test_input: ${data.test.input}
+  test_target: ${data.test.target}
+  elevation: ${data.static.elevation}
+  batch_size: ${experiment.batch_size}
+  num_workers: ${experiment.num_workers}
+  preprocessing: ${preprocessing}
+
+model:
+  _target_: Training_LDM.models.ldm_module.LatentDiffusion
+  in_channels: ${train.in_channels}
+  out_channels: ${train.out_channels}
+  optimizer: ${train.optimizer}
+  loss_fn: ${train.loss_fn}
+  huber_delta: ${train.huber_delta}
