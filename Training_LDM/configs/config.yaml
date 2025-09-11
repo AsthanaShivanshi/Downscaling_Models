@@ -24,11 +24,9 @@ preprocessing:
 
 train:
   num_epochs: 200
-  checkpoint_path: training_model_huber_weights.pth
-  inference_weights_path: training_model_weights_huber_weights.pth
-  model_config_path: training_model_config_huber_weights.json
   in_channels: 5
   out_channels: 4
+  latent_dim: 16
   optimizer: "Adam"
   loss_fn: "huber"
   huber_delta: 0.005
@@ -53,15 +51,61 @@ data:
   static:
     elevation: ${paths.data.static.elevation}
 
+encoder:
+  _target_: Training_LDM.models.components.ae.SimpleConvEncoder
+  in_dim: ${train.in_channels}
+  levels: 2
+  min_ch: 16
+  ch_mult: 4
+
+decoder:
+  _target_: Training_LDM.models.components.ae.SimpleConvDecoder
+  in_dim: 16
+  levels: 2
+  min_ch: 16
+
+conditioner:
+  _target_: Training_LDM.models.components.ldm.conditioner.AFNOConditionerNetBase
+  autoencoder: ${encoder}
+  embed_dim: 128
+  analysis_depth: 4
+  train_autoenc: false
+  afno_fusion: false
+
+denoiser:
+  _target_: Training_LDM.models.components.ldm.denoiser.UNetModel
+  in_channels: ${train.in_channels}
+  out_channels: ${train.out_channels}
+  model_channels: 64           # base channel count (adjust as needed)
+  num_res_blocks: 2            # number of residual blocks per downsample
+  attention_resolutions: [1,2,4]
+  context_ch: [128,128,128,128] # context channels per level (adjust as needed)
+  channel_mult: [1,2,4,4]
+  conv_resample: true
+  dims: 2
+  use_fp16: false
+  num_heads: 4                 # set as needed
+
+sampler:
+  _target_: Training_LDM.models.components.ldm.denoiser.DDIMSampler
+  model: ${denoiser}
+  schedule: "linear"
+  device: "cuda"
+
+ema:
+  _target_: Training_LDM.models.components.ldm.denoiser.LitEma
+  model: ${denoiser}
+  decay: 0.9999
+  use_num_updates: true
 
 datamodule:
   _target_: Training_LDM.DownscalingDataModule
-  train_input: ${data.train.input.precip}
-  train_target: ${data.train.target.precip}
-  val_input: ${data.val.input.precip}
-  val_target: ${data.val.target.precip}
-  test_input: ${data.test.input.precip}
-  test_target: ${data.test.target.precip}
+  train_input: ${data.train.input}
+  train_target: ${data.train.target}
+  val_input: ${data.val.input}
+  val_target: ${data.val.target}
+  test_input: ${data.test.input}
+  test_target: ${data.test.target}
   elevation: ${data.static.elevation}
   batch_size: ${experiment.batch_size}
   num_workers: ${experiment.num_workers}
@@ -76,3 +120,13 @@ model:
   optimizer: ${train.optimizer}
   loss_fn: ${train.loss_fn}
   huber_delta: ${train.huber_delta}
+  encoder: ${encoder}
+  decoder: ${decoder}
+  denoiser: ${denoiser}
+  conditioner: ${conditioner}
+  latent_dim: ${train.latent_dim}
+  scheduler: ${train.scheduler}
+  scheduler_mode: ${train.scheduler_mode}
+  scheduler_factor: ${train.scheduler_factor}
+  scheduler_patience: ${train.scheduler_patience}
+  early_stopping_patience: ${train.early_stopping_patience}
