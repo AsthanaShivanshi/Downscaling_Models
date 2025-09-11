@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-
+#AsthanaSh : This is the reference Unet upon which the GAN is based.
 class DoubleConv(nn.Module):
     def __init__(self, in_c, out_c):
         super(DoubleConv, self).__init__()
