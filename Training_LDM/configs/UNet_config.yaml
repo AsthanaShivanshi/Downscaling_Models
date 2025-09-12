@@ -70,3 +70,4 @@ model:
   in_ch: 5
   out_ch: 4
   features: [64,128,256,512]
+  channel_names: ["precip", "temp", "temp_min", "temp_max"]
