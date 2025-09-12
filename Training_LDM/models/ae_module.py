@@ -84,7 +84,7 @@ class AutoencoderKL(LightningModule):
 
     def training_step(self, batch, batch_idx):
         loss = self._loss(batch)[0]
-        self.log("train/train_loss", loss, sync_dist=True)
+        self.log("train/loss", loss, sync_dist=True)
         return loss
 
     @torch.no_grad()

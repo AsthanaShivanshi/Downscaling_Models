@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=LDm_res_training
-#SBATCH --output=logs/training_LDm_res/job_output-%j.txt
-#SBATCH --error=logs/training_LDm_res/job_error-%j.txt
+#SBATCH --job-name=ckpts_LDM_res_training
+#SBATCH --output=logs/ckpts_LDM_res/job_output-%j.txt
+#SBATCH --error=logs/ckpts_LDM_res/job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-00:00:00
@@ -26,4 +26,11 @@ export PYTHONUNBUFFERED=1
 which python
 python --version
 
-python train.py  
+#Training the Unet
+python train.py --config-name UNet_config.yaml
+
+#Training the VAE
+#python train.py --config-name VAE_config.yaml   
+
+#Training the LDM
+#python train.py --config-name LDM_config.yaml
