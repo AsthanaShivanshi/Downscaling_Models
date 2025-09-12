@@ -36,7 +36,7 @@ data:
     elevation: ${paths.data.static.elevation}
 
 datamodule:
-  _target_: Training_LDM.DownscalingDataModule
+  _target_: Training_LDM.DownscalingDataModule.DownscalingDataModule
   train_input: ${data.train.input}
   train_target: ${data.train.target}
   val_input: ${data.val.input}
