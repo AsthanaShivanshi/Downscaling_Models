@@ -2,6 +2,7 @@ import xarray as xr
 from torch.utils.data import DataLoader
 from lightning import LightningDataModule
 from Training_LDM.Downscaling_Dataset_Prep import DownscalingDataset
+import rasterio
 
 class DownscalingDataModule(LightningDataModule):
     def __init__(
@@ -30,7 +31,14 @@ class DownscalingDataModule(LightningDataModule):
         self.preprocessing = preprocessing or {}
 
     def setup(self, stage=None):
-        # AsthanaSh : Each variable had to be loaded separately because of preprocessing
+        # Load elevation once as array
+        if self.elevation is not None and isinstance(self.elevation, str):
+            with rasterio.open(self.elevation) as src:
+                elev = src.read(1).astype(np.float32)
+            elevation_array = elev
+        else:
+            elevation_array = self.elevation
+
         train_input_ds = {k: xr.open_dataset(v, engine='netcdf4') for k, v in self.train_input.items()}
         train_target_ds = {k: xr.open_dataset(v, engine='netcdf4') for k, v in self.train_target.items()}
         self.train_dataset = DownscalingDataset(
@@ -38,7 +46,7 @@ class DownscalingDataModule(LightningDataModule):
             target_ds=train_target_ds,
             config={"variables": self.preprocessing.get("variables", {}),
                     "preprocessing": self.preprocessing.get("preprocessing", {})},
-            elevation_path=self.elevation,
+            elevation_path=elevation_array,
         )
         # Val
         if self.val_input and self.val_target:
@@ -49,7 +57,7 @@ class DownscalingDataModule(LightningDataModule):
                 target_ds=val_target_ds,
                 config={"variables": self.preprocessing.get("variables", {}),
                         "preprocessing": self.preprocessing.get("preprocessing", {})},
-                elevation_path=self.elevation,
+                elevation_path=elevation_array,
             )
         else:
             self.val_dataset = None
@@ -62,21 +70,21 @@ class DownscalingDataModule(LightningDataModule):
                 target_ds=test_target_ds,
                 config={"variables": self.preprocessing.get("variables", {}),
                         "preprocessing": self.preprocessing.get("preprocessing", {})},
-                elevation_path=self.elevation,
+                elevation_path=elevation_array,
             )
         else:
             self.test_dataset = None
 
 
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, batch_size=self.batch_size, num_workers=0, shuffle=True)
+        return DataLoader(self.train_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True)
 
     def val_dataloader(self):
         if self.val_dataset:
-            return DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=0)
+            return DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
         return None
 
     def test_dataloader(self):
         if self.test_dataset:
-            return DataLoader(self.test_dataset, batch_size=self.batch_size, num_workers=0)
+            return DataLoader(self.test_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
         return None
