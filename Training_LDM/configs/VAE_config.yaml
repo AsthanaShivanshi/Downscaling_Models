@@ -62,6 +62,15 @@ datamodule:
     variables: ${variables}
     preprocessing: ${preprocessing}
 
+callbacks:
+  model_checkpoint:
+    _target_: lightning.pytorch.callbacks.ModelCheckpoint
+    dirpath: Training_LDM/trained_ckpts
+    filename: ${model._target_}_checkpoint
+    save_top_k: 1
+    monitor: val_loss
+    mode: min
+
 model:
   _target_: Training_LDM.models.ae_module.AutoencoderKL
   encoder: ${encoder}
