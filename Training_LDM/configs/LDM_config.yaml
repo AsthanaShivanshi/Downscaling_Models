@@ -97,13 +97,13 @@ datamodule:
     preprocessing: ${preprocessing}
 
   
-  callbacks:
+callbacks:
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: Training_LDM/trained_ckpts
     filename: ${model._target_}_checkpoint
     save_top_k: 1
-    monitor: val_loss
+    monitor: val/loss
     mode: min
 
 model:
@@ -117,4 +117,4 @@ model:
   latent_dim: 16
   ae_flag: 'residual'
   unet_regr: Training_LDM/trained_ckpts/unet_checkpoint.ckpt
-  ae_load_state_file: Training_LDM/trained_ckpts/vae_checkpoint.ckpt
+  ae_load_state_file: Training_LDM/trained_ckpts/AutoencoderKL_checkpoint.ckpt

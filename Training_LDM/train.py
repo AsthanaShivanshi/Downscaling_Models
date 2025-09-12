@@ -1,5 +1,6 @@
 from typing import List, Optional, Tuple
 from Training_LDM.Downscaling_Dataset_Prep import DownscalingDataset
+from Training_LDM.models.components.unet import DownscalingUnet
 import hydra
 import lightning as L
 import pyrootutils
@@ -54,6 +55,18 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
     datamodule: LightningDataModule = hydra.utils.instantiate(cfg.datamodule)
 
     log.info(f"Instantiating model <{cfg.model._target_}>")
+    
+    if cfg.model.get("unet_regr"):
+        #Loading UNet model from ckpt
+        unet_model = DownscalingUnet(
+        in_ch=cfg.model.get("in_ch", 5),
+        out_ch=cfg.model.get("out_ch", 4),
+        features=cfg.model.get("features", [64,128,256,512])
+    )
+    checkpoint = torch.load(cfg.model.unet_regr, map_location="cpu")
+    unet_model.load_state_dict(checkpoint["state_dict"])
+    cfg.model.unet_regr = unet_model
+
     model: LightningModule = hydra.utils.instantiate(cfg.model)
 
     log.info("Instantiating callbacks...")
