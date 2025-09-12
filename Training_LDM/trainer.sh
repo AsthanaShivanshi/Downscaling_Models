@@ -10,6 +10,7 @@
 #SBATCH --gres=gpu:1
 
 source diffscaler.sh
+export PYTHONPATH="$PROJECT_DIR"
 
 mkdir -p logs
 
