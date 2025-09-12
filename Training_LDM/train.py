@@ -31,7 +31,7 @@ def train(cfg: DictConfig):
     model: LightningModule = hydra.utils.instantiate(cfg.model)
 
     # WandB logger
-    logger = WandbLogger(project="downscaling", log_model=True)
+    logger = WandbLogger(project="LDM_res_cascade", log_model=True)
 
     # ckpt callback from config
     callbacks = []
