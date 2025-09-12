@@ -1,3 +1,6 @@
+import multiprocessing
+multiprocessing.set_start_method("spawn", force=True)
+import numpy as np
 import hydra
 import torch
 from omegaconf import DictConfig

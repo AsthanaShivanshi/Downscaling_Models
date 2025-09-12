@@ -3,6 +3,7 @@ from torch.utils.data import DataLoader
 from lightning import LightningDataModule
 from Training_LDM.Downscaling_Dataset_Prep import DownscalingDataset
 import rasterio
+import numpy as np
 
 class DownscalingDataModule(LightningDataModule):
     def __init__(
