@@ -50,3 +50,4 @@ directories.py
 models_UNet/UNet_Deterministic_Training_Dataset_Optim_Weights/directories.py
 .micromamba
 diffscaler.sh
+wandb/
