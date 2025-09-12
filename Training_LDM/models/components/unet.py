@@ -111,7 +111,7 @@ class DownscalingUnetLightning(LightningModule):
         y_hat = self(x)
         per_channel_loss = ((y_hat - y) ** 2).mean(dim=(0, 2, 3))
         for i, loss in enumerate(per_channel_loss):
-            self.log(f"train_loss_{self.channel_names[i]}", loss, on_epoch=True, prog_bar=True)
+            self.log(f"train_loss_{self.channel_names[i]}", loss, on_step=False, on_epoch=True, prog_bar=True)
         total_loss = per_channel_loss.mean()
         self.log("train_loss", total_loss, on_epoch=True, prog_bar=True)
         return total_loss
@@ -121,7 +121,7 @@ class DownscalingUnetLightning(LightningModule):
         y_hat = self(x)
         per_channel_loss = ((y_hat - y) ** 2).mean(dim=(0, 2, 3))
         for i, loss in enumerate(per_channel_loss):
-            self.log(f"val_loss_{self.channel_names[i]}", loss, on_epoch=True, prog_bar=True)
+            self.log(f"val_loss_{self.channel_names[i]}", loss, on_step=False, on_epoch=True, prog_bar=True)
         total_loss = per_channel_loss.mean()
         self.log("val/loss", total_loss, on_epoch=True, prog_bar=True)
         return total_loss
