@@ -11,7 +11,6 @@
 
 source diffscaler.sh
 export PYTHONPATH="$PROJECT_DIR"
-
 mkdir -p logs
 
 cd "$PROJECT_DIR"
@@ -19,7 +18,7 @@ export WANDB_MODE=online
 export PYTHONUNBUFFERED=1
 export HYDRA_FULL_ERROR=1
 which python
-python --version
+python -c "import wandb; print(wandb.__version__)"
 
 # Training the Unet
 python Training_LDM/train.py --config-name UNet_config.yaml
