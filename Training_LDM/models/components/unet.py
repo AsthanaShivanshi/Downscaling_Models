@@ -107,16 +107,25 @@ class DownscalingUnetLightning(LightningModule):
     def training_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
-        loss = self.loss_fn(y_hat, y)
-        self.log("train_loss", loss, on_epoch=True, prog_bar=True)
-        return loss
+        #Per channel loss
+        per_channel_loss=((y_hat - y)**2).mean(dim=(0,2,3))
+        for i in range(len(per_channel_loss)):
+            self.log(f"train_loss_channel_{i}", per_channel_loss[i], on_epoch=True, prog_bar=True)
+        #Overall
+        total_loss = per_channel_loss.mean()
+        self.log("train_loss", total_loss, on_epoch=True, prog_bar=True)
+        return total_loss
+
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
-        loss = self.loss_fn(y_hat, y)
-        self.log("val/loss", loss, on_epoch=True, prog_bar=True)
-        return loss
+        per_channel_loss = ((y_hat - y) ** 2).mean(dim=(0, 2, 3))
+        for i, loss in enumerate(per_channel_loss):
+            self.log(f"val_loss_channel_{i}", loss, on_epoch=True, prog_bar=True)
+        total_loss = per_channel_loss.mean()
+        self.log("val/loss", total_loss, on_epoch=True, prog_bar=True)
+        return total_loss
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=1e-3)
