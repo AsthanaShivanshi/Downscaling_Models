@@ -2,6 +2,8 @@ import torch
 from torch.utils.data import Dataset
 import numpy as np
 import rasterio
+from skimage.transform import resize
+
 
 class DownscalingDataset(Dataset):
     def __init__(self, input_ds, target_ds, config, elevation_path=None):
@@ -9,8 +11,8 @@ class DownscalingDataset(Dataset):
         input_ds, target_ds: set of four variables
         config: in the config.yaml file
         """
-        input_var_names = list(config["variables"]["input"].values())
-        target_var_names = list(config["variables"]["target"].values())
+        input_var_names = list(config["variables"]["input"].keys()) #AsthanaSh : Cant be values, has to be keys(), to use keys from the config, not the varnames original themselves. 
+        target_var_names = list(config["variables"]["target"].keys())
 
         input_channel_names = input_var_names.copy()
         if elevation_path is not None:
@@ -40,8 +42,9 @@ class DownscalingDataset(Dataset):
                 print(f"Loaded elevation from {elevation_path}, shape: {self.elevation.shape}")
             except Exception as e:
                 print(f"Could not load elevation: {e}")
+                self.elevation = None
         else:
-            print("No elevation path provided, elevation will not be used.")
+            print("No elevation provided, not used.")
 
     def __len__(self):
         return self.length
@@ -55,10 +58,10 @@ class DownscalingDataset(Dataset):
             input_slices = [np.nan_to_num(arr, nan=self.nan_value) for arr in input_slices]
             target_slices = [np.nan_to_num(arr, nan=self.nan_value) for arr in target_slices]
 
+        print("Type of self.elevation:", type(self.elevation)) #AsthanaSh : for debugging , elevation showing up as a func, not an array
         if self.elevation is not None:
             elev = self.elevation
             if elev.shape != input_slices[0].shape:
-                from skimage.transform import resize
                 elev = resize(elev, input_slices[0].shape, order=1, preserve_range=True, anti_aliasing=True)
             input_slices.append(elev.astype(np.float32))
 
