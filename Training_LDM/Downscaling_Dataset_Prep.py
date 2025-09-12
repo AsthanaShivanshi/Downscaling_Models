@@ -24,8 +24,12 @@ class DownscalingDataset(Dataset):
         #for i, name in enumerate(target_var_names):
         #    print(f"Output channel {i}: {name}")
 
-        self.input_vars = [input_ds[var] for var in input_var_names]
-        self.target_vars = [target_ds[var] for var in target_var_names]
+        self.input_vars = [
+            input_ds[var][config["variables"]["input"][var]] for var in input_var_names
+        ]
+        self.target_vars = [
+            target_ds[var][config["variables"]["target"][var]] for var in target_var_names
+        ]
 
         self.handle_nan = config.get("preprocessing", {}).get("nan_to_num", True)
         self.nan_value = config.get("preprocessing", {}).get("nan_value", 0.0)
