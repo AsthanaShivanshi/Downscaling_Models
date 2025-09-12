@@ -69,14 +69,14 @@ class DownscalingDataModule(LightningDataModule):
 
 
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True)
+        return DataLoader(self.train_dataset, batch_size=self.batch_size, num_workers=0, shuffle=True)
 
     def val_dataloader(self):
         if self.val_dataset:
-            return DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
+            return DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=0)
         return None
 
     def test_dataloader(self):
         if self.test_dataset:
-            return DataLoader(self.test_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
+            return DataLoader(self.test_dataset, batch_size=self.batch_size, num_workers=0)
         return None

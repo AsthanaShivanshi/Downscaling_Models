@@ -69,9 +69,9 @@ class DownscalingDataset(Dataset):
                 elev = resize(elev, input_slices[0].shape, order=1, preserve_range=True, anti_aliasing=True)
             input_slices.append(elev.astype(np.float32))
 
-
-        for i, ts in enumerate(target_slices):
-            print(f"target_slices[{i}] type: {type(ts)}, shape: {getattr(ts, 'shape', None)}, value: {ts}")
+        # Debugging print
+        print("Input dtypes:", [arr.dtype for arr in input_slices])
+        print("Target dtypes:", [arr.dtype for arr in target_slices])
 
         # Converting to tensors for stacked input into model hierarchy
         input_tensor = torch.tensor(np.stack(input_slices)).float()
