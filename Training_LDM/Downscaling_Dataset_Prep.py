@@ -59,8 +59,8 @@ class DownscalingDataset(Dataset):
         target_slices = [var.isel(time=index).values for var in self.target_vars]
 
         if self.handle_nan:
-            input_slices = [np.nan_to_num(arr, nan=self.nan_value) for arr in input_slices]
-            target_slices = [np.nan_to_num(arr, nan=self.nan_value) for arr in target_slices]
+            target_slices = [np.nan_to_num(arr, nan=self.nan_value).astype(np.float32) for arr in target_slices]
+            input_slices = [np.nan_to_num(arr, nan=self.nan_value).astype(np.float32) for arr in input_slices]
 
         print("Type of self.elevation:", type(self.elevation)) #AsthanaSh : for debugging , elevation showing up as a func, not an array
         if self.elevation is not None:
@@ -69,8 +69,13 @@ class DownscalingDataset(Dataset):
                 elev = resize(elev, input_slices[0].shape, order=1, preserve_range=True, anti_aliasing=True)
             input_slices.append(elev.astype(np.float32))
 
+
+        for i, ts in enumerate(target_slices):
+            print(f"target_slices[{i}] type: {type(ts)}, shape: {getattr(ts, 'shape', None)}, value: {ts}")
+
+        # Converting to tensors for stacked input into model hierarchy
         input_tensor = torch.tensor(np.stack(input_slices)).float()
         target_tensor = torch.tensor(np.stack(target_slices)).float()
-        #print(f"Input tensor shape: {input_tensor.shape}, Target tensor shape: {target_tensor.shape}")
+        print(f"Input tensor shape: {input_tensor.shape}, Target tensor shape: {target_tensor.shape}")
 
         return input_tensor, target_tensor
