@@ -14,9 +14,9 @@ source diffscaler.sh
 mkdir -p logs
 
 cd "$PROJECT_DIR"
-
 export WANDB_MODE=online
 export PYTHONUNBUFFERED=1
+export HYDRA_FULL_ERROR=1
 which python
 python --version
 

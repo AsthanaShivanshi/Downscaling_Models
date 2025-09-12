@@ -1,7 +1,7 @@
 import xarray as xr
 from torch.utils.data import DataLoader
 from lightning import LightningDataModule
-from Training_LDM.Downscaling_Dataset_Prep import DownscalingDataset
+from Downscaling_Dataset_Prep import DownscalingDataset
 
 class DownscalingDataModule(LightningDataModule):
     def __init__(
