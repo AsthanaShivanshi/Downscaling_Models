@@ -96,10 +96,12 @@ class DownscalingUnet(nn.Module):
 
 
 class DownscalingUnetLightning(LightningModule):
-    def __init__(self, in_ch=1, out_ch=1, features=[64,128,256,512]):
+    def __init__(self, in_ch=1, out_ch=1, features=[64,128,256,512], channel_names=None):
         super().__init__()
         self.unet = DownscalingUnet(in_ch, out_ch, features)
-        self.loss_fn = nn.MSELoss() 
+        self.loss_fn = nn.MSELoss()
+        # Pass channel names from config
+        self.channel_names = channel_names if channel_names is not None else [f"channel_{i}" for i in range(out_ch)]
 
     def forward(self, x):
         return self.unet(x)
@@ -107,22 +109,19 @@ class DownscalingUnetLightning(LightningModule):
     def training_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
-        #Per channel loss
-        per_channel_loss=((y_hat - y)**2).mean(dim=(0,2,3))
-        for i in range(len(per_channel_loss)):
-            self.log(f"train_loss_channel_{i}", per_channel_loss[i], on_epoch=True, prog_bar=True)
-        #Overall
+        per_channel_loss = ((y_hat - y) ** 2).mean(dim=(0, 2, 3))
+        for i, loss in enumerate(per_channel_loss):
+            self.log(f"train_loss_{self.channel_names[i]}", loss, on_epoch=True, prog_bar=True)
         total_loss = per_channel_loss.mean()
         self.log("train_loss", total_loss, on_epoch=True, prog_bar=True)
         return total_loss
-
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
         per_channel_loss = ((y_hat - y) ** 2).mean(dim=(0, 2, 3))
         for i, loss in enumerate(per_channel_loss):
-            self.log(f"val_loss_channel_{i}", loss, on_epoch=True, prog_bar=True)
+            self.log(f"val_loss_{self.channel_names[i]}", loss, on_epoch=True, prog_bar=True)
         total_loss = per_channel_loss.mean()
         self.log("val/loss", total_loss, on_epoch=True, prog_bar=True)
         return total_loss
