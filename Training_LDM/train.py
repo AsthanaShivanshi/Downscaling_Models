@@ -3,7 +3,7 @@ import torch
 from omegaconf import DictConfig
 from lightning import Trainer, LightningModule, LightningDataModule, Callback
 from lightning.pytorch.loggers import WandbLogger
-from Training_LDM.models.components.unet import DownscalingUnet
+from models.components.unet import DownscalingUnet
 
 def train(cfg: DictConfig):
     # Set seed if specified
