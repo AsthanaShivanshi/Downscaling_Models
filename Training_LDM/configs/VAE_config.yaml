@@ -1,0 +1,71 @@
+defaults:
+  - paths: paths.yaml
+
+experiment:
+  batch_size: 32
+  num_workers: 4
+
+variables:
+  input:
+    precip: RhiresD
+    temp: TabsD
+    temp_min: TminD
+    temp_max: TmaxD
+  target:
+    precip: RhiresD
+    temp: TabsD
+    temp_min: TminD
+    temp_max: TmaxD
+
+preprocessing:
+  nan_to_num: true
+  nan_value : 0.0
+
+data:
+  train:
+    input: ${paths.data.train.input}
+    target: ${paths.data.train.target}
+  val:
+    input: ${paths.data.val.input}
+    target: ${paths.data.val.target}
+  test:
+    input: ${paths.data.test.input}
+    target: ${paths.data.test.target}
+  static:
+    elevation: ${paths.data.static.elevation}
+
+encoder:
+  _target_: Training_LDM.models.components.ae.SimpleConvEncoder
+  in_dim: 5
+  levels: 2
+  min_ch: 16
+  ch_mult: 4
+
+decoder:
+  _target_: Training_LDM.models.components.ae.SimpleConvDecoder
+  in_dim: 16
+  levels: 2
+  min_ch: 16
+
+datamodule:
+  _target_: Training_LDM.DownscalingDataModule
+  train_input: ${data.train.input}
+  train_target: ${data.train.target}
+  val_input: ${data.val.input}
+  val_target: ${data.val.target}
+  test_input: ${data.test.input}
+  test_target: ${data.test.target}
+  elevation: ${data.static.elevation}
+  batch_size: ${experiment.batch_size}
+  num_workers: ${experiment.num_workers}
+  preprocessing:
+    variables: ${variables}
+    preprocessing: ${preprocessing}
+
+model:
+  _target_: Training_LDM.models.ae_module.AutoencoderKL
+  encoder: ${encoder}
+  decoder: ${decoder}
+  kl_weight: 0.01
+  ae_flag: 'residual'   # Vanilla VAE : set this to null
+  unet_regr: Training_LDM/trained_ckpts/unet_checkpoint.ckpt  # set only if using residuals

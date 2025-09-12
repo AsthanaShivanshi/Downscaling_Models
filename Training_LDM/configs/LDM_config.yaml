@@ -4,7 +4,6 @@ defaults:
 experiment:
   batch_size: 32
   num_workers: 4
-  quick_test: false
 
 variables:
   input:
@@ -22,22 +21,6 @@ preprocessing:
   nan_to_num: true
   nan_value : 0.0
 
-train:
-  num_epochs: 200
-  in_channels: 5
-  out_channels: 4
-  latent_dim: 16
-  optimizer: "Adam"
-  loss_fn: "huber"
-  huber_delta: 0.005
-  scheduler: "ReduceLROnPlateau"
-  scheduler_mode: "min"
-  scheduler_factor: 0.8
-  scheduler_patience: 2
-  early_stopping_patience: 5
-  wandb_project: "LDM_res"
-  wandb_run_name: "Training_Dataset"
-
 data:
   train:
     input: ${paths.data.train.input}
@@ -53,7 +36,7 @@ data:
 
 encoder:
   _target_: Training_LDM.models.components.ae.SimpleConvEncoder
-  in_dim: ${train.in_channels}
+  in_dim: 5
   levels: 2
   min_ch: 16
   ch_mult: 4
@@ -74,17 +57,17 @@ conditioner:
 
 denoiser:
   _target_: Training_LDM.models.components.ldm.denoiser.UNetModel
-  in_channels: ${train.in_channels}
-  out_channels: ${train.out_channels}
-  model_channels: 64           # base channel count (adjust as needed)
-  num_res_blocks: 2            # number of residual blocks per downsample
+  in_channels: 5
+  out_channels: 4
+  model_channels: 64
+  num_res_blocks: 2
   attention_resolutions: [1,2,4]
-  context_ch: [128,128,128,128] # context channels per level (adjust as needed)
+  context_ch: [128,128,128,128]
   channel_mult: [1,2,4,4]
   conv_resample: true
   dims: 2
   use_fp16: false
-  num_heads: 4                 # set as needed
+  num_heads: 4
 
 sampler:
   _target_: Training_LDM.models.components.ldm.denoiser.DDIMSampler
@@ -115,18 +98,13 @@ datamodule:
 
 model:
   _target_: Training_LDM.models.ldm_module.LatentDiffusion
-  in_channels: ${train.in_channels}
-  out_channels: ${train.out_channels}
-  optimizer: ${train.optimizer}
-  loss_fn: ${train.loss_fn}
-  huber_delta: ${train.huber_delta}
+  in_channels: 5
+  out_channels: 4
   encoder: ${encoder}
   decoder: ${decoder}
   denoiser: ${denoiser}
   conditioner: ${conditioner}
-  latent_dim: ${train.latent_dim}
-  scheduler: ${train.scheduler}
-  scheduler_mode: ${train.scheduler_mode}
-  scheduler_factor: ${train.scheduler_factor}
-  scheduler_patience: ${train.scheduler_patience}
-  early_stopping_patience: ${train.early_stopping_patience}
+  latent_dim: 16
+  ae_flag: 'residual'
+  unet_regr: Training_LDM/trained_ckpts/unet_checkpoint.ckpt
+  ae_load_state_file: Training_LDM/trained_ckpts/vae_checkpoint.ckpt
