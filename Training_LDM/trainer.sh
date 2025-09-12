@@ -14,6 +14,9 @@ mkdir -p logs
 echo "Loading python module"
 module load python
 
+module load micromamba
+module load gcc/11.2.0
+
 echo "Sourcing environment"
 
 eval "$(micromamba shell hook -s bash)"
