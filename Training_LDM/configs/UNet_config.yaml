@@ -55,7 +55,7 @@ callbacks:
     dirpath: Training_LDM/trained_ckpts
     filename: ${model._target_}_checkpoint
     save_top_k: 1
-    monitor: val_loss
+    monitor: val/loss
     mode: min
 
 model:
