@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from lightning import LightningModule
+import torch.nn.functional as F
 
 #Additional citation : https://github.com/soof-golan/spacecutter-lightning/tree/14febad15c47ba1861c7c3c3397a1929fd47e65d/README.md
 
@@ -63,21 +64,34 @@ class DownscalingUnet(nn.Module):
         self.outputs = nn.Conv2d(features[0], out_ch, kernel_size=1, padding=0)
 
     def forward(self, x):
+
+        #og size before padding
+        original_height=x.shape[2] #OG dims : batchsize, channel, height and width
+        original_width=x.shape[3]
+        #padding to make it multiple of 16 for feeding into UNet
+        pad_height = (16 - original_height % 16) % 16
+        pad_width = (16 - original_width % 16) % 16
+        x_padded = F.pad(x, (0, pad_width, 0, pad_height))
+
         # Encoder
-        s1, p1 = self.e1(x)
+        s1, p1 = self.e1(x_padded)
         s2, p2 = self.e2(p1)
         s3, p3 = self.e3(p2)
         s4, p4 = self.e4(p3)
         # Bottleneck
+
         b = self.b(p4)
+
         # Decoder
         d1 = self.d1(b, s4)
         d2 = self.d2(d1, s3)
         d3 = self.d3(d2, s2)
         d4 = self.d4(d3, s1)
+
         # Output
         out = self.outputs(d4)
-        return out
+        out_cropped= out[:,:,:original_height, :original_width]
+        return out_cropped
 
 
 
