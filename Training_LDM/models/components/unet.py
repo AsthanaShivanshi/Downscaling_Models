@@ -108,7 +108,14 @@ class DownscalingUnetLightning(LightningModule):
         x, y = batch
         y_hat = self(x)
         loss = self.loss_fn(y_hat, y)
-        self.log("train_loss", loss)
+        self.log("train_loss", loss, on_epoch=True, prog_bar=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self(x)
+        loss = self.loss_fn(y_hat, y)
+        self.log("val/loss", loss, on_epoch=True, prog_bar=True)
         return loss
 
     def configure_optimizers(self):
