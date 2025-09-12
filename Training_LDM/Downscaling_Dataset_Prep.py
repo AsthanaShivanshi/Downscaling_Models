@@ -36,19 +36,13 @@ class DownscalingDataset(Dataset):
 
         self.length = len(self.input_vars[0].time)
 
-        # Loading elevation 
         self.elevation = None
         if elevation_path is not None:
-            try:
-                with rasterio.open(elevation_path) as src:
-                    elev = src.read(1)
-                    self.elevation = elev.astype(np.float32)
-                print(f"Loaded elevation from {elevation_path}, shape: {self.elevation.shape}")
-            except Exception as e:
-                print(f"Could not load elevation: {e}")
-                self.elevation = None
-        else:
-            print("No elevation provided, not used.")
+            if isinstance(elevation_path, np.ndarray):
+                self.elevation = elevation_path.astype(np.float32)
+                print(f"Loaded elevation array, shape: {self.elevation.shape}")
+            else:
+                print("Elevation provided is not a numpy array, not used.")
 
     def __len__(self):
         return self.length
