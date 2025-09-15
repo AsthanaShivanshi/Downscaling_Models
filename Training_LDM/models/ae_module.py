@@ -117,16 +117,15 @@ class AutoencoderKL(LightningModule):
         }
     
     def preprocess_batch(self, batch):
-        (low_res, high_res, smt) = batch
+        low_res, high_res, smt = batch  # All at high-res (1km)
         if self.ae_flag is None:
             return low_res, high_res
         elif self.ae_flag == 'residual':
-            # Check sizes:
-            if low_res.shape[-2::] != high_res.shape[-2::]:
-                # Assuming you are running an ldm and therefore passing low_res not interpolated
-                # and smt is static data: nearest-neighboring low-res and cat it to static data...')
-                low_res = self.nn_lr_and_merge_with_static(low_res, smt)
-            residual = high_res - self.unet(low_res)
+            #  static to low_res concatenation
+            low_res_with_static = torch.cat([low_res, smt], dim=1)  # [B, 5, H, W]
+            # UNet predicts high-res from bicubic+static
+            unet_pred = self.unet_regr(low_res_with_static)
+            residual = high_res - unet_pred
             return residual, residual
         elif self.ae_flag == 'hres':
             return high_res, high_res
