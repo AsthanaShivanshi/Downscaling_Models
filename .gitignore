@@ -53,3 +53,7 @@ diffscaler.sh
 wandb/
 *.ckpt
 Training_LDM/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt
+outputs/
+results/
+data/
+*.zarr

@@ -16,7 +16,8 @@ def train(cfg: DictConfig):
     # Instantiate datamodule
     datamodule: LightningDataModule = hydra.utils.instantiate(cfg.datamodule)
 
-    # Load UNet regr model if needed
+    # Load UNet regr model if needed,,,
+    #AsthanaSh_: fixed state_dict names with "unet." prefix by removing it,,was giving an error while loading
     if cfg.model.get("unet_regr"):
         unet_model = DownscalingUnet(
             in_ch=cfg.model.get("in_ch", 5),
@@ -24,8 +25,13 @@ def train(cfg: DictConfig):
             features=cfg.model.get("features", [64,128,256,512])
         )
         checkpoint = torch.load(cfg.model.unet_regr, map_location="cpu")
-        unet_model.load_state_dict(checkpoint["state_dict"])
-        cfg.model.unet_regr = unet_model
+        state_dict = checkpoint["state_dict"]
+        new_state_dict = {}
+        for k, v in state_dict.items():
+            if k.startswith("unet."):
+                new_state_dict[k[len("unet."):]] = v
+        unet_model.load_state_dict(new_state_dict)
+        print("Loaded UNet mean regression model from:", cfg.model.unet_regr)
 
     # Instantiate model
     model: LightningModule = hydra.utils.instantiate(cfg.model)
