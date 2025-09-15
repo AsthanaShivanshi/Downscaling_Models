@@ -34,7 +34,7 @@ def train(cfg: DictConfig):
         print("Loaded UNet mean regression model from:", cfg.model.unet_regr)
 
     # Instantiate model
-    model: LightningModule = hydra.utils.instantiate(cfg.model)
+    model: LightningModule = hydra.utils.instantiate(cfg.model, unet_regr=unet_model if cfg.model.get("unet_regr") else None)
 
     # WandB logger
     logger = WandbLogger(project="LDM_res_cascade", log_model=True)
