@@ -78,4 +78,4 @@ model:
   decoder: ${decoder}
   kl_weight: 0.01
   ae_flag: 'residual'   # Vanilla VAE : set this to null
-  unet_regr: Training_LDM/trained_ckpts/DownscalingUnet_checkpoint.ckpt  # set only if using residuals
+  unet_regr: Training_LDM/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt  # set only if using residuals

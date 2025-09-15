@@ -125,6 +125,17 @@ class DownscalingUnetLightning(LightningModule):
         total_loss = per_channel_loss.mean()
         self.log("val/loss", total_loss, on_epoch=True, prog_bar=True)
         return total_loss
+    
+    #testing step to get of the error
+    def test_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self(x)
+        per_channel_loss = ((y_hat - y) ** 2).mean(dim=(0, 2, 3))
+        for i, loss in enumerate(per_channel_loss):
+            self.log(f"test_loss_{self.channel_names[i]}", loss, on_step=False, on_epoch=True, prog_bar=True)
+        total_loss = per_channel_loss.mean()
+        self.log("test/loss", total_loss, on_epoch=True, prog_bar=True)
+        return total_loss
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=1e-3)
