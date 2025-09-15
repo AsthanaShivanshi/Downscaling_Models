@@ -44,7 +44,7 @@ encoder:
 
 decoder:
   _target_: Training_LDM.models.components.ae.SimpleConvDecoder
-  in_dim: 16
+  in_dim: 64 #Matching encoders OP
   levels: 2
   min_ch: 16
 

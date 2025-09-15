@@ -34,29 +34,28 @@ class SimpleConvEncoder(nn.Module):
 
 
 class SimpleConvDecoder(nn.Module):
-    def __init__(self, in_dim=1, levels=2, min_ch=16):
+    def __init__(self, in_dim=1, levels=2, min_ch=16, ch_mult: int = 4):
         super().__init__()
         self.in_dim = in_dim
         self.levels = levels
         sequence = []
-        channels = np.hstack([
-            in_dim, 
-            (in_dim*4**np.arange(1,levels+1)).clip(min=min_ch)
-        ])
+        # Build channel progression for decoder
+        channels = [in_dim]
+        for i in range(levels):
+            channels.append(max(min_ch, in_dim//(ch_mult * 4 ** (i + 1))))
 
-        for i in reversed(list(range(levels))):
-            in_channels = int(channels[i+1])
-            out_channels = int(channels[i])
-            upsample = nn.ConvTranspose2d(in_channels, in_channels, 
+        for i in range(levels):
+            in_channels = int(channels[i])
+            out_channels = int(channels[i + 1])
+            upsample = nn.ConvTranspose2d(in_channels, out_channels, 
                     kernel_size=(2,2), stride=(2,2))
             sequence.append(upsample)
             res_block = ResBlock2D(
-                in_channels, out_channels,
+                out_channels, out_channels,
                 kernel_size=(3,3),
                 norm_kwargs={"num_groups": 1}
             )
             sequence.append(res_block)
-            in_channels = out_channels
         self.net = nn.Sequential(*sequence)
 
     def forward(self, x):

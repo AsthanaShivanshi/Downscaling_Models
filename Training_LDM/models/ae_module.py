@@ -76,6 +76,12 @@ class AutoencoderKL(LightningModule):
             x = x[0][0]
         (y_pred, mean, log_var) = self.forward(x)
 
+        #tackling spatial mismatch : asthanash
+        if y.shape [-2:] != y_pred.shape[-2:]:
+            min_h = min(y.shape[-2], y_pred.shape[-2])
+            min_w = min(y.shape[-1], y_pred.shape[-1])
+            y = y[..., :min_h, :min_w]
+            y_pred = y_pred[..., :min_h, :min_w]
         rec_loss = (y-y_pred).abs().mean()
         kl_loss = kl_from_standard_normal(mean, log_var)
         total_loss = rec_loss + self.kl_weight * kl_loss
