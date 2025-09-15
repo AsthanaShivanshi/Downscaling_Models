@@ -105,8 +105,8 @@ class AutoencoderKL(LightningModule):
         optimizer = torch.optim.AdamW(self.parameters(), lr=1e-3,
             betas=(0.5, 0.9), weight_decay=1e-3)
         reduce_lr = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, patience=3, factor=0.25, verbose=True
-        )
+            optimizer, patience=3, factor=0.25 
+        ) #AsthanaSh : removed the verbose flag, was not working 
         return {
             "optimizer": optimizer,
             "lr_scheduler": {
