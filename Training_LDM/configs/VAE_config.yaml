@@ -37,7 +37,7 @@ data:
 
 encoder:
   _target_: Training_LDM.models.components.ae.SimpleConvEncoder
-  in_dim: 5
+  in_dim: 4.  #AsthanaSh: Output from Unet is four channels (minus static), fed into VAE for latent representaton of noise. 
   levels: 2
   min_ch: 16
   ch_mult: 4
