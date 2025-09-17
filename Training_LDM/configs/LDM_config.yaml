@@ -117,5 +117,5 @@ model:
   conditioner: ${conditioner}
   latent_dim: 16
   ae_flag: 'residual'
-  unet_regr: Training_LDM/trained_ckpts/DownscalingUnet_checkpoint.ckpt
-  ae_load_state_file: Training_LDM/trained_ckpts/AutoencoderKL_checkpoint.ckpt
+  unet_regr: Training_LDM/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt
+  ae_load_state_file: Training_LDM/trained_ckpts/Training_LDM.models.ae_module.AutoencoderKL_checkpoint.ckpt
