@@ -28,6 +28,7 @@ class SimpleConvEncoder(nn.Module):
             sequence.append(downsample)
             in_channels = out_channels
         self.net = nn.Sequential(*sequence)
+        self.encoded_channels = int(channels[-1])
 
     def forward(self, x):
         return self.net(x)
