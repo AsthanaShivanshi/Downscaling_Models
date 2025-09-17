@@ -57,3 +57,4 @@ results/
 data/
 *.zarr
 *.hydra
+Training_LDM/trained_ckpts/
