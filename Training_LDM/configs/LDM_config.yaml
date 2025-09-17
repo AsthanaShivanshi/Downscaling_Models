@@ -83,7 +83,7 @@ ema:
   use_num_updates: true
 
 datamodule:
-  _target_: Training_LDM.DownscalingDataModule
+  _target_: Training_LDM.DownscalingDataModule.DownscalingDataModule #Path to the exact class, not the module file : AsthanaSh
   train_input: ${data.train.input}
   train_target: ${data.train.target}
   val_input: ${data.val.input}
