@@ -59,4 +59,4 @@ data/
 *.hydra
 Training_LDM/trained_ckpts/
 BC_Model_Runs/
-Training_LDM/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt
+BC_methods/BC_Model_Runs/
