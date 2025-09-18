@@ -64,7 +64,7 @@ denoiser:
   model_channels: 64
   num_res_blocks: 2
   attention_resolutions: [1,2,4]
-  context_ch: null #[128,128,128,128] #Changed to null for a first experiment: AsthanaSh
+  context_ch: [] #[128,128,128,128] #Changed to null for a first experiment (unconditional generation from latent space): AsthanaSh
   channel_mult: [1,2,4,4]
   conv_resample: true
   dims: 2
