@@ -323,6 +323,13 @@ class UNetModel(nn.Module):
         )
 
     def forward(self, x, timesteps, context=None):
+        #Padding required for shape mismatch : AsthanaSh
+        factor = 2 ** len(self.channel_mult)
+        height, width = x.shape[-2], x.shape[-1]
+        pad_h = (factor - height % factor) % factor
+        pad_w = (factor - width % factor) % factor
+        if pad_h > 0 or pad_w > 0:
+            x = F.pad(x, (0, pad_w, 0, pad_h))
         hs = []
         t_emb = timestep_embedding(timesteps, self.model_channels, repeat_only=False)
         emb = self.time_embed(t_emb)
@@ -336,4 +343,6 @@ class UNetModel(nn.Module):
             h = module(h, emb, context)
         h = h.type(x.dtype)
         h = self.out(h)
+        # Back to OG size
+        h = h[..., :height, :width]
         return h
