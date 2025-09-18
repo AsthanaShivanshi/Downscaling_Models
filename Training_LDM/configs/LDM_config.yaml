@@ -49,7 +49,7 @@ decoder:
   min_ch: 16
 
 conditioner:
-  _target_: Training_LDM.models.components.ldm.conditioner.AFNOConditionerNetBase
+  _target_: Training_LDM.models.components.ldm.conditioner.ElevationConditioner
   autoencoder: ${encoder}
   embed_dim: 128
   analysis_depth: 4
@@ -64,7 +64,7 @@ denoiser:
   model_channels: 64
   num_res_blocks: 2
   attention_resolutions: [1,2,4]
-  context_ch: null #[128,128,128,128]#Setting to null for a first experiment : AsthanaSh
+  context_ch: null #[128,128,128,128] #Changed to null for a first experiment: AsthanaSh
   channel_mult: [1,2,4,4]
   conv_resample: true
   dims: 2
@@ -91,7 +91,7 @@ datamodule:
   val_target: ${data.val.target}
   test_input: ${data.test.input}
   test_target: ${data.test.target}
-  elevation: ${data.static.elevation}
+  elevation: ${data.static.elevation} #Added elevation to datamodule for context conditioning : AsthanaSh
   batch_size: ${experiment.batch_size}
   num_workers: ${experiment.num_workers}
   preprocessing:
@@ -117,6 +117,7 @@ model:
     encoder: ${encoder}
     decoder: ${decoder}
     unet_regr: Training_LDM/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt
+  context_encoder: ${conditioner}  #Conditions the denoiser with elevation data : AsthanaSh
   #VAE ckpt loaded from the ae_load_state_file 
   ae_load_state_file: Training_LDM/trained_ckpts/Training_LDM.models.ae_module.AutoencoderKL_checkpoint.ckpt
   #Output from LDM : [batch_size, 4, height, width]
