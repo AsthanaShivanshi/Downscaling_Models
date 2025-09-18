@@ -70,7 +70,7 @@ class LatentDiffusion(LightningModule):
         self.denoiser = denoiser
         self.autoencoder = autoencoder.requires_grad_(False)
         if ae_load_state_file is not None:
-            self.autoencoder.load_state_dict(torch.load(ae_load_state_file)["state_dict"])
+            self.autoencoder.load_state_dict(torch.load(ae_load_state_file)["state_dict"], strict=False)
         self.conditional = (context_encoder is not None)
         self.context_encoder = context_encoder
         self.lr = lr

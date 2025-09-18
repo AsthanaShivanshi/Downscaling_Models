@@ -111,7 +111,6 @@ model:
 #Need to pass VAE autoencoder , not encoder and decoder : AsthanaSh
   _target_: Training_LDM.models.ldm_module.LatentDiffusion
   denoiser: ${denoiser}
-  conditioner: ${conditioner}
   autoencoder:
     _target_: Training_LDM.models.ae_module.AutoencoderKL
     encoder: ${encoder}
