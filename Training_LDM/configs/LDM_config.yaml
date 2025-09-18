@@ -59,8 +59,8 @@ conditioner:
 #Denoising Unet should expect the dims of the VAE output (latent): AsthanaSh
 denoiser:
   _target_: Training_LDM.models.components.ldm.denoiser.UNetModel
-  in_channels: 64
-  out_channels: 64
+  in_channels: 32
+  out_channels: 32
   model_channels: 64
   num_res_blocks: 2
   attention_resolutions: [1,2,4]
