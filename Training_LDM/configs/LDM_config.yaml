@@ -37,14 +37,14 @@ data:
 
 encoder:
   _target_: Training_LDM.models.components.ae.SimpleConvEncoder
-  in_dim: 5
+  in_dim: 4
   levels: 2
   min_ch: 16
   ch_mult: 4
 
 decoder:
   _target_: Training_LDM.models.components.ae.SimpleConvDecoder
-  in_dim: 16
+  in_dim: 64
   levels: 2
   min_ch: 16
 
@@ -108,15 +108,9 @@ callbacks:
     mode: min
 
 model:
-  _target_: Training_LDM.models.ldm_module.LatentDiffusion
-  #Need to pass VAE autoencoder , not encoder and decoder : AsthanaSh
+#Need to pass VAE autoencoder , not encoder and decoder : AsthanaSh
   autoencoder:
-    _target_: Training_LDM.models.ae_module.AutoencoderKL
-    encoder: ${encoder}
-    decoder: ${decoder}
-  denoiser: ${denoiser}
-  conditioner: ${conditioner}
-  latent_dim: 16
-  ae_flag: 'residual'
-  #Doesnt need the Unet ckpt here, removed : AsthanaSh
+    unet_regr : Training_LDM/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt
+  #VAE ckpt loaded from the ae_load_state_file 
   ae_load_state_file: Training_LDM/trained_ckpts/Training_LDM.models.ae_module.AutoencoderKL_checkpoint.ckpt
+  #Output from LDM : [batch_size, 4, height, width]
