@@ -48,13 +48,6 @@ decoder:
   levels: 2
   min_ch: 16
 
-conditioner:
-  _target_: Training_LDM.models.components.ldm.conditioner.ElevationConditioner
-  autoencoder: ${encoder}
-  embed_dim: 128
-  analysis_depth: 4
-  train_autoenc: false
-  afno_fusion: false
 
 #Denoising Unet should expect the dims of the VAE output (latent): AsthanaSh
 denoiser:
