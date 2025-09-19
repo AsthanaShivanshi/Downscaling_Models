@@ -69,14 +69,17 @@ class AutoencoderKL(LightningModule):
         dec = self.decode(z)
         return (dec, mean, log_var)
 
-    def _loss(self, batch):
+    def _loss(self, batch): #New introduced: beta annealing for stabilising the climbing KL loss : AsthanaSh 
         # (low_res, high_res, ts) = batch
         x,y = self.preprocess_batch(batch)
         while isinstance(x, list) or isinstance(x, tuple):
             x = x[0][0]
         (y_pred, mean, log_var) = self.forward(x)
 
-        #tackling spatial mismatch : asthanash
+        #Log var clipping
+        log_var = torch.clamp(log_var, min=-10.0, max=10.0)
+
+        #tackling spatial mismatch : AsthanaSh
         if y.shape [-2:] != y_pred.shape[-2:]:
             min_h = min(y.shape[-2], y_pred.shape[-2])
             min_w = min(y.shape[-1], y_pred.shape[-1])
@@ -84,7 +87,10 @@ class AutoencoderKL(LightningModule):
             y_pred = y_pred[..., :min_h, :min_w]
         rec_loss = (y-y_pred).abs().mean()
         kl_loss = kl_from_standard_normal(mean, log_var)
-        total_loss = rec_loss + self.kl_weight * kl_loss
+
+        #Beta annealing for KL loss stability : AsthanaSh
+        beta= min(1.0, self.current_epoch / 100.0)*self.kl_weight # linear increase from 0 to 1 in first 100 epochs
+        total_loss = rec_loss + beta * kl_loss
 
         return (total_loss, rec_loss, kl_loss)
 
