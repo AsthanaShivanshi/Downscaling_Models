@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=ckpts_VAE_res_training
-#SBATCH --output=logs/ckpts_VAE_res/job_output-%j.txt
-#SBATCH --error=logs/ckpts_VAE_res/job_error-%j.txt
+#SBATCH --job-name=ckpts_LDM_res_training
+#SBATCH --output=logs/ckpts_LDM_res/job_output-%j.txt
+#SBATCH --error=logs/ckpts_LDM_res/job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-00:00:00
