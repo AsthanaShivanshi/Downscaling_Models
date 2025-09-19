@@ -50,11 +50,11 @@ def train(cfg: DictConfig):
         for cb_cfg in cfg.callbacks.values():
             callbacks.append(hydra.utils.instantiate(cb_cfg))
 
-    # Trainer
+    # Trainer : no min epochs, just early stopping after 10 epochs of no improvement in val loss
     trainer = Trainer(
         callbacks=callbacks,
         logger=logger,
-        max_epochs=cfg.get("trainer", {}).get("max_epochs", 100),
+        max_epochs=None,
         accelerator=cfg.get("trainer", {}).get("accelerator", "gpu"),
         devices=cfg.get("trainer", {}).get("devices", 1),
     )

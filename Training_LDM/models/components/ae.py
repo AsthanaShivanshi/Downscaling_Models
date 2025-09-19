@@ -34,7 +34,7 @@ class SimpleConvEncoder(nn.Module):
         return self.net(x)
 
 
-class SimpleConvDecoder(nn.Module):
+class SimpleConvDecoder(nn.Module): #Has to ouput reconstructed 4 channels.
     def __init__(self, in_dim=1, levels=2, min_ch=16, ch_mult: int = 4):
         super().__init__()
         self.in_dim = in_dim
@@ -57,6 +57,7 @@ class SimpleConvDecoder(nn.Module):
                 norm_kwargs={"num_groups": 1}
             )
             sequence.append(res_block)
+        sequence.append(nn.Conv2d(out_channels, 4, kernel_size=3, padding=1))  # Final layer to output 4 channels
         self.net = nn.Sequential(*sequence)
 
     def forward(self, x):
