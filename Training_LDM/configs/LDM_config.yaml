@@ -37,10 +37,10 @@ data:
 
 encoder:
   _target_: Training_LDM.models.components.ae.SimpleConvEncoder
-  in_dim: 4
-  levels: 2
-  min_ch: 16
-  ch_mult: 4
+  in_dim: 5
+  levels: 1
+  min_ch: 64
+  ch_mult: 1
 
 decoder:
   _target_: Training_LDM.models.components.ae.SimpleConvDecoder
@@ -52,8 +52,8 @@ decoder:
 #Denoising Unet should expect the dims of the VAE output (latent): AsthanaSh
 denoiser:
   _target_: Training_LDM.models.components.ldm.denoiser.UNetModel
-  in_channels: 32
-  out_channels: 32
+  in_channels: 64
+  out_channels: 64
   model_channels: 64
   num_res_blocks: 2
   attention_resolutions: [1,2,4]
@@ -114,7 +114,7 @@ model:
     _target_: Training_LDM.models.ae_module.AutoencoderKL
     encoder: ${encoder}
     decoder: ${decoder}
-    unet_regr: Training_LDM/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt
+    #unet_regr: Training_LDM/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt
   #context_encoder: ${conditioner}  #Conditions the denoiser with elevation data : AsthanaSh, disbaled for a first expriemtn 
   #VAE ckpt loaded from the ae_load_state_file 
   ae_load_state_file: Training_LDM/trained_ckpts/Training_LDM.models.ae_module.AutoencoderKL_checkpoint.ckpt
