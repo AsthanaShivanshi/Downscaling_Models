@@ -195,7 +195,9 @@ class LatentDiffusion(LightningModule):
         if noise is None:
             noise = torch.randn_like(x_start)
         x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
+        print(f"Shape before denoising: {x_noisy.shape}")
         denoiser_out = self.denoiser(x_noisy, t, context=context)
+        print(f"Shape after denoising: {denoiser_out.shape}")
 
         if self.parameterization == "eps":
             target = noise
@@ -220,7 +222,8 @@ class LatentDiffusion(LightningModule):
             residual, _ = self.autoencoder.preprocess_batch([x, y])
             y = self.autoencoder.encode(residual)[0]
         else:
-            y = self.autoencoder.encode(y)[0]
+            y = self.autoencoder.encode(x)[0]  # it had y not x, corrected : AsthanaSh
+            print(f"Encoded shape: {y.shape}")
         context = self.context_encoder(x) if self.conditional else None
         return self(y, context=context)
 
