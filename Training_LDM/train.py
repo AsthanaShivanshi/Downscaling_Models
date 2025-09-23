@@ -34,12 +34,12 @@ def train(cfg: DictConfig):
         print("Loaded UNet mean regression model from:", cfg.model.unet_regr)
 
     # Instantiate model: for UNet and VAE
-    model: LightningModule = hydra.utils.instantiate(cfg.model, unet_regr=unet_model if cfg.model.get("unet_regr") else None)
+    #model: LightningModule = hydra.utils.instantiate(cfg.model, unet_regr=unet_model if cfg.model.get("unet_regr") else None)
 
 #For LDM, pass
-    #autoencoder_cfg = cfg.model.autoencoder
-    #autoencoder = hydra.utils.instantiate(autoencoder_cfg,unet_regr=unet_model if cfg.model.get("unet_regr") else None)
-    #model= hydra.utils.instantiate(cfg.model,autoencoder=autoencoder)
+    autoencoder_cfg = cfg.model.autoencoder
+    autoencoder = hydra.utils.instantiate(autoencoder_cfg) #No need for UNet reg here, not learning residual
+    model= hydra.utils.instantiate(cfg.model,autoencoder=autoencoder)
 
     # WandB logger
     logger = WandbLogger(project="LDM_res_cascade", log_model=True)
