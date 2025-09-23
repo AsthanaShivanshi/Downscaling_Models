@@ -37,14 +37,14 @@ data:
 
 encoder:
   _target_: Training_LDM.models.components.ae.SimpleConvEncoder
-  in_dim: 4.  #AsthanaSh: Output from Unet is four channels (minus static), fed into VAE for latent representaton of noise. 
-  levels: 2
-  min_ch: 16
-  ch_mult: 4
+  in_dim: 5  #AsthanaSh: 
+  levels: 1
+  min_ch: 64
+  ch_mult: 1
 
 decoder:
   _target_: Training_LDM.models.components.ae.SimpleConvDecoder
-  in_dim: 64 #Matching encoders OP
+  in_dim: 80 #Matching encoders OP
   levels: 2
   min_ch: 16
 
@@ -82,5 +82,6 @@ model:
   encoder: ${encoder}
   decoder: ${decoder}
   kl_weight: 0.01
-  ae_flag: 'residual'   # Vanilla VAE : set this to null
-  unet_regr: Training_LDM/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt  # set only if using residuals
+  ae_flag: null
+  #Unet ckpt not required for VAE under vanilla setup
+  #unet_regr: Training_LDM/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt  # set only if using residuals
