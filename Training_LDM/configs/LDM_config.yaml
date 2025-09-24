@@ -118,4 +118,4 @@ model:
   #context_encoder: ${conditioner}  #Conditions the denoiser with elevation data : AsthanaSh, disbaled for a first expriemtn 
   #VAE ckpt loaded from the ae_load_state_file 
   ae_load_state_file: Training_LDM/trained_ckpts/Training_LDM.models.ae_module.AutoencoderKL_checkpoint.ckpt
-  #Output from LDM : [batch_size, 4, height, width]
+  #Note : Output from LDM : [batch_size, 4, height, width] (AsthanaSh)
