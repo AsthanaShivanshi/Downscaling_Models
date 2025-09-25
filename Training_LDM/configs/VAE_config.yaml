@@ -77,6 +77,13 @@ callbacks:
     monitor: val/loss
     mode: min
 
+unet_arch:
+  _target_: Training_LDM.models.components.unet.DownscalingUnet
+  in_ch: 5  #4 vars + elevation
+  out_ch: 4
+  features: [64,128,256,512]
+
+
 model:
   _target_: Training_LDM.models.ae_module.AutoencoderKL
   encoder: ${encoder}

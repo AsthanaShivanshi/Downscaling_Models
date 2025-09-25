@@ -17,6 +17,12 @@ export NUMEXPR_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 cd BC_methods
 
-echo "EQM for All Cells started"
-python EQM_AllCells.py --n_jobs $SLURM_CPUS_PER_TASK
-echo "EQM for All Cells finished"
+#echo "EQM for All Cells started"
+#python EQM_AllCells.py --n_jobs $SLURM_CPUS_PER_TASK
+#echo "EQM for All Cells finished"
+
+echo "dOTC for all Cells started"
+python dOTC_BC_AllCells.py --n_jobs $SLURM_CPUS_PER_TASK
+echo "dOTC for all Cells finished"
+
+
