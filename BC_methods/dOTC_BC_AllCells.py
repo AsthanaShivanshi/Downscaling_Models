@@ -112,11 +112,13 @@ for i in range(nN):
             corrected_data[var][:, i, j] = results[idx][:, v]
         idx += 1
 
+
 coords = {
     "time": model_times,
-    "lat": model_datasets[0]['lat'].values,
-    "lon": model_datasets[0]['lon'].values
+    "lat": (("lat", "lon"), model_datasets[0]['lat'].values), #2D
+    "lon": (("lat", "lon"), model_datasets[0]['lon'].values)
 }
+
 data_vars = {
     var: (("time", "lat", "lon"), corrected_data[var])
     for var in var_names
