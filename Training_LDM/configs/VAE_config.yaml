@@ -37,7 +37,7 @@ data:
 
 encoder:
   _target_: Training_LDM.models.components.ae.SimpleConvEncoder
-  in_dim: 5  #AsthanaSh:  progression, : 5,64,128,256 due toi levels =3
+  in_dim: 4  #AsthanaSh:  progression, : 5,64,128,256 due toi levels =3
   levels: 1
   min_ch: 64
   ch_mult: 1
@@ -82,6 +82,6 @@ model:
   encoder: ${encoder}
   decoder: ${decoder}
   kl_weight: 0.01
-  ae_flag: null
+  ae_flag: "residual"
   #Unet ckpt not required for VAE under vanilla setup
-  #unet_regr: Training_LDM/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt  # set only if using residuals
+  unet_regr: Training_LDM/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt  # set only if using residuals
