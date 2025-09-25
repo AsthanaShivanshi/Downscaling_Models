@@ -39,18 +39,22 @@ calib_end = np.datetime64("2010-12-31")
 scenario_start = np.datetime64("2011-01-01")
 scenario_end = np.datetime64("2099-12-31")
 
-# ...existing code...
-
 def process_cell(i, j):
     # Stack all variables for this cell
     model_cell = np.stack([ds[:, i, j].values for ds in model_datasets], axis=1)  # [ntime, nvars]
     obs_cell = np.stack([ds[:, i, j].values for ds in obs_datasets], axis=1)      # [ntime, nvars]
 
-    # Find intersection of calibration times
-    calib_times = np.intersect1d(model_times[(model_times >= calib_start) & (model_times <= calib_end)],
-                                 obs_times[(obs_times >= calib_start) & (obs_times <= calib_end)])
+    # Check for NaNs in input data
+    if np.isnan(model_cell).any() or np.isnan(obs_cell).any():
+        print(f"NaNs in input data for cell ({i},{j})")
 
-    # Get indices for calibration period in both model and obs
+    # Find intersection of calibration times
+    calib_times = np.intersect1d(
+        model_times[(model_times >= calib_start) & (model_times <= calib_end)],
+        obs_times[(obs_times >= calib_start) & (obs_times <= calib_end)]
+    )
+
+    # GCalibration
     model_calib_idx = np.isin(model_times, calib_times)
     obs_calib_idx = np.isin(obs_times, calib_times)
 
@@ -59,11 +63,9 @@ def process_cell(i, j):
     calib_mod_doys = model_doys[model_calib_idx]
     calib_obs_doys = obs_doys[obs_calib_idx]
 
-    # Full period for prediction
     full_mod_cell = model_cell
     full_mod_doys = model_doys
 
-    # Precip clipping
     if "precip" in var_names:
         precip_idx = var_names.index("precip")
         calib_obs_cell[:, precip_idx] = np.clip(calib_obs_cell[:, precip_idx], 0, None)
@@ -83,19 +85,18 @@ def process_cell(i, j):
         if calib_mod_win.shape[0] == 0 or calib_obs_win.shape[0] == 0 or full_mod_win_for_pred.shape[0] == 0:
             continue
 
+        print(f"Processing cell ({i}, {j}), DOY {doy}, calib points: {calib_mod_win.shape[0]}, pred points: {full_mod_win_for_pred.shape[0]}")
+
         dotc = dOTC(bin_width=None, bin_origin=None)
         dotc.fit(calib_obs_win, calib_mod_win, full_mod_win_for_pred)
         corrected_full = dotc.predict(full_mod_win_for_pred)
 
-        # Precip clipping
         if "precip" in var_names:
-            precip_idx = var_names.index("precip")
             corrected_full[:, precip_idx] = np.clip(corrected_full[:, precip_idx], 0, None)
 
         corrected_stack[full_mask] = corrected_full
 
-    return corrected_stack  # [ntime, nvars]
-
+    return corrected_stack
 
 print("Starting gridwise dOTC correction...")
 results = Parallel(n_jobs=8)(
@@ -111,7 +112,6 @@ for i in range(nN):
         for v, var in enumerate(var_names):
             corrected_data[var][:, i, j] = results[idx][:, v]
         idx += 1
-
 
 coords = {
     "time": model_times,
