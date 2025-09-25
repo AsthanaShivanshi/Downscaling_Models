@@ -37,7 +37,7 @@ data:
 
 encoder:
   _target_: Training_LDM.models.components.ae.SimpleConvEncoder
-  in_dim: 4  #AsthanaSh:  progression, : 5,64,128,256 due toi levels =3
+  in_dim: 4  #AsthanaSh:  progression, : 4,64,128,256 due toi levels =3
   levels: 1
   min_ch: 64
   ch_mult: 1
