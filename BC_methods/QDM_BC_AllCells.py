@@ -116,6 +116,6 @@ data_vars = {
     for var in var_names
 }
 ds_out = xr.Dataset(data_vars, coords=coords)
-output_path = "/work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/BC_Model_Runs/QDM/QDM_BC_AllCells_4vars.nc"
+output_path = f"{config.BIAS_CORRECTED_DIR}/QDM/QDM_BC_AllCells_4vars.nc"
 ds_out.to_netcdf(output_path)
 print(f"Bias-corrected data saved to {output_path}")
