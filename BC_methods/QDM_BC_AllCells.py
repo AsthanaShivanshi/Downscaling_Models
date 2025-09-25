@@ -1,7 +1,7 @@
 import xarray as xr
 import numpy as np
 import config
-from SBCK import dOTC
+from SBCK import QDM
 from joblib import Parallel, delayed
 
 var_names = ["temp", "precip", "tmin", "tmax"]
@@ -27,9 +27,9 @@ obs_datasets = [xr.open_dataset(p)[ovn] for p, ovn in zip(obs_paths, obs_var_nam
 ntime, nN, nE = model_datasets[0].shape
 nvars = len(var_names)
 
-# Prepare time and DOY arrays
 model_times = model_datasets[0]['time'].values
 obs_times = obs_datasets[0]['time'].values
+
 def get_doy(d): return (np.datetime64(d, 'D') - np.datetime64(str(d)[:4] + '-01-01', 'D')).astype(int) + 1
 model_doys = np.array([get_doy(d) for d in model_times])
 obs_doys = np.array([get_doy(d) for d in obs_times])
@@ -77,9 +77,9 @@ def process_cell(i, j):
         if calib_mod_win.shape[0] == 0 or calib_obs_win.shape[0] == 0 or full_mod_win_for_pred.shape[0] == 0:
             continue
 
-        dotc = dOTC(bin_width=None, bin_origin=None)
-        dotc.fit(calib_obs_win, calib_mod_win, full_mod_win_for_pred)
-        corrected_full = dotc.predict(full_mod_win_for_pred)
+        qdm = QDM(bin_width=None, bin_origin=None)
+        qdm.fit(calib_obs_win, calib_mod_win, full_mod_win_for_pred)
+        corrected_full = qdm.predict(full_mod_win_for_pred)
 
         # Precip clipping
         if "precip" in var_names:
@@ -90,13 +90,13 @@ def process_cell(i, j):
 
     return corrected_stack  # [ntime, nvars]
 
-print("Starting gridwise dOTC correction...")
+print("Starting gridwise QDM correction...")
 results = Parallel(n_jobs=8)(
     delayed(process_cell)(i, j)
     for i in range(nN) for j in range(nE)
 )
 
-# Recon
+# Reconstruct output arrays for each variable
 corrected_data = {var: np.full((ntime, nN, nE), np.nan, dtype=np.float32) for var in var_names}
 idx = 0
 for i in range(nN):
@@ -105,6 +105,7 @@ for i in range(nN):
             corrected_data[var][:, i, j] = results[idx][:, v]
         idx += 1
 
+# Save to netCDF
 coords = {
     "time": model_times,
     "lat": model_datasets[0]['lat'].values,
@@ -115,6 +116,6 @@ data_vars = {
     for var in var_names
 }
 ds_out = xr.Dataset(data_vars, coords=coords)
-output_path = "/work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/BC_Model_Runs/dOTC/dOTC_BC_AllCells_4vars.nc"
+output_path = "/work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/BC_Model_Runs/QDM/QDM_BC_AllCells_4vars.nc"
 ds_out.to_netcdf(output_path)
 print(f"Bias-corrected data saved to {output_path}")
