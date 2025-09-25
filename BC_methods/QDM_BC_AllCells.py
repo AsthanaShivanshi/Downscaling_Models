@@ -40,24 +40,25 @@ scenario_start = np.datetime64("2011-01-01")
 scenario_end = np.datetime64("2099-12-31")
 
 def process_cell(i, j):
-    # Stack all variables for this cell
-    model_cell = np.stack([ds[:, i, j].values for ds in model_datasets], axis=1)  # [ntime, nvars]
-    obs_cell = np.stack([ds[:, i, j].values for ds in obs_datasets], axis=1)      # [ntime, nvars]
+    model_cell = np.stack([ds[:, i, j].values for ds in model_datasets], axis=1)  
+    obs_cell = np.stack([ds[:, i, j].values for ds in obs_datasets], axis=1)
 
-    # Calibration indices
-    model_calib_idx = (model_times >= calib_start) & (model_times <= calib_end)
-    obs_calib_idx = (obs_times >= calib_start) & (obs_times <= calib_end)
+    # Calib times
+    calib_times = np.intersect1d(model_times[(model_times >= calib_start) & (model_times <= calib_end)],
+                                 obs_times[(obs_times >= calib_start) & (obs_times <= calib_end)])
+
+
+    model_calib_idx = np.isin(model_times, calib_times)
+    obs_calib_idx = np.isin(obs_times, calib_times)
 
     calib_mod_cell = model_cell[model_calib_idx]
     calib_obs_cell = obs_cell[obs_calib_idx]
     calib_mod_doys = model_doys[model_calib_idx]
     calib_obs_doys = obs_doys[obs_calib_idx]
 
-    # Full period for prediction
     full_mod_cell = model_cell
     full_mod_doys = model_doys
 
-    # Precip clipping
     if "precip" in var_names:
         precip_idx = var_names.index("precip")
         calib_obs_cell[:, precip_idx] = np.clip(calib_obs_cell[:, precip_idx], 0, None)
@@ -81,14 +82,13 @@ def process_cell(i, j):
         qdm.fit(calib_obs_win, calib_mod_win, full_mod_win_for_pred)
         corrected_full = qdm.predict(full_mod_win_for_pred)
 
-        # Precip clipping
         if "precip" in var_names:
             precip_idx = var_names.index("precip")
             corrected_full[:, precip_idx] = np.clip(corrected_full[:, precip_idx], 0, None)
 
         corrected_stack[full_mask] = corrected_full
 
-    return corrected_stack  # [ntime, nvars]
+    return corrected_stack 
 
 print("Starting gridwise QDM correction...")
 results = Parallel(n_jobs=8)(
@@ -96,7 +96,6 @@ results = Parallel(n_jobs=8)(
     for i in range(nN) for j in range(nE)
 )
 
-# Reconstruct output arrays for each variable
 corrected_data = {var: np.full((ntime, nN, nE), np.nan, dtype=np.float32) for var in var_names}
 idx = 0
 for i in range(nN):
@@ -105,7 +104,6 @@ for i in range(nN):
             corrected_data[var][:, i, j] = results[idx][:, v]
         idx += 1
 
-# Save to netCDF
 coords = {
     "time": model_times,
     "lat": model_datasets[0]['lat'].values,

@@ -39,14 +39,20 @@ calib_end = np.datetime64("2010-12-31")
 scenario_start = np.datetime64("2011-01-01")
 scenario_end = np.datetime64("2099-12-31")
 
+# ...existing code...
+
 def process_cell(i, j):
     # Stack all variables for this cell
     model_cell = np.stack([ds[:, i, j].values for ds in model_datasets], axis=1)  # [ntime, nvars]
     obs_cell = np.stack([ds[:, i, j].values for ds in obs_datasets], axis=1)      # [ntime, nvars]
 
-    # Calibration indices
-    model_calib_idx = (model_times >= calib_start) & (model_times <= calib_end)
-    obs_calib_idx = (obs_times >= calib_start) & (obs_times <= calib_end)
+    # Find intersection of calibration times
+    calib_times = np.intersect1d(model_times[(model_times >= calib_start) & (model_times <= calib_end)],
+                                 obs_times[(obs_times >= calib_start) & (obs_times <= calib_end)])
+
+    # Get indices for calibration period in both model and obs
+    model_calib_idx = np.isin(model_times, calib_times)
+    obs_calib_idx = np.isin(obs_times, calib_times)
 
     calib_mod_cell = model_cell[model_calib_idx]
     calib_obs_cell = obs_cell[obs_calib_idx]
@@ -89,6 +95,7 @@ def process_cell(i, j):
         corrected_stack[full_mask] = corrected_full
 
     return corrected_stack  # [ntime, nvars]
+
 
 print("Starting gridwise dOTC correction...")
 results = Parallel(n_jobs=8)(
