@@ -21,13 +21,12 @@ cd BC_methods
 #python EQM_AllCells.py --n_jobs $SLURM_CPUS_PER_TASK
 #echo "EQM for All Cells finished"
 
-echo "dOTC for all Cells started"
-python dOTC_BC_AllCells.py --n_jobs $SLURM_CPUS_PER_TASK
-echo "dOTC for all Cells finished"
+#echo "dOTC for all Cells started"
+#python dOTC_BC_AllCells.py --n_jobs $SLURM_CPUS_PER_TASK
+#echo "dOTC for all Cells finished"
 
-
-#echo "QDM for all Cells started"
-#python QDM_BC_AllCells.py --n_jobs $SLURM_CPUS_PER_TASK
-#echo "QDM for all Cells finished"
+echo "QDM for all Cells started"
+python QDM_BC_AllCells.py --n_jobs $SLURM_CPUS_PER_TASK
+echo "QDM for all Cells finished"
 
 
