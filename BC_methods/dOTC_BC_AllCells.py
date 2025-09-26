@@ -46,6 +46,11 @@ def process_cell(i, j):
     full_times = model_times
     full_doys = np.array([get_doy(d) for d in full_times])
     
+    # Check if cell has too many NaNs - skip if more than 50% missing
+    nan_fraction = np.isnan(full_mod_stack).sum() / full_mod_stack.size
+    if nan_fraction > 0.5:
+        return np.full_like(full_mod_stack, np.nan)
+    
     # Extract CALIBRATION period only for training
     calib_mod_cells = [ds.sel(time=slice("1981-01-01", "2010-12-31"))[:, i, j].values for ds in model_datasets]
     calib_obs_cells = [ds.sel(time=slice("1981-01-01", "2010-12-31"))[:, i, j].values for ds in obs_datasets]
@@ -79,14 +84,46 @@ def process_cell(i, j):
         if calib_mod_win.shape[0] == 0 or calib_obs_win.shape[0] == 0 or full_mod_win_for_pred.shape[0] == 0:
             continue
 
-        dotc = dOTC(bin_width=None, bin_origin=None)
-        dotc.fit(calib_obs_win, calib_mod_win, full_mod_win_for_pred)
-        corrected_full = dotc.predict(full_mod_win_for_pred)
+        # Remove NaN values
+        valid_mask_mod = ~np.any(np.isnan(calib_mod_win), axis=1)
+        valid_mask_obs = ~np.any(np.isnan(calib_obs_win), axis=1)
+        valid_mask_pred = ~np.any(np.isnan(full_mod_win_for_pred), axis=1)
+        
+        # Apply valid masks
+        calib_mod_win_clean = calib_mod_win[valid_mask_mod]
+        calib_obs_win_clean = calib_obs_win[valid_mask_obs]
+        full_mod_win_clean = full_mod_win_for_pred[valid_mask_pred]
+        
+        # Check if we have enough valid data (minimum 10 samples)
+        if (calib_mod_win_clean.shape[0] < 10 or 
+            calib_obs_win_clean.shape[0] < 10 or 
+            full_mod_win_clean.shape[0] == 0):
+            continue
+            
+        # Check for constant values (would cause issues in dOTC)
+        if (np.all(calib_mod_win_clean == calib_mod_win_clean[0], axis=0).any() or 
+            np.all(calib_obs_win_clean == calib_obs_win_clean[0], axis=0).any()):
+            # Use simple mean adjustment for constant values
+            mean_diff = np.nanmean(calib_obs_win_clean, axis=0) - np.nanmean(calib_mod_win_clean, axis=0)
+            corrected_full = full_mod_win_clean + mean_diff
+        else:
+            try:
+                dotc = dOTC(bin_width=None, bin_origin=None)
+                dotc.fit(calib_obs_win_clean, calib_mod_win_clean, full_mod_win_clean)
+                corrected_full = dotc.predict(full_mod_win_clean)
+            except (ValueError, RuntimeError, np.linalg.LinAlgError) as e:
+                # If dOTC fails, fall back to simple mean adjustment
+                print(f"dOTC failed for cell ({i},{j}), DOY {doy}: {e}. Using mean adjustment.")
+                mean_diff = np.nanmean(calib_obs_win_clean, axis=0) - np.nanmean(calib_mod_win_clean, axis=0)
+                corrected_full = full_mod_win_clean + mean_diff
 
         if "precip" in var_names:
+            precip_idx = var_names.index("precip")
             corrected_full[:, precip_idx] = np.clip(corrected_full[:, precip_idx], 0, None)
 
-        full_corrected_stack[full_mask] = corrected_full
+        # Put corrected values back in their original positions
+        full_corrected_stack[full_mask] = np.nan  # Initialize with NaN
+        full_corrected_stack[full_mask][valid_mask_pred] = corrected_full
 
     return full_corrected_stack
 
