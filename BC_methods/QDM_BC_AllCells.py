@@ -4,159 +4,148 @@ import config
 from SBCK import QDM
 from joblib import Parallel, delayed
 
-var_names = ["temp", "precip", "tmin", "tmax"]
-obs_var_names = ["TabsD", "RhiresD", "TminD", "TmaxD"]
+def qdm_cell(model_cell, obs_cell, calib_start, calib_end, model_times, obs_times, var_name):
+    ntime = model_cell.shape[0]
+    qdm_series = np.full(ntime, np.nan, dtype=np.float32)
+    if ntime == 0 or np.all(np.isnan(model_cell)) or np.all(np.isnan(obs_cell)):
+        return qdm_series
 
-model_paths = [
-    f"{config.MODELS_DIR}/temp_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/temp_r01_coarse_masked.nc",
-    f"{config.MODELS_DIR}/precip_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/precip_r01_coarse_masked.nc",
-    f"{config.MODELS_DIR}/tmin_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/tmin_r01_coarse_masked.nc",
-    f"{config.MODELS_DIR}/tmax_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/tmax_r01_coarse_masked.nc"
-]
+    model_dates = np.array(model_times, dtype='datetime64[D]')
+    obs_dates = np.array(obs_times, dtype='datetime64[D]')
 
-obs_paths = [
-    f"{config.DATASETS_TRAINING_DIR}/TabsD_step2_coarse.nc",
-    f"{config.DATASETS_TRAINING_DIR}/RhiresD_step2_coarse.nc",
-    f"{config.DATASETS_TRAINING_DIR}/TminD_step2_coarse.nc",
-    f"{config.DATASETS_TRAINING_DIR}/TmaxD_step2_coarse.nc"
-]
+    calib_dates = np.arange(calib_start, calib_end + np.timedelta64(1, 'D'), dtype='datetime64[D]')
+    model_calib_idx = np.in1d(model_dates, calib_dates)
+    obs_calib_idx = np.in1d(obs_dates, calib_dates)
 
-model_datasets = [xr.open_dataset(p)[vn] for p, vn in zip(model_paths, var_names)]
-obs_datasets = [xr.open_dataset(p)[ovn] for p, ovn in zip(obs_paths, obs_var_names)]
+    common_dates = np.intersect1d(model_dates[model_calib_idx], obs_dates[obs_calib_idx])
+    if len(common_dates) == 0:
+        return qdm_series
 
-ntime, nN, nE = model_datasets[0].shape
-nvars = len(var_names)
+    model_common_idx = np.in1d(model_dates, common_dates)
+    obs_common_idx = np.in1d(obs_dates, common_dates)
 
-# Use xarray's built-in dayofyear instead of custom function
-model_times = model_datasets[0]['time']
-obs_times = obs_datasets[0]['time']
-model_doys = model_times.dt.dayofyear.values
-obs_doys = obs_times.dt.dayofyear.values
+    calib_mod_cell = model_cell[model_common_idx]
+    calib_obs_cell = obs_cell[obs_common_idx]
 
-def process_cell(i, j):
-    # Extract data for this cell using xarray indexing
-    full_mod_cells = [ds.isel(lat=i, lon=j).values for ds in model_datasets]
-    full_mod_stack = np.stack(full_mod_cells, axis=1)
-    full_times = model_times.values
-    full_doys = model_doys
-    
-    # Check for too many NaNs
-    nan_fraction = np.isnan(full_mod_stack).sum() / full_mod_stack.size
-    if nan_fraction > 0.5:
-        return np.full_like(full_mod_stack, np.nan)
-    
-    # Use xarray for time slicing
-    calib_mod_cells = [ds.sel(time=slice("1981-01-01", "2010-12-31")).isel(lat=i, lon=j).values for ds in model_datasets]
-    calib_obs_cells = [ds.sel(time=slice("1981-01-01", "2010-12-31")).isel(lat=i, lon=j).values for ds in obs_datasets]
-    calib_times = model_datasets[0].sel(time=slice("1981-01-01", "2010-12-31"))['time']
-    
-    calib_mod_stack = np.stack(calib_mod_cells, axis=1)
-    calib_obs_stack = np.stack(calib_obs_cells, axis=1)
-    calib_doys = calib_times.dt.dayofyear.values
+    # Clip precipitation to non-negative values
+    if var_name == "precip":
+        calib_mod_cell = np.clip(calib_mod_cell, 0, None)
+        calib_obs_cell = np.clip(calib_obs_cell, 0, None)
+        model_cell = np.clip(model_cell, 0, None)
 
-    # Clip precipitation values
-    if "precip" in var_names:
-        precip_idx = var_names.index("precip")
-        calib_obs_stack[:, precip_idx] = np.clip(calib_obs_stack[:, precip_idx], 0, None)
-        calib_mod_stack[:, precip_idx] = np.clip(calib_mod_stack[:, precip_idx], 0, None)
-        full_mod_stack[:, precip_idx] = np.clip(full_mod_stack[:, precip_idx], 0, None)
+    def get_doy(d): return (np.datetime64(d, 'D') - np.datetime64(str(d)[:4] + '-01-01', 'D')).astype(int) + 1
+    calib_doys = np.array([get_doy(d) for d in common_dates])
+    model_doys = np.array([get_doy(d) for d in model_dates])
 
-    full_corrected_stack = np.full_like(full_mod_stack, np.nan)
-
-    # Process each day of year
     for doy in range(1, 367):
-        # Create window mask for calibration period
-        window_diffs = (calib_doys - doy + 366) % 366
-        window_mask = (window_diffs <= 45) | (window_diffs >= (366 - 45))
-        calib_mod_win = calib_mod_stack[window_mask]
-        calib_obs_win = calib_obs_stack[window_mask]
+        window_doys = ((calib_doys - doy + 366) % 366)
+        window_mask = (window_doys <= 45) | (window_doys >= (366 - 45))
+        obs_window = calib_obs_cell[window_mask]
+        mod_window = calib_mod_cell[window_mask]
         
-        # Find days in full period matching this DOY
-        full_mask = (full_doys == doy)
-        full_mod_win_for_pred = full_mod_stack[full_mask]
-
-        if calib_mod_win.shape[0] == 0 or calib_obs_win.shape[0] == 0 or full_mod_win_for_pred.shape[0] == 0:
+        # Remove NaN values
+        obs_window = obs_window[~np.isnan(obs_window)]
+        mod_window = mod_window[~np.isnan(mod_window)]
+        
+        if obs_window.size < 10 or mod_window.size < 10:
             continue
 
-        valid_mask_mod = ~np.any(np.isnan(calib_mod_win), axis=1)
-        valid_mask_obs = ~np.any(np.isnan(calib_obs_win), axis=1)
-        valid_mask_pred = ~np.any(np.isnan(full_mod_win_for_pred), axis=1)
-        
-        calib_mod_win_clean = calib_mod_win[valid_mask_mod]
-        calib_obs_win_clean = calib_obs_win[valid_mask_obs]
-        full_mod_win_clean = full_mod_win_for_pred[valid_mask_pred]
-        
-        if (calib_mod_win_clean.shape[0] < 10 or 
-            calib_obs_win_clean.shape[0] < 10 or 
-            full_mod_win_clean.shape[0] == 0):
+        # Find indices for this DOY in the full model time series
+        indices = np.where(model_doys == doy)[0]
+        if indices.size == 0:
             continue
-            
-        corrected_full = np.full_like(full_mod_win_clean, np.nan)
+
+        values = model_cell[indices]
+        valid_values_mask = ~np.isnan(values)
+        valid_indices = indices[valid_values_mask]
+        valid_values = values[valid_values_mask]
         
-        for var_idx in range(nvars):
-            calib_mod_var = calib_mod_win_clean[:, var_idx].reshape(-1, 1)
-            calib_obs_var = calib_obs_win_clean[:, var_idx].reshape(-1, 1)
-            full_mod_var = full_mod_win_clean[:, var_idx].reshape(-1, 1)
+        if valid_values.size == 0:
+            continue
+
+        try:
+            # Set delta method based on variable
+            delta_method = "multiplicative" if var_name == "precip" else "additive"
             
-            if (np.all(calib_mod_var == calib_mod_var[0]) or 
-                np.all(calib_obs_var == calib_obs_var[0]) or
-                np.std(calib_mod_var) < 1e-10 or
-                np.std(calib_obs_var) < 1e-10):
-                mean_diff = np.nanmean(calib_obs_var) - np.nanmean(calib_mod_var)
-                corrected_full[:, var_idx] = full_mod_var.flatten() + mean_diff
+            # Check for zero variance
+            if np.std(mod_window) < 1e-10 or np.std(obs_window) < 1e-10:
+                # Use mean adjustment
+                mean_diff = np.nanmean(obs_window) - np.nanmean(mod_window)
+                corrected = valid_values + mean_diff
             else:
-                try:
-                    delta_method = "multiplicative" if var_names[var_idx] == "precip" else "additive"
-                    
-                    qdm = QDM(bin_width=None, bin_origin=None, delta=delta_method)
-                    qdm.fit(calib_obs_var, calib_mod_var, full_mod_var)
-                    corrected_var = qdm.predict(full_mod_var)
-                    corrected_full[:, var_idx] = corrected_var.flatten()
-                    
-                except (ValueError, RuntimeError, np.linalg.LinAlgError) as e:
-                    print(f"QDM failed for cell ({i},{j}), DOY {doy}, var {var_names[var_idx]}: {e}. Using mean adjustment.")
-                    mean_diff = np.nanmean(calib_obs_var) - np.nanmean(calib_mod_var)
-                    corrected_full[:, var_idx] = full_mod_var.flatten() + mean_diff
+                # Apply QDM
+                qdm = QDM(delta=delta_method)
+                qdm.fit(obs_window.reshape(-1, 1), mod_window.reshape(-1, 1), valid_values.reshape(-1, 1))
+                corrected = qdm.predict(valid_values.reshape(-1, 1)).flatten()
+            
+            # Clip precipitation results
+            if var_name == "precip":
+                corrected = np.clip(corrected, 0, None)
+            
+            qdm_series[valid_indices] = corrected
+            
+        except (ValueError, RuntimeError, np.linalg.LinAlgError) as e:
+            print(f"QDM failed for DOY {doy}, var {var_name}: {e}. Using mean adjustment.")
+            mean_diff = np.nanmean(obs_window) - np.nanmean(mod_window)
+            corrected = valid_values + mean_diff
+            if var_name == "precip":
+                corrected = np.clip(corrected, 0, None)
+            qdm_series[valid_indices] = corrected
 
-        if "precip" in var_names:
-            precip_idx = var_names.index("precip")
-            corrected_full[:, precip_idx] = np.clip(corrected_full[:, precip_idx], 0, None)
+    return qdm_series
 
-        full_corrected_indices = np.where(full_mask)[0][valid_mask_pred]
-        full_corrected_stack[full_corrected_indices] = corrected_full
+def process_variable(var_name, obs_var_name):
+    print(f"Processing {var_name}...")
+    
+    model_path = f"{config.MODELS_DIR}/{var_name}_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099/{var_name}_r01_coarse_masked.nc"
+    obs_path = f"{config.DATASETS_TRAINING_DIR}/{obs_var_name}_step2_coarse.nc"
+    output_path = f"{config.BIAS_CORRECTED_DIR}/QDM/{var_name}_QDM_BC_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_r01.nc"
 
-    return full_corrected_stack
+    model_ds = xr.open_dataset(model_path)
+    obs_ds = xr.open_dataset(obs_path)
+    model = model_ds[var_name]
+    obs = obs_ds[obs_var_name]
 
+    ntime, nN, nE = model.shape
+    qdm_data = np.full(model.shape, np.nan, dtype=np.float32)
 
-print("Starting gridwise QDM correction...")
-results = Parallel(n_jobs=8)(
-    delayed(process_cell)(i, j)
-    for i in range(nN) for j in range(nE)
-)
+    # Parallelising over grid
+    def process_cell(i, j):
+        model_cell = model[:, i, j].values
+        obs_cell = obs[:, i, j].values
+        return qdm_cell(
+            model_cell, obs_cell,
+            np.datetime64("1981-01-01"), np.datetime64("2010-12-31"),
+            model['time'].values, obs['time'].values, var_name
+        )
 
-corrected_data = {var: np.full((ntime, nN, nE), np.nan, dtype=np.float32) for var in var_names}
+    print(f"Starting gridwise QDM correction for {var_name}...")
+    results = Parallel(n_jobs=8)(
+        delayed(process_cell)(i, j)
+        for i in range(nN) for j in range(nE)
+    )
 
-idx = 0
-for i in range(nN):
-    for j in range(nE):
-        result = results[idx]
-        if result is not None and not np.all(np.isnan(result)):
-            for v, var in enumerate(var_names):
-                corrected_data[var][:, i, j] = result[:, v]
-        idx += 1
+    idx = 0
+    for i in range(nN):
+        for j in range(nE):
+            qdm_data[:, i, j] = results[idx]
+            idx += 1
 
-coords = {
-    "time": model_times.values,
-    "lat": (("lat", "lon"), model_datasets[0]['lat'].values),
-    "lon": (("lat", "lon"), model_datasets[0]['lon'].values)
-}
+    out_ds = model_ds.copy()
+    out_ds[var_name] = (("time", "N", "E"), qdm_data)
+    out_ds.to_netcdf(output_path)
+    print(f"Bias-corrected {var_name} saved to {output_path}")
 
-data_vars = {
-    var: (("time", "lat", "lon"), corrected_data[var])
-    for var in var_names
-}
+def main():
+    print("QDM for All Cells started")
+    
+    var_names = ["temp", "precip", "tmin", "tmax"]
+    obs_var_names = ["TabsD", "RhiresD", "TminD", "TmaxD"]
+    
+    for var_name, obs_var_name in zip(var_names, obs_var_names):
+        process_variable(var_name, obs_var_name)
+    
+    print("QDM for All Cells finished")
 
-ds_out = xr.Dataset(data_vars, coords=coords)
-output_path = f"{config.BIAS_CORRECTED_DIR}/QDM/QDM_BC_AllCells_4vars.nc"
-ds_out.to_netcdf(output_path)
-print(f"Bias-corrected data saved to {output_path}")
+if __name__ == "__main__":
+    main()
