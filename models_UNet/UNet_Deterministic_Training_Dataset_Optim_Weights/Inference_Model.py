@@ -4,22 +4,22 @@ import torch
 import xarray as xr
 import numpy as np
 import json
+import warnings
 from UNet import UNet
 import rioxarray
 from skimage.transform import resize
 from directories import (
-    EQM_DIR, SCALING_DIR, MODEL_PATH, CONFIG_PATH, ELEVATION_PATH, DATASETS_TRAINING_DIR
+    EQM_DIR, DOTC_DIR, QDM_DIR, SCALING_DIR, MODEL_PATH, CONFIG_PATH, ELEVATION_PATH, DATASETS_TRAINING_DIR
 )
 
 var_names = ["precip", "temp", "tmin", "tmax"]
 
-eqm_files = {
+qdm_files = {
     "precip": "precip_BC_bicubic_r01.nc",
     "temp": "temp_BC_bicubic_r01.nc",
     "tmin": "tmin_BC_bicubic_r01.nc",
     "tmax": "tmax_BC_bicubic_r01.nc"
 }
-
 
 scaling_param_map = {
     "precip": "RhiresD",
@@ -55,8 +55,8 @@ inputs_scaled = []
 coords = None
 
 for var in var_names:
-    eqm_path = os.path.join(EQM_DIR, eqm_files[var])
-    ds = xr.open_dataset(eqm_path)
+    qdm_path = os.path.join(QDM_DIR, qdm_files[var]) #directories will change according to bias correction directories being downscaled.
+    ds = xr.open_dataset(qdm_path)
     arr = ds[var].values if var in ds else ds[list(ds.data_vars)[0]].values
     print(f"{var} input shape: {arr.shape}, min: {np.nanmin(arr)}, max: {np.nanmax(arr)}, mean: {np.nanmean(arr)}")
     params = json.load(open(os.path.join(SCALING_DIR, scaling_param_files[var])))
@@ -71,8 +71,8 @@ for var in var_names:
             "lat": ds.lat.values,
             "lon": ds.lon.values
         }
-        eqm_lat = ds.lat.values
-        eqm_lon = ds.lon.values
+        qdm_lat = ds.lat.values
+        qdm_lon = ds.lon.values
 
 inputs_scaled = np.stack(inputs_scaled, axis=1)
 
@@ -81,11 +81,11 @@ elevation_da = rioxarray.open_rasterio(ELEVATION_PATH)
 if elevation_da.ndim == 3:
     elevation_da = elevation_da.isel(band=0)
 elev_array = elevation_da.values
-if elev_array.shape == (len(eqm_lon), len(eqm_lat)):
+if elev_array.shape == (len(qdm_lon), len(qdm_lat)):
     elev_array = elev_array.T
     print("Transposed elev_array shape:", elev_array.shape)
 
-target_shape = (len(eqm_lat), inputs_scaled.shape[3])
+target_shape = (len(qdm_lat), inputs_scaled.shape[3])
 if elev_array.shape != target_shape:
     elev_array = resize(
         elev_array,
@@ -99,8 +99,8 @@ if elev_array.shape != target_shape:
 elev_array = elev_array.astype(np.float32)
 print("Final elev_array stats: min:", np.nanmin(elev_array), "max:", np.nanmax(elev_array), "mean:", np.nanmean(elev_array))
 
-lat_1d = np.asarray(eqm_lat)
-lon_1d = np.asarray(eqm_lon)
+lat_1d = np.asarray(qdm_lat)
+lon_1d = np.asarray(qdm_lon)
 if lat_1d.ndim > 1:
     lat_1d = lat_1d[:, 0]
 if lon_1d.ndim > 1:
@@ -136,8 +136,8 @@ for t in range(n_time):
 for var in var_names:
     print(f"Saving {var}: shape {outputs_all[var].shape}, min: {np.nanmin(outputs_all[var])}, max: {np.nanmax(outputs_all[var])}, mean: {np.nanmean(outputs_all[var])}")
     # For correct structure
-    eqm_path = os.path.join(EQM_DIR, eqm_files[var])
-    ds_in = xr.open_dataset(eqm_path)
+    qdm_path = os.path.join(QDM_DIR, qdm_files[var])
+    ds_in = xr.open_dataset(qdm_path)
 
     dims = ds_in[var].dims  # ('time', 'N', 'E')
     coords = {dim: ds_in[dim] for dim in dims if dim in ds_in.coords}
@@ -157,5 +157,5 @@ for var in var_names:
 
     ds_out.attrs = ds_in.attrs
 
-    out_path = os.path.join(EQM_DIR, f"DOWNSCALED_TRAINING_QM_BC_{var}_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_downscaled_r01.nc")
+    out_path = os.path.join(QDM_DIR, f"DOWNSCALED_TRAINING_QDM_BC_{var}_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_downscaled_r01.nc")
     ds_out.to_netcdf(out_path, mode="w")

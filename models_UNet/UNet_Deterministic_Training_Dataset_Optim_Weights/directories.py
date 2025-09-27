@@ -13,3 +13,5 @@ SCALING_DIR = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/Tr
 MODEL_PATH = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Training_Dataset_Optim_Weights/training_model_huber_weights.pth")
 CONFIG_PATH = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/models_UNet/UNet_Deterministic_Training_Dataset_Optim_Weights/config.yaml")
 ELEVATION_PATH = os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/elevation.tif")
+QDM_DIR= os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/BC_Model_Runs/QDM")
+DOTC_DIR= os.path.join(BASE_DIR, "sasthana/Downscaling/Downscaling_Models/BC_Model_Runs/dOTC")
