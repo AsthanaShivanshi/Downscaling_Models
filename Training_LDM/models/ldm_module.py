@@ -222,7 +222,7 @@ class LatentDiffusion(LightningModule):
             residual, _ = self.autoencoder.preprocess_batch([x, y])
             y = self.autoencoder.encode(residual)[0]
         else:
-            y = self.autoencoder.encode(x)[0]  # it had y not x, corrected : AsthanaSh
+            y = self.autoencoder.encode(y)[0]  # has to be y not x, corrected : AsthanaSh
             print(f"Encoded shape: {y.shape}")
         context = self.context_encoder(x) if self.conditional else None
         return self(y, context=context)
