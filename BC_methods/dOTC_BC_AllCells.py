@@ -152,47 +152,20 @@ for i in range(nN):
                 corrected_data[var][:, i, j] = cell_result[:, v]
         idx += 1
 
-original_coords = list(model_datasets[0].coords.keys())
-print(f"Original coordinates: {original_coords}")
-
-if 'lat' in model_datasets[0].coords and 'lon' in model_datasets[0].coords:
-    if len(model_datasets[0]['lat'].dims) == 1:
-        coords = {
-            "time": model_times,
-            "lat": model_datasets[0]['lat'].values,
-            "lon": model_datasets[0]['lon'].values
-        }
-        dims = ("time", "lat", "lon")
-    else:
-        coords = {
-            "time": model_times,
-            "lat": (("N", "E"), model_datasets[0]['lat'].values),
-            "lon": (("N", "E"), model_datasets[0]['lon'].values)
-        }
-        dims = ("time", "N", "E")
-else:
-    coords = {"time": model_times}
-    dims = ("time", "N", "E")
-    for coord_name in ['N', 'E']:
-        if coord_name in model_datasets[0].coords:
-            coords[coord_name] = model_datasets[0][coord_name].values
-
-data_vars = {
-    var: (dims, corrected_data[var])
-    for var in var_names
-}
-
-ds_out = xr.Dataset(data_vars, coords=coords)
-
-# OG datasets: attributes copied.
-ds_out.attrs = model_datasets[0].attrs.copy()
-for var in var_names:
-    if var in model_datasets[0]:
-        ds_out[var].attrs = model_datasets[0][var].attrs.copy()
-
-output_path = f"{config.BIAS_CORRECTED_DIR}/dOTC/dOTC_BC_AllCells_4vars.nc"
-ds_out.to_netcdf(output_path)
-print(f"Bias-corrected data saved to {output_path}")
+print("Saving each varfile separately...")
+for v, var_name in enumerate(var_names):
+    original_model_ds = xr.open_dataset(model_paths[v])
+    
+    out_ds = original_model_ds.copy()
+    out_ds[var_name] = (("time", "N", "E"), corrected_data[var_name])
+    
+    output_path = f"{config.BIAS_CORRECTED_DIR}/dOTC/{var_name}_dOTC_BC_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_r01.nc"
+    
+    out_ds.to_netcdf(output_path)
+    print(f"Bias-corrected {var_name} saved to {output_path}")
+    
+    # Close the dataset to free memory
+    original_model_ds.close()
 
 print("\nDiagnostics:")
 for var in var_names:
@@ -201,4 +174,4 @@ for var in var_names:
     percentage = 100 * non_nan_count / total_count
     print(f"{var}: {non_nan_count}/{total_count} non-NaN values ({percentage:.1f}%)")
 
-print("dOTC bias correction completed!")
+print("dOTC done")
