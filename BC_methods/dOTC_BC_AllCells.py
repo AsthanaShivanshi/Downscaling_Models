@@ -3,6 +3,9 @@ import numpy as np
 import config
 from SBCK import dOTC
 from joblib import Parallel, delayed
+from tqdm import tqdm
+import warnings  
+warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
 var_names = ["temp", "precip", "tmin", "tmax"]
 obs_var_names = ["TabsD", "RhiresD", "TminD", "TmaxD"]
@@ -21,99 +24,99 @@ obs_paths = [
     f"{config.DATASETS_TRAINING_DIR}/TmaxD_step2_coarse.nc"
 ]
 
+print("Loading datasets...")
 model_datasets = [xr.open_dataset(p)[vn] for p, vn in zip(model_paths, var_names)]
 obs_datasets = [xr.open_dataset(p)[ovn] for p, ovn in zip(obs_paths, obs_var_names)]
 
 ntime, nN, nE = model_datasets[0].shape
 nvars = len(var_names)
+print(f"Data shape: {ntime} time steps, {nN}x{nE} grid cells, {nvars} variables")
 
-# Prepare time and DOY arrays
 model_times = model_datasets[0]['time'].values
 obs_times = obs_datasets[0]['time'].values
-def get_doy(d): return (np.datetime64(d, 'D') - np.datetime64(str(d)[:4] + '-01-01', 'D')).astype(int) + 1
+
+def get_doy(d): 
+    return (np.datetime64(d, 'D') - np.datetime64(str(d)[:4] + '-01-01', 'D')).astype(int) + 1
+
 model_doys = np.array([get_doy(d) for d in model_times])
-obs_doys = np.array([get_doy(d) for d in obs_times])
 
 calib_start = np.datetime64("1981-01-01")
 calib_end = np.datetime64("2010-12-31")
-scenario_start = np.datetime64("2011-01-01")
-scenario_end = np.datetime64("2099-12-31")
 
 def process_cell(i, j):
-    # Extract FULL time series for this cell (1971-2099)
     full_mod_cells = [ds[:, i, j].values for ds in model_datasets]  # Full period
     full_mod_stack = np.stack(full_mod_cells, axis=1)
     full_times = model_times
     full_doys = np.array([get_doy(d) for d in full_times])
     
-    # Check if cell has too many NaNs - skip if more than 50% missing
     nan_fraction = np.isnan(full_mod_stack).sum() / full_mod_stack.size
     if nan_fraction > 0.5:
         return np.full_like(full_mod_stack, np.nan)
     
-    # Extract CALIBRATION period only for training
-    calib_mod_cells = [ds.sel(time=slice("1981-01-01", "2010-12-31"))[:, i, j].values for ds in model_datasets]
-    calib_obs_cells = [ds.sel(time=slice("1981-01-01", "2010-12-31"))[:, i, j].values for ds in obs_datasets]
-    calib_times = model_datasets[0].sel(time=slice("1981-01-01", "2010-12-31"))['time'].values
+    calib_model_mask = (np.array(model_times, dtype='datetime64[D]') >= calib_start) & \
+                       (np.array(model_times, dtype='datetime64[D]') <= calib_end)
+    calib_obs_mask = (np.array(obs_times, dtype='datetime64[D]') >= calib_start) & \
+                     (np.array(obs_times, dtype='datetime64[D]') <= calib_end)
+    
+    calib_mod_cells = [ds[:, i, j].values[calib_model_mask] for ds in model_datasets]
+    calib_obs_cells = [ds[:, i, j].values[calib_obs_mask] for ds in obs_datasets]
     
     calib_mod_stack = np.stack(calib_mod_cells, axis=1)
     calib_obs_stack = np.stack(calib_obs_cells, axis=1)
-    calib_doys = np.array([get_doy(d) for d in calib_times])
+    calib_doys = full_doys[calib_model_mask]
 
-    # Precip clipping
     if "precip" in var_names:
         precip_idx = var_names.index("precip")
         calib_obs_stack[:, precip_idx] = np.clip(calib_obs_stack[:, precip_idx], 0, None)
         calib_mod_stack[:, precip_idx] = np.clip(calib_mod_stack[:, precip_idx], 0, None)
         full_mod_stack[:, precip_idx] = np.clip(full_mod_stack[:, precip_idx], 0, None)
 
-    # Apply correction to FULL period (1971-2099)
     full_corrected_stack = np.full_like(full_mod_stack, np.nan)
 
     for doy in range(1, 367):
-        # Use calibration window for training
         window_diffs = (calib_doys - doy + 366) % 366
         window_mask = (window_diffs <= 45) | (window_diffs >= (366 - 45))
         calib_mod_win = calib_mod_stack[window_mask]
         calib_obs_win = calib_obs_stack[window_mask]
         
-        # Apply to full period for prediction
         full_mask = (full_doys == doy)
         full_mod_win_for_pred = full_mod_stack[full_mask]
 
-        if calib_mod_win.shape[0] == 0 or calib_obs_win.shape[0] == 0 or full_mod_win_for_pred.shape[0] == 0:
+        if (calib_mod_win.shape[0] == 0 or calib_obs_win.shape[0] == 0 or 
+            full_mod_win_for_pred.shape[0] == 0):
             continue
 
-        # Remove NaN values
-        valid_mask_mod = ~np.any(np.isnan(calib_mod_win), axis=1)
-        valid_mask_obs = ~np.any(np.isnan(calib_obs_win), axis=1)
-        valid_mask_pred = ~np.any(np.isnan(full_mod_win_for_pred), axis=1)
+        valid_calib_mask = ~(np.isnan(calib_mod_win).any(axis=1) | np.isnan(calib_obs_win).any(axis=1))
+        valid_pred_mask = ~np.isnan(full_mod_win_for_pred).any(axis=1)
         
-        # Apply valid masks
-        calib_mod_win_clean = calib_mod_win[valid_mask_mod]
-        calib_obs_win_clean = calib_obs_win[valid_mask_obs]
-        full_mod_win_clean = full_mod_win_for_pred[valid_mask_pred]
+        calib_mod_win_clean = calib_mod_win[valid_calib_mask]
+        calib_obs_win_clean = calib_obs_win[valid_calib_mask]
+        full_mod_win_clean = full_mod_win_for_pred[valid_pred_mask]
         
-        # Check if we have enough valid data (minimum 10 samples)
         if (calib_mod_win_clean.shape[0] < 10 or 
-            calib_obs_win_clean.shape[0] < 10 or 
             full_mod_win_clean.shape[0] == 0):
             continue
             
-        # Check for constant values (would cause issues in dOTC)
         if (np.all(calib_mod_win_clean == calib_mod_win_clean[0], axis=0).any() or 
             np.all(calib_obs_win_clean == calib_obs_win_clean[0], axis=0).any()):
-            # Use simple mean adjustment for constant values
             mean_diff = np.nanmean(calib_obs_win_clean, axis=0) - np.nanmean(calib_mod_win_clean, axis=0)
             corrected_full = full_mod_win_clean + mean_diff
         else:
             try:
+                # dOTC.fit(Y0, X0, X1):
+                # Y0 = ref obs
+                # X0 = biased calib model
+                # X1 = biased full series model
                 dotc = dOTC(bin_width=None, bin_origin=None)
                 dotc.fit(calib_obs_win_clean, calib_mod_win_clean, full_mod_win_clean)
                 corrected_full = dotc.predict(full_mod_win_clean)
+                
+                # Validate output
+                if (corrected_full is None or np.all(np.isnan(corrected_full)) or 
+                    corrected_full.shape != full_mod_win_clean.shape):
+                    raise ValueError("dOTC produced invalid OP")
+                    
             except (ValueError, RuntimeError, np.linalg.LinAlgError) as e:
-                # If dOTC fails, fall back to simple mean adjustment
-                print(f"dOTC failed for cell ({i},{j}), DOY {doy}: {e}. Using mean adjustment.")
                 mean_diff = np.nanmean(calib_obs_win_clean, axis=0) - np.nanmean(calib_mod_win_clean, axis=0)
                 corrected_full = full_mod_win_clean + mean_diff
 
@@ -121,39 +124,81 @@ def process_cell(i, j):
             precip_idx = var_names.index("precip")
             corrected_full[:, precip_idx] = np.clip(corrected_full[:, precip_idx], 0, None)
 
-        # Put corrected values back in their original positions
-        full_corrected_stack[full_mask] = np.nan  # Initialize with NaN
-        full_corrected_stack[full_mask][valid_mask_pred] = corrected_full
+        full_indices = np.where(full_mask)[0]
+        valid_indices = full_indices[valid_pred_mask]
+        
+        for k, idx in enumerate(valid_indices):
+            full_corrected_stack[idx, :] = corrected_full[k, :]
 
     return full_corrected_stack
 
-
-print("Starting gridwise dOTC correction...")
+print("initiating bias corr using dotc...")
+cell_pairs = [(i, j) for i in range(nN) for j in range(nE)]
 results = Parallel(n_jobs=8)(
     delayed(process_cell)(i, j)
-    for i in range(nN) for j in range(nE)
+    for i, j in tqdm(cell_pairs, desc="Processing cells")
 )
 
-# Recon
+
+print("Recon...")
 corrected_data = {var: np.full((ntime, nN, nE), np.nan, dtype=np.float32) for var in var_names}
+
 idx = 0
 for i in range(nN):
     for j in range(nE):
-        for v, var in enumerate(var_names):
-            corrected_data[var][:, i, j] = results[idx][:, v]
+        cell_result = results[idx]
+        if cell_result is not None and not np.all(np.isnan(cell_result)):
+            for v, var in enumerate(var_names):
+                corrected_data[var][:, i, j] = cell_result[:, v]
         idx += 1
 
-coords = {
-    "time": model_times,
-    "lat": (("lat", "lon"), model_datasets[0]['lat'].values), #2D
-    "lon": (("lat", "lon"), model_datasets[0]['lon'].values)
-}
+original_coords = list(model_datasets[0].coords.keys())
+print(f"Original coordinates: {original_coords}")
+
+if 'lat' in model_datasets[0].coords and 'lon' in model_datasets[0].coords:
+    if len(model_datasets[0]['lat'].dims) == 1:
+        coords = {
+            "time": model_times,
+            "lat": model_datasets[0]['lat'].values,
+            "lon": model_datasets[0]['lon'].values
+        }
+        dims = ("time", "lat", "lon")
+    else:
+        coords = {
+            "time": model_times,
+            "lat": (("N", "E"), model_datasets[0]['lat'].values),
+            "lon": (("N", "E"), model_datasets[0]['lon'].values)
+        }
+        dims = ("time", "N", "E")
+else:
+    coords = {"time": model_times}
+    dims = ("time", "N", "E")
+    for coord_name in ['N', 'E']:
+        if coord_name in model_datasets[0].coords:
+            coords[coord_name] = model_datasets[0][coord_name].values
 
 data_vars = {
-    var: (("time", "lat", "lon"), corrected_data[var])
+    var: (dims, corrected_data[var])
     for var in var_names
 }
+
 ds_out = xr.Dataset(data_vars, coords=coords)
+
+# OG datasets: attributes copied.
+ds_out.attrs = model_datasets[0].attrs.copy()
+for var in var_names:
+    if var in model_datasets[0]:
+        ds_out[var].attrs = model_datasets[0][var].attrs.copy()
+
 output_path = f"{config.BIAS_CORRECTED_DIR}/dOTC/dOTC_BC_AllCells_4vars.nc"
 ds_out.to_netcdf(output_path)
 print(f"Bias-corrected data saved to {output_path}")
+
+print("\nDiagnostics:")
+for var in var_names:
+    non_nan_count = np.sum(~np.isnan(corrected_data[var]))
+    total_count = corrected_data[var].size
+    percentage = 100 * non_nan_count / total_count
+    print(f"{var}: {non_nan_count}/{total_count} non-NaN values ({percentage:.1f}%)")
+
+print("dOTC bias correction completed!")
