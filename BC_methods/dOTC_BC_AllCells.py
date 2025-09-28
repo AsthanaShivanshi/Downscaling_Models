@@ -161,6 +161,13 @@ for v, var_name in enumerate(var_names):
     
     output_path = f"{config.BIAS_CORRECTED_DIR}/dOTC/{var_name}_dOTC_BC_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_r01.nc"
     
+    if 'lat' not in out_ds:
+        out_ds['lat'] = (('N', 'E'), original_model_ds['lat'].values)
+    if 'lon' not in out_ds:
+        out_ds['lon'] = (('N', 'E'), original_model_ds['lon'].values)
+
+    out_ds = out_ds.set_coords(['lat', 'lon'])
+
     out_ds.to_netcdf(output_path)
     print(f"Bias-corrected {var_name} saved to {output_path}")
     
