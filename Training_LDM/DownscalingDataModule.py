@@ -64,6 +64,28 @@ class DownscalingDataModule(LightningDataModule):
         else:
             self.train_dataset = None
 
+        #Val set
+
+        if (
+            isinstance(self.val_input, dict) and
+            isinstance(self.val_target, dict) and
+            len(self.val_input) > 0 and
+            len(self.val_target) > 0
+        ):
+            val_input_ds = {k: xr.open_dataset(v, engine='netcdf4') for k, v in self.val_input.items()}
+            val_target_ds = {k: xr.open_dataset(v, engine='netcdf4') for k, v in self.val_target.items()}
+            self.val_dataset = DownscalingDataset(
+                input_ds=val_input_ds,
+                target_ds=val_target_ds,
+                config={
+                    "variables": self.preprocessing.get("variables", {}),
+                    "preprocessing": self.preprocessing.get("preprocessing", {})
+                },
+                elevation_path=elevation_array,
+            )
+        else:
+            self.val_dataset = None
+
         if (
             isinstance(self.test_input, dict) and
             isinstance(self.test_target, dict) and
