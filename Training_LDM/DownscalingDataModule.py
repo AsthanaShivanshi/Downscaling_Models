@@ -115,9 +115,9 @@ class DownscalingDataModule(LightningDataModule):
     def val_dataloader(self):
         if self.val_dataset:
             return DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
-        return None
+        raise ValueError("Validation dataset is not initialized. Check your validation data paths and config.")
 
     def test_dataloader(self):
         if self.test_dataset:
             return DataLoader(self.test_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
-        return None
+        raise ValueError("Test dataset is not initialized. Check your test data paths and config.")

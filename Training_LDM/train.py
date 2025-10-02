@@ -54,8 +54,8 @@ def train(cfg: DictConfig):
     trainer = Trainer(
         callbacks=callbacks,
         logger=logger,
-        max_epochs=None,
-        accelerator=cfg.get("trainer", {}).get("accelerator", "gpu"),
+        max_epochs=200,
+        accelerator=cfg.get("trainer", {}).get("accelerator", "cuda"),
         devices=cfg.get("trainer", {}).get("devices", 1),
     )
 
