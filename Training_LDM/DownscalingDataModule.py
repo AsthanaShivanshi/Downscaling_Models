@@ -55,10 +55,7 @@ class DownscalingDataModule(LightningDataModule):
             self.train_dataset = DownscalingDataset(
                 input_ds=train_input_ds,
                 target_ds=train_target_ds,
-                config={
-                    "variables": self.preprocessing.get("variables", {}),
-                    "preprocessing": self.preprocessing.get("preprocessing", {})
-                },
+                config=self.preprocessing,
                 elevation_path=elevation_array,
             )
         else:
@@ -77,10 +74,7 @@ class DownscalingDataModule(LightningDataModule):
             self.val_dataset = DownscalingDataset(
                 input_ds=val_input_ds,
                 target_ds=val_target_ds,
-                config={
-                    "variables": self.preprocessing.get("variables", {}),
-                    "preprocessing": self.preprocessing.get("preprocessing", {})
-                },
+                config=self.preprocessing,
                 elevation_path=elevation_array,
             )
         else:
@@ -97,10 +91,7 @@ class DownscalingDataModule(LightningDataModule):
             self.test_dataset = DownscalingDataset(
                 input_ds=test_input_ds,
                 target_ds=test_target_ds,
-                config={
-                    "variables": self.preprocessing.get("variables", {}),
-                    "preprocessing": self.preprocessing.get("preprocessing", {})
-                },
+                config=self.preprocessing,
                 elevation_path=elevation_array,
             )
         else:
