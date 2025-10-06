@@ -4,7 +4,6 @@ from lightning import LightningDataModule
 from Training_LDM.Downscaling_Dataset_Prep import DownscalingDataset
 import rasterio
 import numpy as np
-import os
 
 class DownscalingDataModule(LightningDataModule):
     def __init__(
@@ -32,10 +31,6 @@ class DownscalingDataModule(LightningDataModule):
         self.num_workers = num_workers
         self.preprocessing = preprocessing or {}
 
-        self.train_dataset = None
-        self.val_dataset = None
-        self.test_dataset = None
-
     def setup(self, stage=None):
         # Load elevation once as array
         if self.elevation is not None and isinstance(self.elevation, str):
@@ -45,75 +40,52 @@ class DownscalingDataModule(LightningDataModule):
         else:
             elevation_array = self.elevation
 
-        if (
-            isinstance(self.train_input, dict) and
-            isinstance(self.train_target, dict) and
-            len(self.train_input) > 0 and
-            len(self.train_target) > 0
-        ):
-            train_input_ds = {k: xr.open_dataset(v, engine='netcdf4') for k, v in self.train_input.items()}
-            train_target_ds = {k: xr.open_dataset(v, engine='netcdf4') for k, v in self.train_target.items()}
-            self.train_dataset = DownscalingDataset(
-                input_ds=train_input_ds,
-                target_ds=train_target_ds,
-                config=self.preprocessing,
-                elevation_path=elevation_array,
-            )
-        else:
-            self.train_dataset = None
-
-        #Val set
-
-        if (
-            isinstance(self.val_input, dict) and
-            isinstance(self.val_target, dict) and
-            len(self.val_input) > 0 and
-            len(self.val_target) > 0
-        ):
+        train_input_ds = {k: xr.open_dataset(v, engine='netcdf4') for k, v in self.train_input.items()}
+        train_target_ds = {k: xr.open_dataset(v, engine='netcdf4') for k, v in self.train_target.items()}
+        self.train_dataset = DownscalingDataset(
+            input_ds=train_input_ds,
+            target_ds=train_target_ds,
+            config={"variables": self.preprocessing.get("variables", {}),
+                    "preprocessing": self.preprocessing.get("preprocessing", {})},
+            elevation_path=elevation_array,
+        )
+        # Val
+        if self.val_input and self.val_target:
             val_input_ds = {k: xr.open_dataset(v, engine='netcdf4') for k, v in self.val_input.items()}
             val_target_ds = {k: xr.open_dataset(v, engine='netcdf4') for k, v in self.val_target.items()}
             self.val_dataset = DownscalingDataset(
                 input_ds=val_input_ds,
                 target_ds=val_target_ds,
-                config=self.preprocessing,
+                config={"variables": self.preprocessing.get("variables", {}),
+                        "preprocessing": self.preprocessing.get("preprocessing", {})},
                 elevation_path=elevation_array,
             )
         else:
             self.val_dataset = None
-
-        if (
-            isinstance(self.test_input, dict) and
-            isinstance(self.test_target, dict) and
-            len(self.test_input) > 0 and
-            len(self.test_target) > 0
-        ):
+        # Test
+        if self.test_input and self.test_target:
             test_input_ds = {k: xr.open_dataset(v, engine='netcdf4') for k, v in self.test_input.items()}
             test_target_ds = {k: xr.open_dataset(v, engine='netcdf4') for k, v in self.test_target.items()}
             self.test_dataset = DownscalingDataset(
                 input_ds=test_input_ds,
                 target_ds=test_target_ds,
-                config=self.preprocessing,
+                config={"variables": self.preprocessing.get("variables", {}),
+                        "preprocessing": self.preprocessing.get("preprocessing", {})},
                 elevation_path=elevation_array,
             )
         else:
             self.test_dataset = None
 
-        print(f"Train dataset size: {len(self.train_dataset) if self.train_dataset else 0}")
-        print(f"Validation dataset size: {len(self.val_dataset) if self.val_dataset else 0}")
-        print(f"Test dataset size: {len(self.test_dataset) if self.test_dataset else 0}")
-
 
     def train_dataloader(self):
-        if self.train_dataset:
-            return DataLoader(self.train_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True)
-        return None
+        return DataLoader(self.train_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True)
 
     def val_dataloader(self):
         if self.val_dataset:
             return DataLoader(self.val_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
-        raise ValueError("Validation dataset is not initialized. Check your validation data paths and config.")
+        return None
 
     def test_dataloader(self):
         if self.test_dataset:
             return DataLoader(self.test_dataset, batch_size=self.batch_size, num_workers=self.num_workers)
-        raise ValueError("Test dataset is not initialized. Check your test data paths and config.")
+        return None

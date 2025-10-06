@@ -66,8 +66,12 @@ def train(cfg: DictConfig):
         callbacks=callbacks,
         logger=logger,
         max_epochs=200,
-        accelerator=cfg.get("trainer", {}).get("accelerator", "cuda"),
-        devices=cfg.get("trainer", {}).get("devices", 1),
+        accelerator="cpu",  # Force CPU for debugging
+        devices=1,
+
+        #For submitting jobs to cluster, GPU , training, uncomment below
+        #accelerator=cfg.get("trainer", {}).get("accelerator", "cuda"),
+        #devices=cfg.get("trainer", {}).get("devices", 1),
     )
 
     # Train
