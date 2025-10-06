@@ -4,6 +4,7 @@ from lightning import LightningDataModule
 from Training_LDM.Downscaling_Dataset_Prep import DownscalingDataset
 import rasterio
 import numpy as np
+import os
 
 class DownscalingDataModule(LightningDataModule):
     def __init__(
@@ -96,6 +97,10 @@ class DownscalingDataModule(LightningDataModule):
             )
         else:
             self.test_dataset = None
+
+        print(f"Train dataset size: {len(self.train_dataset) if self.train_dataset else 0}")
+        print(f"Validation dataset size: {len(self.val_dataset) if self.val_dataset else 0}")
+        print(f"Test dataset size: {len(self.test_dataset) if self.test_dataset else 0}")
 
 
     def train_dataloader(self):
