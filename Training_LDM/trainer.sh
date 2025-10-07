@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=ckpts_VAE
-#SBATCH --output=logs/ckpts_VAE/job_output-%j.txt
-#SBATCH --error=logs/ckpts_VAE/job_error-%j.txt
+#SBATCH --job-name=ckpts_LDM
+#SBATCH --output=logs/ckpts_LDM/job_output-%j.txt
+#SBATCH --error=logs/ckpts_LDM/job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --time=22:00:00
+#SBATCH --time=23:00:00
 #SBATCH --mem=256G
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
@@ -24,7 +24,7 @@ python -c "import wandb; print(wandb.__version__)"
 #python Training_LDM/train.py --config-name UNet_config.yaml
 
 # Training the VAE
-python Training_LDM/train.py --config-name VAE_config.yaml   
+#python Training_LDM/train.py --config-name VAE_config.yaml   
 
 # Training the LDM
-#python Training_LDM/train.py --config-name LDM_config.yaml
+python Training_LDM/train.py --config-name LDM_config.yaml
