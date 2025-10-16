@@ -37,6 +37,14 @@ class DownscalingDataset(Dataset):
         input_slices = [var.isel(time=index).values for var in self.input_vars]
         target_slices = [var.isel(time=index).values for var in self.target_vars]
 
+        # Clip precipitation to >= 0 for any variable named 'precip'
+        for i, var in enumerate(self.input_vars):
+            if hasattr(var, 'name') and 'precip' in var.name.lower():
+                input_slices[i] = np.clip(input_slices[i], 0, None)
+        for i, var in enumerate(self.target_vars):
+            if hasattr(var, 'name') and 'precip' in var.name.lower():
+                target_slices[i] = np.clip(target_slices[i], 0, None)
+
         if self.handle_nan:
             target_slices = [np.nan_to_num(arr, nan=self.nan_value).astype(np.float32) for arr in target_slices]
             input_slices = [np.nan_to_num(arr, nan=self.nan_value).astype(np.float32) for arr in input_slices]

@@ -40,15 +40,20 @@ class DownscalingDataModule(LightningDataModule):
         else:
             elevation_array = self.elevation
 
-        train_input_ds = {k: xr.open_dataset(v, engine='netcdf4') for k, v in self.train_input.items()}
-        train_target_ds = {k: xr.open_dataset(v, engine='netcdf4') for k, v in self.train_target.items()}
-        self.train_dataset = DownscalingDataset(
-            input_ds=train_input_ds,
-            target_ds=train_target_ds,
-            config={"variables": self.preprocessing.get("variables", {}),
-                    "preprocessing": self.preprocessing.get("preprocessing", {})},
-            elevation_path=elevation_array,
-        )
+        # Only create train dataset if both dicts are non-empty
+        if self.train_input and self.train_target:
+            train_input_ds = {k: xr.open_dataset(v, engine='netcdf4') for k, v in self.train_input.items()}
+            train_target_ds = {k: xr.open_dataset(v, engine='netcdf4') for k, v in self.train_target.items()}
+            self.train_dataset = DownscalingDataset(
+                input_ds=train_input_ds,
+                target_ds=train_target_ds,
+                config={"variables": self.preprocessing.get("variables", {}),
+                        "preprocessing": self.preprocessing.get("preprocessing", {})},
+                elevation_path=elevation_array,
+            )
+        else:
+            self.train_dataset = None
+
         # Val
         if self.val_input and self.val_target:
             val_input_ds = {k: xr.open_dataset(v, engine='netcdf4') for k, v in self.val_input.items()}
@@ -62,6 +67,7 @@ class DownscalingDataModule(LightningDataModule):
             )
         else:
             self.val_dataset = None
+
         # Test
         if self.test_input and self.test_target:
             test_input_ds = {k: xr.open_dataset(v, engine='netcdf4') for k, v in self.test_input.items()}

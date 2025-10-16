@@ -62,6 +62,8 @@ class DownscalingUnet(nn.Module):
         self.d3 = DecoderBlock(features[2], features[1])
         self.d4 = DecoderBlock(features[1], features[0])         
         self.outputs = nn.Conv2d(features[0], out_ch, kernel_size=1, padding=0)
+        #RELU for precip channel for outputs to be non negative
+        self.relu= nn.ReLU()
 
     def forward(self, x):
 
@@ -91,6 +93,7 @@ class DownscalingUnet(nn.Module):
         # Output
         out = self.outputs(d4)
         out_cropped= out[:,:,:original_height, :original_width]
+        out_cropped[:,0]=self.relu(out_cropped[:,0]) #RELU for precip channel
         return out_cropped
 
 
