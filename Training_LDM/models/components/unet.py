@@ -99,13 +99,13 @@ class DownscalingUnet(nn.Module):
 
 
 class DownscalingUnetLightning(LightningModule):
-    def __init__(self, in_ch=1, out_ch=1, features=[64,128,256,512], channel_names=None):
+    def __init__(self, in_ch=1, out_ch=1, features=[64,128,256,512], channel_names=None, unet_regr=None):
         super().__init__()
         self.unet = DownscalingUnet(in_ch, out_ch, features)
         self.loss_fn = nn.MSELoss()
         # Pass channel names from config
         self.channel_names = channel_names if channel_names is not None else [f"channel_{i}" for i in range(out_ch)]
-
+        self.unet_regr= unet_regr
     def forward(self, x):
         return self.unet(x)
 
