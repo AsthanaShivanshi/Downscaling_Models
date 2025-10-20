@@ -56,18 +56,13 @@ callbacks:
     monitor: val/loss
     patience: 10
     mode: min
+
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: Training_LDM/trained_ckpts
     filename: ${model._target_}_checkpoint
     save_top_k: 1
     monitor: val/loss
-    mode: min
-    
-  early_stopping:
-    _target_: lightning.pytorch.callbacks.EarlyStopping
-    monitor: val/loss
-    patience: 10
     mode: min
 
 model:
