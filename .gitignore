@@ -60,3 +60,5 @@ data/
 Training_LDM/trained_ckpts/
 BC_Model_Runs/
 BC_methods/BC_Model_Runs/
+*.png
+*.jpg
