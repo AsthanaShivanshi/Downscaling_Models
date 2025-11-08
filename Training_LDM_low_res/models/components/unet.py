@@ -131,7 +131,7 @@ class DownscalingUnetLightning(LightningModule):
 
         for i, loss in enumerate(per_channel_loss):
             self.log(f"train_loss_{self.channel_names[i]}", loss, on_step=False, on_epoch=True, prog_bar=True)
-        total_loss = per_channel_loss.mean()
+        total_loss = per_channel_loss.sum() #Changed from mean to sum for weighted loss, because precip loss was not going down. 
         self.log("train_loss", total_loss, on_epoch=True, prog_bar=True)
         return total_loss
     
@@ -143,7 +143,7 @@ class DownscalingUnetLightning(LightningModule):
         per_channel_loss = self.compute_weighted_loss(y_hat, y)
         for i, loss in enumerate(per_channel_loss):
             self.log(f"val_loss_{self.channel_names[i]}", loss, on_step=False, on_epoch=True, prog_bar=True)
-        total_loss = per_channel_loss.mean()
+        total_loss = per_channel_loss.sum()
         self.log("val/loss", total_loss, on_epoch=True, prog_bar=True)
         return total_loss
     
@@ -156,7 +156,7 @@ class DownscalingUnetLightning(LightningModule):
         per_channel_loss = self.compute_weighted_loss(y_hat, y)
         for i, loss in enumerate(per_channel_loss):
             self.log(f"test_loss_{self.channel_names[i]}", loss, on_step=False, on_epoch=True, prog_bar=True)
-        total_loss = per_channel_loss.mean()
+        total_loss = per_channel_loss.sum()
         self.log("test/loss", total_loss, on_epoch=True, prog_bar=True)
         return total_loss
 
