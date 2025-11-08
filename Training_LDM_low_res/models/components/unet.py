@@ -107,7 +107,7 @@ class DownscalingUnetLightning(LightningModule):
         self.channel_names = channel_names if channel_names is not None else [f"channel_{i}" for i in range(out_ch)]
         self.unet_regr= unet_regr
         self.register_buffer("loss_weights", torch.ones(out_ch))
-        self.loss_weights[precip_channel_idx]=10.0 #assuming precip channel is at index 0
+        self.loss_weights[precip_channel_idx]=1000 #assuming precip channel is at index 0, and that it is difficult to other channels to predict. 
 
 
     def forward(self, x):
