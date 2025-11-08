@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=UNet_ckpts_LDM
-#SBATCH --output=logs/ckpts_UNet/job_output-%j.txt
-#SBATCH --error=logs/ckpts_UNet/job_error-%j.txt
+#SBATCH --job-name=UNet_ckpts_LDM_low_res
+#SBATCH --output=logs/ckpts_UNet_low_res/job_output-%j.txt
+#SBATCH --error=logs/ckpts_UNet_low_res/job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=23:00:00
@@ -21,10 +21,10 @@ which python
 python -c "import wandb; print(wandb.__version__)"
 
 # Training the Unet
-python Training_LDM/train.py --config-name UNet_config.yaml
+python Training_LDM_low_res/train.py --config-name UNet_config.yaml
 
 # Training the VAE
-#python Training_LDM/train.py --config-name VAE_config.yaml   
+#python Training_LDM_low_res/train.py --config-name VAE_config.yaml
 
 # Training the LDM
-#python Training_LDM/train.py --config-name LDM_config.yaml
+#python Training_LDM_low_res/train.py --config-name LDM_config.yaml
