@@ -8,3 +8,4 @@ OUTPUTS_MODELS_DIR= os.environ.get("OUTPUTS_MODELS_DIR", f"{BASE_DIR}/sasthana/D
 BC_DIR= os.environ.get("BC_DIR", f"{BASE_DIR}/sasthana/Downscaling/Downscaling_Models/BC_methods")
 SCRATCH_DIR= os.environ.get("SCRATCH_DIR", f"/scratch/sasthana")
 BIAS_CORRECTED_DIR= os.environ.get("BIAS_CORRECTED_DIR", f"{BASE_DIR}/sasthana/Downscaling/Downscaling_Models/BC_Model_Runs")
+METEOSWISS_44_COARSENED_DATA_DIR= os.environ.get("METEOSWISS_44_COARSENED_DATA_DIR", f"{BASE_DIR}/sasthana/Downscaling/Downscaling_Models/Training_Dataset_50km_SR_1971_2023")
