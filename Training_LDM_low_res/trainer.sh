@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=LDM_ckpts_LDM_low_res
-#SBATCH --output=logs/ckpts_LDM_low_res/job_output-%j.txt
-#SBATCH --error=logs/ckpts_LDM_low_res/job_error-%j.txt
+#SBATCH --output=logs/ckpts_VAE_low_res/job_output-%j.txt
+#SBATCH --error=logs/ckpts_VAE_low_res/job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=12:00:00
