@@ -82,7 +82,7 @@ def train(cfg: DictConfig):
     ckpt_path = trainer.checkpoint_callback.best_model_path if hasattr(trainer, "checkpoint_callback") else None
     trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
 
-@hydra.main(version_base="1.3", config_path="configs", config_name="VAE_config.yaml")
+@hydra.main(version_base="1.3", config_path="configs", config_name="LDM_config.yaml")
 def main(cfg: DictConfig):
     train(cfg)
 
