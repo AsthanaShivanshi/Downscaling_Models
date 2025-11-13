@@ -29,9 +29,9 @@ dates = np.array([str(np.datetime64(t)) for t in times])
 
 
 # ckpts
-ckpt_unet = "trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt"
-ckpt_vae = "trained_ckpts/Training_LDM.models.ae_module.AutoencoderKL_checkpoint.ckpt"
-ckpt_ldm = "trained_ckpts/LDM_checkpoint.ckpt"
+ckpt_unet = "Training_LDM/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt"
+ckpt_vae = "Training_LDM/trained_ckpts/Training_LDM.models.ae_module.AutoencoderKL_checkpoint.ckpt"
+ckpt_ldm = "Training_LDM/trained_ckpts/LDM_checkpoint.ckpt"
 
 model_UNet = DownscalingUnetLightning(
     in_ch=5, out_ch=4, features=[64, 128, 256, 512],
@@ -224,7 +224,8 @@ if __name__ == "__main__":
             all_samples.append(np.stack(frame_samples))
 
     all_samples = np.stack(all_samples)
-    # Save samples and dates together
+
+#Added: tagging of dates with indices
     np.savez(args.output, samples=all_samples, dates=dates)
     print(f"All samples denormalized and saved to {args.output}, shape: {all_samples.shape}")
     print(f"Dates shape: {dates.shape}, first date: {dates[0]}")
