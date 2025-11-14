@@ -17,13 +17,11 @@ from models.components.ldm.denoiser import UNetModel
 
 # QDM runs
 model_input_paths = {
-    'precip': 'BC_Model_Runs/QDM/precip_QDM_BC_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_r01.nc',
-    'temp': 'BC_Model_Runs/QDM/temp_QDM_BC_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_r01.nc',
-    'temp_min': 'BC_Model_Runs/QDM/tmin_QDM_BC_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_r01.nc',
-    'temp_max': 'BC_Model_Runs/QDM/tmax_QDM_BC_MPI-CSC-REMO2009_MPI-M-MPI-ESM-LR_rcp85_1971-2099_r01.nc'
+    'precip': ('BC_Model_Runs/QDM/precip_BC_bicubic_r01.nc', 'precip'),
+    'temp': ('BC_Model_Runs/QDM/temp_BC_bicubic_r01.nc', 'temp'),
+    'temp_min': ('BC_Model_Runs/QDM/tmin_BC_bicubic_r01.nc', 'tmin'),  
+    'temp_max': ('BC_Model_Runs/QDM/tmax_BC_bicubic_r01.nc', 'tmax'), 
 }
-
-
 
 
 # scaling params
