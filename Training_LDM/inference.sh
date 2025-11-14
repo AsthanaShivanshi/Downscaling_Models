@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=LDM_inference_model_run
-#SBATCH --output=logs/testset_inference/job_output-%j.txt
-#SBATCH --error=logs/testset_inference/job_error-%j.txt
+#SBATCH --job-name=QDM_BC_LDM_inference_model_run
+#SBATCH --output=logs/bc_ldm_inference/job_output-%j.txt
+#SBATCH --error=logs/bc_ldm_inference/job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-00:00:00
@@ -11,7 +11,8 @@
 
 source diffscaler.sh
 export PYTHONPATH="$PROJECT_DIR"
-mkdir -p logs/testset_inference
+mkdir -p logs/bc_ldm_inference
+
 
 cd "$PROJECT_DIR"
 export WANDB_MODE=online
@@ -22,4 +23,4 @@ python -c "import wandb; print(wandb.__version__)"
 
 #python Training_LDM/inference_all_frames.py --n_samples 10
 
-python Training_LDM/inference_model_UNet_LDM.py --n_samples 10
+python Training_LDM/inference_model_UNet_LDM.py --n_samples 15

@@ -128,8 +128,6 @@ for k, v in ldm_ckpt["state_dict"].items():
     remapped_ldm_state_dict[new_key] = v
 
 
-
-
 denoiser = UNetModel(
     in_channels=32, out_channels=32, model_channels=64, num_res_blocks=2,
     attention_resolutions=[1,2,4], context_ch=None, channel_mult=[1,2,4,4],
@@ -208,7 +206,7 @@ da_ldm = xr.DataArray(
     },
     name="ldm_samples"
 )
-da_ldm.to_netcdf("modelrun_1981_2010_samples_LDM.nc")
+da_ldm.to_netcdf("QDM_BC_modelrun_1981_2010_samples_LDM.nc")
 
 
 da_unet = xr.DataArray(
@@ -220,4 +218,4 @@ da_unet = xr.DataArray(
     },
     name="unet_baseline"
 )
-da_unet.to_netcdf("modelrun_1981_2010_samples_UNet_baseline.nc")
+da_unet.to_netcdf("QDM_BC_modelrun_1981_2010_samples_UNet_baseline.nc")
