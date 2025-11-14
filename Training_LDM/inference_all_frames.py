@@ -20,7 +20,7 @@ from models.components.ldm.denoiser import UNetModel
 from DownscalingDataModule import DownscalingDataModule
 
 #Loading dates 
-datetime_ref_path = "Training_Chronological_Dataset/RhiresD_target_test_chronological_scaled.nc"
+datetime_ref_path = "Training_Chronological_Dataset/RhiresD_target_test_chronological_scaled.nc" #For matching indices to dates
 ds = xr.open_dataset(datetime_ref_path)
 
 times = ds["time"].values

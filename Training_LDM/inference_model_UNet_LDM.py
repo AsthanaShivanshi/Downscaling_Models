@@ -15,12 +15,12 @@ from models.components.ldm.denoiser.ddim import DDIMSampler
 from models.ldm_module import LatentDiffusion
 from models.components.ldm.denoiser import UNetModel
 
-# QDM runs
+# dOTC runs
 model_input_paths = {
-    'precip': ('BC_Model_Runs/QDM/precip_BC_bicubic_r01.nc', 'precip'),
-    'temp': ('BC_Model_Runs/QDM/temp_BC_bicubic_r01.nc', 'temp'),
-    'temp_min': ('BC_Model_Runs/QDM/tmin_BC_bicubic_r01.nc', 'tmin'),  
-    'temp_max': ('BC_Model_Runs/QDM/tmax_BC_bicubic_r01.nc', 'tmax'), 
+    'precip': ('BC_Model_Runs/dOTC/precip_temp_tmin_tmax_bicubic_r01.nc', 'precip'),
+    'temp': ('BC_Model_Runs/dOTC/precip_temp_tmin_tmax_bicubic_r01.nc', 'temp'),
+    'temp_min': ('BC_Model_Runs/dOTC/precip_temp_tmin_tmax_bicubic_r01.nc', 'tmin'),  
+    'temp_max': ('BC_Model_Runs/dOTC/precip_temp_tmin_tmax_bicubic_r01.nc', 'tmax'), 
 }
 
 
@@ -206,7 +206,7 @@ da_ldm = xr.DataArray(
     },
     name="ldm_samples"
 )
-da_ldm.to_netcdf("QDM_BC_modelrun_1981_2010_samples_LDM.nc")
+da_ldm.to_netcdf("dOTC_BC_modelrun_1981_2010_samples_LDM.nc")
 
 
 da_unet = xr.DataArray(
@@ -218,4 +218,4 @@ da_unet = xr.DataArray(
     },
     name="unet_baseline"
 )
-da_unet.to_netcdf("QDM_BC_modelrun_1981_2010_samples_UNet_baseline.nc")
+da_unet.to_netcdf("dOTC_BC_modelrun_1981_2010_samples_UNet_baseline.nc")
