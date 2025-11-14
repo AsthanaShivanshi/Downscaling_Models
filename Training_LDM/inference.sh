@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=LDM_inference_testset
+#SBATCH --job-name=LDM_inference_model_run
 #SBATCH --output=logs/testset_inference/job_output-%j.txt
 #SBATCH --error=logs/testset_inference/job_error-%j.txt
 #SBATCH --ntasks=1
@@ -20,4 +20,6 @@ export HYDRA_FULL_ERROR=1
 which python
 python -c "import wandb; print(wandb.__version__)"
 
-python Training_LDM/inference_all_frames.py --n_samples 15
+#python Training_LDM/inference_all_frames.py --n_samples 10
+
+python Training_LDM/inference_model_UNet_LDM.py --n_samples 10
