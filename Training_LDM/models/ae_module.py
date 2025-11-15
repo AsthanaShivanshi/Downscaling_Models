@@ -85,7 +85,7 @@ class AutoencoderKL(LightningModule):
             min_w = min(y.shape[-1], y_pred.shape[-1])
             y = y[..., :min_h, :min_w]
             y_pred = y_pred[..., :min_h, :min_w]
-        rec_loss = (y-y_pred).abs().mean()
+        rec_loss = ((y - y_pred) ** 2).mean()  # L2 loss instead of L1, changed
         kl_loss = kl_from_standard_normal(mean, log_var)
 
         #Beta annealing for KL loss stability : AsthanaSh

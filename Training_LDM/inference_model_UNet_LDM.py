@@ -9,8 +9,6 @@ import xarray as xr
 import argparse
 from tqdm import tqdm
 
-import rioxarray
-
 from models.components.unet import DownscalingUnetLightning
 from models.ae_module import AutoencoderKL
 from models.components.ae import SimpleConvEncoder, SimpleConvDecoder
@@ -203,20 +201,39 @@ def ddim_sample_from_t(sampler, model, x_t, t_start, t_end=0, shape=None, **kwar
         x, _ = sampler.p_sample_ddim(x, None, t.repeat(x.shape[0]), i, **kwargs)
     return x
 
+
 def pipeline(input_sample, seed=None):
     with torch.no_grad():
         if seed is not None:
             torch.manual_seed(seed)
             np.random.seed(seed)
+        # UNet prediction
         unet_prediction = model_UNet(input_sample)
-        # No posterior refinement for model runs (no target)
-        return unet_prediction[0].cpu().numpy()  # shape: (4, H, W)
+        # Bicubic input: first 4 channels (exclude elevation)
+        input_bicubic = input_sample[:, :4, :, :]
+        # Residuals: input_bicubic - unet_prediction
+        residuals = input_bicubic - unet_prediction
+        # Encode residuals to VAE latent
+        mean, log_var = model_VAE.encode(residuals)
+        std = torch.exp(0.5 * log_var)
+        eps = torch.randn_like(std)
+        latent = mean + eps * std
+        # LDM sampling
+        t = torch.tensor([ddim_num_steps-1], device=latent.device).long()
+        noise = torch.randn_like(latent)
+        noisy_latent = model_LDM.q_sample(latent, t, noise=noise)
+        denoised_latent = ddim_sample_from_t(sampler, model_LDM, noisy_latent, t_start=t.item())
+        # Decode denoised residuals
+        refined_residuals = model_VAE.decode(denoised_latent)
+        # Add back to UNet prediction
+        final_prediction = unet_prediction + refined_residuals
+        return final_prediction[0].cpu().numpy()
     
 
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_samples", type=int, default=15, help="N(Samples) per t")
+parser.add_argument("--n_samples", type=int, default=10, help="N(Samples) per t")
 args = parser.parse_args()
 n_samples = args.n_samples
 
@@ -227,7 +244,7 @@ inputs_norm = np.stack(inputs_norm)
 
 with tqdm(total=len(dates), desc="Frame") as pbar:
     for idx in range(inputs_norm.shape[0]):
-        input_sample = torch.tensor(inputs_norm[idx]).unsqueeze(0).to(device)  # shape: (1, 5, H, W)
+        input_sample = torch.tensor(inputs_norm[idx], dtype=torch.float32).unsqueeze(0).to(device)
         frame_samples = []
         with torch.no_grad():
             unet_pred = model_UNet(input_sample)
@@ -255,7 +272,7 @@ da_ldm = xr.DataArray(
     },
     name="ldm_samples"
 )
-da_ldm.to_netcdf("dOTC_BC_modelrun_1981_2010_samples_LDM.nc")
+da_ldm.to_netcdf("EQM_BC_modelrun_1981_2010_samples_LDM.nc")
 
 
 da_unet = xr.DataArray(
@@ -267,4 +284,4 @@ da_unet = xr.DataArray(
     },
     name="unet_baseline"
 )
-da_unet.to_netcdf("dOTC_BC_modelrun_1981_2010_samples_UNet_baseline.nc")
+da_unet.to_netcdf("EQM_BC_modelrun_1981_2010_samples_UNet_baseline.nc")

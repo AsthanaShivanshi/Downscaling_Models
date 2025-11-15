@@ -14,25 +14,21 @@ from models.ae_module import AutoencoderKL
 from models.components.ae import SimpleConvEncoder, SimpleConvDecoder
 from models.components.ldm.denoiser.ddim import DDIMSampler
 from models.ldm_module import LatentDiffusion
-
-
 from models.components.ldm.denoiser import UNetModel
-
 from DownscalingDataModule import DownscalingDataModule
 
-#Loading dates 
-datetime_ref_path = "Training_Chronological_Dataset/RhiresD_target_test_chronological_scaled.nc" #For matching indices to dates
+# Loading dates
+datetime_ref_path = "Training_Chronological_Dataset/RhiresD_target_test_chronological_scaled.nc"
 ds = xr.open_dataset(datetime_ref_path)
-
 times = ds["time"].values
 dates = np.array([str(np.datetime64(t)) for t in times])
 
-
-
-# ckpts
+# Model checkpoints
 ckpt_unet = "Training_LDM/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt"
 ckpt_vae = "Training_LDM/trained_ckpts/Training_LDM.models.ae_module.AutoencoderKL_checkpoint.ckpt"
 ckpt_ldm = "Training_LDM/trained_ckpts/LDM_checkpoint.ckpt"
+
+
 
 model_UNet = DownscalingUnetLightning(
     in_ch=5, out_ch=4, features=[64, 128, 256, 512],
@@ -41,8 +37,6 @@ model_UNet = DownscalingUnetLightning(
 unet_state_dict = torch.load(ckpt_unet, map_location="cpu")["state_dict"]
 model_UNet.load_state_dict(unet_state_dict, strict=False)
 model_UNet.eval()
-
-
 
 encoder = SimpleConvEncoder(in_dim=4, levels=1, min_ch=64, ch_mult=1)
 decoder = SimpleConvDecoder(in_dim=64, levels=1, min_ch=16)
@@ -53,11 +47,8 @@ model_VAE.eval()
 
 
 
+
 ldm_ckpt = torch.load(ckpt_ldm, map_location="cpu")
-
-
-
-#Debug; keys didnt match before 
 remapped_ldm_state_dict = {}
 for k, v in ldm_ckpt["state_dict"].items():
     if k.startswith("autoencoder.unet_regr.unet."):
@@ -67,9 +58,6 @@ for k, v in ldm_ckpt["state_dict"].items():
     else:
         new_key = k
     remapped_ldm_state_dict[new_key] = v
-
-
-
 
 denoiser = UNetModel(
     in_channels=32, out_channels=32, model_channels=64, num_res_blocks=2,
@@ -82,14 +70,12 @@ model_LDM.eval()
 
 
 
+
 ddim_num_steps = 129
-
-
-ddim_eta = 0.0 #Changeable from the .sh script
-
-
+ddim_eta = 0.0
 sampler = DDIMSampler(model_LDM, schedule="linear")
 sampler.make_schedule(ddim_num_steps=ddim_num_steps, ddim_eta=ddim_eta, verbose=False)
+
 
 
 
@@ -103,33 +89,32 @@ def ddim_sample_from_t(sampler, model, x_t, t_start, t_end=0, shape=None, **kwar
 
 
 
-def pipeline(input_sample, target_sample=None, seed=None):
+
+def get_latent_shape(input_sample):
+    dummy_residual = torch.zeros((1, 4, input_sample.shape[-2], input_sample.shape[-1]), device=input_sample.device)
+    mean, _ = model_VAE.encode(dummy_residual)
+    return mean.shape
+
+
+
+def pipeline(input_sample, seed=None):
     with torch.no_grad():
         if seed is not None:
             torch.manual_seed(seed)
             np.random.seed(seed)
         unet_prediction = model_UNet(input_sample)
-        if target_sample is not None:
-            residuals = target_sample - unet_prediction
-        else:
-            raise ValueError("target_sample required for posterior refinement.")
-        mean, log_var = model_VAE.encode(residuals)
-        std = torch.exp(0.5 * log_var)
-        eps = torch.randn_like(std)
-        latent = mean + eps * std
+        latent_shape = get_latent_shape(input_sample)
+        latent = torch.randn(latent_shape, device=unet_prediction.device)
         global ddim_num_steps
         t = torch.tensor([ddim_num_steps-1], device=latent.device).long()
-        noise = torch.randn_like(latent)
-        noisy_latent = model_LDM.q_sample(latent, t, noise=noise)
+        noisy_latent = model_LDM.q_sample(latent, t, noise=torch.randn_like(latent))
         denoised_latent = ddim_sample_from_t(sampler, model_LDM, noisy_latent, t_start=t.item())
-        refined_residuals = model_VAE.decode(denoised_latent)
-        final_prediction = unet_prediction + refined_residuals
+        sampled_residuals = model_VAE.decode(denoised_latent)
+        final_prediction = unet_prediction + sampled_residuals
         return final_prediction[0].cpu().numpy()  # shape: (4, H, W)
 
 
-
-
-
+# Data paths
 test_input_paths = {
     'precip': f'{config.DATASETS_TRAINING_DIR}/RhiresD_input_test_chronological_scaled.nc',
     'temp': f'{config.DATASETS_TRAINING_DIR}/TabsD_input_test_chronological_scaled.nc',
@@ -143,7 +128,6 @@ test_target_paths = {
     'temp_max': f'{config.DATASETS_TRAINING_DIR}/TmaxD_target_test_chronological_scaled.nc'
 }
 elevation_path = f'{config.BASE_DIR}/sasthana/Downscaling/Downscaling_Models/elevation.tif'
-
 
 
 
@@ -164,7 +148,6 @@ test_loader = dm.test_dataloader()
 
 
 
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model_UNet.to(device)
 model_VAE.to(device)
@@ -172,9 +155,8 @@ model_LDM.to(device)
 
 
 
-#Destandardisation
-#Number of samples : from .sh script
 
+# Destandardisation
 with open(f'{config.DATASETS_TRAINING_DIR}/RhiresD_scaling_params_chronological.json', 'r') as f:
     pr_params = json.load(f)
 with open(f'{config.DATASETS_TRAINING_DIR}/TabsD_scaling_params_chronological.json', 'r') as f:
@@ -191,7 +173,6 @@ def denorm_temp(x, params):
     return x * params['std'] + params['mean']
 
 def denorm_sample(sample):
-    # sample shape: (4, H, W)
     out = np.empty_like(sample)
     out[0] = denorm_pr(sample[0])  # Precip
     out[1] = denorm_temp(sample[1], temp_params)
@@ -219,7 +200,6 @@ if __name__ == "__main__":
             batch_size = test_inputs.shape[0]
             for idx in range(batch_size):
                 input_sample = test_inputs[idx].unsqueeze(0).to(device)
-                target_sample = test_targets[idx].unsqueeze(0).to(device)
                 frame_samples = []
 
                 # baseline pred
@@ -228,13 +208,15 @@ if __name__ == "__main__":
                     unet_pred_np = denorm_sample(unet_pred[0].cpu().numpy())
                     unet_baseline.append(unet_pred_np)
                 for seed in range(n_samples):
-                    sample = pipeline(input_sample, target_sample, seed=seed)
+                    sample = pipeline(input_sample, seed=seed)
                     sample_denorm = denorm_sample(sample)
                     frame_samples.append(sample_denorm)
                 all_samples.append(np.stack(frame_samples))
                 pbar.update(1)
 
-    #  samples
+
+
+    # Save LDM samples
     da_ldm = xr.DataArray(
         all_samples,
         dims=["time", "sample", "variable", "y", "x"],
@@ -246,7 +228,9 @@ if __name__ == "__main__":
     )
     da_ldm.to_netcdf("testset_2021_2023_samples_LDM.nc")
 
-    # unet pred
+
+
+    # Save UNet baseline
     da_unet = xr.DataArray(
         unet_baseline,
         dims=["time", "variable", "y", "x"],
@@ -260,4 +244,3 @@ if __name__ == "__main__":
 
     print(f"LDM samples saved with shape: {np.array(all_samples).shape}")
     print(f"UNet baseline saved with shape: {np.array(unet_baseline).shape}")
-

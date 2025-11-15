@@ -4,7 +4,7 @@ import torch.nn as nn
 from .resnet import ResBlock2D
 
 class SimpleConvEncoder(nn.Module):
-    def __init__(self, in_dim=1, levels=2, min_ch=64, ch_mult: int = 4):
+    def __init__(self, in_dim=1, levels=4, min_ch=128, ch_mult: int = 4):
         super().__init__()
         self.in_dim = in_dim
         self.levels = levels

@@ -1,0 +1,94 @@
+defaults:
+  - paths: paths.yaml
+  - _self_
+
+experiment:
+  batch_size: 32
+  num_workers: 4
+
+variables:
+  input:
+    precip: RhiresD
+    temp: TabsD
+    temp_min: TminD
+    temp_max: TmaxD
+  target:
+    precip: RhiresD
+    temp: TabsD
+    temp_min: TminD
+    temp_max: TmaxD
+
+preprocessing:
+  nan_to_num: true
+  nan_value : 0.0
+
+data:
+  train:
+    input: ${paths.data.train.input}
+    target: ${paths.data.train.target}
+  val:
+    input: ${paths.data.val.input}
+    target: ${paths.data.val.target}
+  test:
+    input: ${paths.data.test.input}
+    target: ${paths.data.test.target}
+  static:
+    elevation: ${paths.data.static.elevation}
+
+encoder:
+  _target_: Training_LDM.models.components.ae.SimpleConvEncoder
+  in_dim: 4  #AsthanaSh:  progression, : 4,64,128,256 due toi levels =3
+  levels: 4
+  min_ch: 32
+  ch_mult: 4
+
+decoder:
+  _target_: Training_LDM.models.components.ae.SimpleConvDecoder
+  in_dim: 256 #Matching encoders OP  
+  levels: 4
+  min_ch: 32
+
+datamodule:
+  _target_: Training_LDM.DownscalingDataModule.DownscalingDataModule
+  train_input: ${data.train.input}
+  train_target: ${data.train.target}
+  val_input: ${data.val.input}
+  val_target: ${data.val.target}
+  test_input: ${data.test.input}
+  test_target: ${data.test.target}
+  elevation: ${data.static.elevation}
+  batch_size: ${experiment.batch_size}
+  num_workers: ${experiment.num_workers}
+  preprocessing:
+    variables: ${variables}
+    preprocessing: ${preprocessing}
+
+callbacks:
+  early_stopping:
+    _target_: lightning.pytorch.callbacks.EarlyStopping
+    monitor: val/loss
+    patience: 10
+    mode: min
+  model_checkpoint:
+    _target_: lightning.pytorch.callbacks.ModelCheckpoint
+    dirpath: Training_LDM/trained_ckpts
+    filename: ${model._target_}_checkpoint
+    save_top_k: 1
+    monitor: val/loss
+    mode: min
+
+unet_arch:
+  _target_: Training_LDM.models.components.unet.DownscalingUnet
+  in_ch: 5  #4 vars + elevation
+  out_ch: 4
+  features: [64,128,256,512]
+
+
+model:
+  _target_: Training_LDM.models.ae_module.AutoencoderKL
+  encoder: ${encoder}
+  decoder: ${decoder}
+  kl_weight: 0.001
+  ae_flag: "residual"
+  #Unet ckpt not required for VAE under vanilla setup
+  unet_regr: Training_LDM/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt  # set only if using residuals
