@@ -245,7 +245,6 @@ with tqdm(total=len(dates), desc="Frame") as pbar:
         pbar.update(1)
 
 #all_samples = np.stack(all_samples)  # shape: (N, n_samples, 4, H, W)
-unet_baseline = np.stack(unet_baseline)  # shape: (N, 4, H, W)
 
 #da_ldm = xr.DataArray(
 #    all_samples,
@@ -258,13 +257,33 @@ unet_baseline = np.stack(unet_baseline)  # shape: (N, 4, H, W)
 #)
 #da_ldm.to_netcdf("EQM_BC_modelrun_1981_2010_samples_LDM.nc")
 
-da_unet = xr.DataArray(
-    unet_baseline,
-    dims=["time", "variable", "y", "x"],
+# After collecting all unet_baseline predictions
+
+unet_baseline_np = np.array(unet_baseline)  # shape: (time, 4, N, E)
+unet_baseline_np = np.transpose(unet_baseline_np, (0, 2, 3, 1))  # (time, N, E, variable)
+
+# Load 2D lat/lon from a reference file (adjust path as needed)
+ref_ds = xr.open_dataset(model_input_paths['precip'][0])
+lat2d = ref_ds["lat"].values  # (N, E)
+lon2d = ref_ds["lon"].values  # (N, E)
+ref_ds.close()
+
+var_names = ["precip", "temp", "temp_min", "temp_max"]
+
+ds_out = xr.Dataset(
+    {
+        var: (("time", "N", "E"), unet_baseline_np[:, :, :, i])
+        for i, var in enumerate(var_names)
+    },
     coords={
         "time": dates,
-        "variable": ["precip", "temp", "temp_min", "temp_max"]
-    },
-    name="unet_baseline"
+        "N": np.arange(lat2d.shape[0]),
+        "E": np.arange(lat2d.shape[1]),
+        "lat": (("N", "E"), lat2d),
+        "lon": (("N", "E"), lon2d),
+    }
 )
-da_unet.to_netcdf("QDM_BC_modelrun_1981_2010_samples_UNet_baseline.nc")
+
+encoding = {var: {"_FillValue": np.nan} for var in var_names}
+ds_out.to_netcdf("QDM_BC_modelrun_1981_2010_samples_UNet_baseline.nc", encoding=encoding)
+print(f"UNet baseline saved with shape: {unet_baseline_np.shape}")

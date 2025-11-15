@@ -22,6 +22,8 @@ datetime_ref_path = "Training_Chronological_Dataset/RhiresD_target_test_chronolo
 ds = xr.open_dataset(datetime_ref_path)
 times = ds["time"].values
 dates = np.array([str(np.datetime64(t)) for t in times])
+lat= ds["lat"].values
+lon= ds["lon"].values
 
 # Model checkpoints
 ckpt_unet = "Training_LDM/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt"
@@ -201,8 +203,11 @@ if __name__ == "__main__":
                 # baseline pred
                 with torch.no_grad():
                     unet_pred = model_UNet(input_sample)
+             
                     unet_pred_np = denorm_sample(unet_pred[0].cpu().numpy())
+
                     unet_baseline.append(unet_pred_np)
+                    
                 #for seed in range(n_samples):
                 #    sample = pipeline(input_sample, seed=seed)
                 #    sample_denorm = denorm_sample(sample)
@@ -226,17 +231,33 @@ if __name__ == "__main__":
 
 
 
-    # Save UNet baseline
-    da_unet = xr.DataArray(
-        unet_baseline,
-        dims=["time", "variable", "y", "x"],
-        coords={
-            "time": dates,
-            "variable": ["precip", "temp", "temp_min", "temp_max"]
-        },
-        name="unet_baseline"
-    )
-    da_unet.to_netcdf("testset_2021_2023_samples_UNet_baseline.nc")
+    unet_baseline_np = np.array(unet_baseline)  # shape: (time, 4, N, E)
+    unet_baseline_np = np.transpose(unet_baseline_np, (0, 2, 3, 1))  # (time, N, E, variable)
 
+    lat2d = ds["lat"].values  # (N, E)
+    lon2d = ds["lon"].values  # (N, E)
+    var_names = ["precip", "temp", "temp_min", "temp_max"]
+
+    ds_out = xr.Dataset(
+        {
+            var: (("time", "N", "E"), unet_baseline_np[:, :, :, i])
+            for i, var in enumerate(var_names)
+        },
+        coords={
+            "N": np.arange(lat2d.shape[0]),
+            "E": np.arange(lat2d.shape[1]),
+            "lat": (("N", "E"), lat2d),
+            "lon": (("N", "E"), lon2d),
+        }
+    )
+
+    encoding = {var: {"_FillValue": np.nan} for var in var_names}
+
+
+    ds_out.to_netcdf("testset_2021_2023_samples_UNet_baseline.nc", encoding=encoding)
+    print(f"UNet baseline saved with shape: {unet_baseline_np.shape}")
+
+    #debug prints
+    print(ds_out.dims)
+    print(ds_out.coords)
     #print(f"LDM samples saved with shape: {np.array(all_samples).shape}")
-    print(f"UNet baseline saved with shape: {np.array(unet_baseline).shape}")
