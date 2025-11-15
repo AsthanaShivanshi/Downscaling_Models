@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=dOTC_UNet_inference_model_run
+#SBATCH --job-name=QDM_UNet_inference_model_run
 #SBATCH --output=logs/bc_unet_inference/job_output-%j.txt
 #SBATCH --error=logs/bc_unet_inference/job_error-%j.txt
 #SBATCH --ntasks=1
