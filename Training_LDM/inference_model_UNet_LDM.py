@@ -7,6 +7,9 @@ import config
 import json
 import xarray as xr
 import argparse
+from tqdm import tqdm
+
+import rioxarray
 
 from models.components.unet import DownscalingUnetLightning
 from models.ae_module import AutoencoderKL
@@ -17,10 +20,10 @@ from models.components.ldm.denoiser import UNetModel
 
 # dOTC runs
 model_input_paths = {
-    'precip': ('BC_Model_Runs/dOTC/precip_temp_tmin_tmax_bicubic_r01.nc', 'precip'),
-    'temp': ('BC_Model_Runs/dOTC/precip_temp_tmin_tmax_bicubic_r01.nc', 'temp'),
-    'temp_min': ('BC_Model_Runs/dOTC/precip_temp_tmin_tmax_bicubic_r01.nc', 'tmin'),  
-    'temp_max': ('BC_Model_Runs/dOTC/precip_temp_tmin_tmax_bicubic_r01.nc', 'tmax'), 
+    'precip': ('BC_Model_Runs/EQM/precip_BC_bicubic_r01.nc', 'precip'),   #first element : path, second,,variable
+    'temp': ('BC_Model_Runs/EQM/temp_BC_bicubic_r01.nc', 'temp'),
+    'temp_min': ('BC_Model_Runs/EQM/tmin_BC_bicubic_r01.nc', 'tmin'),  
+    'temp_max': ('BC_Model_Runs/EQM/tmax_BC_bicubic_r01.nc', 'tmax'), 
 }
 
 
@@ -37,14 +40,19 @@ with open(f'{config.DATASETS_TRAINING_DIR}/TmaxD_scaling_params_chronological.js
 
 
 
-def standardise(var, ds, params, start, end):
-    arr = ds[var].sel(time=slice(start, end)).values
+def standardise(var, ds, params, start, end, ds_varname=None):
+    if ds_varname is None:
+        ds_varname = var
+    arr = ds[ds_varname].sel(time=slice(start, end)).values
     if var == "precip":
+        arr = np.where(arr < 0, 0, arr)  #neg value handling
+        arr = np.nan_to_num(arr, nan=0.0)  
         arr = np.log(arr + params['epsilon'])
         arr = (arr - params['mean']) / params['std']
     else:
         arr = (arr - params['mean']) / params['std']
     return arr
+
 
 
 
@@ -68,30 +76,64 @@ def denorm_sample(sample):
 
 #elevation
 elevation_path = f'{config.BASE_DIR}/sasthana/Downscaling/Downscaling_Models/elevation.tif'
-elev = xr.open_dataarray(elevation_path).values  # shape: (H, W)
+elev_da = xr.open_dataarray(elevation_path)
+print(elev_da.rio.crs)
 
-ds_ref = xr.open_dataset(model_input_paths['precip'])
+print(elev_da.dims)
+print(elev_da.coords)
+
+ref_ds = xr.open_dataset(model_input_paths['precip'][0])
+target_lat = ref_ds['lat']
+target_lon = ref_ds['lon']
+# Interpolating elevation
+elev_da = elev_da.rename({'x': 'lon', 'y': 'lat'})
+elev_interp = elev_da.interp(lat=target_lat, lon=target_lon)
+elev = elev_interp.squeeze().values 
+
+ds_ref = xr.open_dataset(model_input_paths['precip'][0])
 dates = ds_ref['time'].sel(time=slice("1981-01-01", "2010-12-31")).values
 
 # With elevation
 inputs_norm = []
+
+
+datasets = {var: xr.open_dataset(path[0]) for var, path in model_input_paths.items()}
+
 for t in dates:
     frame = []
     for var, path in model_input_paths.items():
-        ds = xr.open_dataset(path)
+        ds = datasets[var]
+        ds_varname = path[1]
         if var == "precip":
-            arr = standardise(var, ds, pr_params, start=str(t), end=str(t))
+            arr = standardise(var, ds, pr_params, start=str(t), end=str(t), ds_varname=ds_varname)
         elif var == "temp":
-            arr = standardise(var, ds, temp_params, start=str(t), end=str(t))
+            arr = standardise(var, ds, temp_params, start=str(t), end=str(t), ds_varname=ds_varname)
         elif var == "temp_min":
-            arr = standardise(var, ds, temp_min_params, start=str(t), end=str(t))
+            arr = standardise(var, ds, temp_min_params, start=str(t), end=str(t), ds_varname=ds_varname)
         elif var == "temp_max":
-            arr = standardise(var, ds, temp_max_params, start=str(t), end=str(t))
-        frame.append(arr.squeeze())  # shape: (H, W)
-    frame.append(elev)  # Add elevation as 5th channel
-    inputs_norm.append(np.stack(frame))  # shape: (5, H, W)
-inputs_norm = np.stack(inputs_norm)  # shape: (N, 5, H, W)
+            arr = standardise(var, ds, temp_max_params, start=str(t), end=str(t), ds_varname=ds_varname)
+        frame.append(arr.squeeze())
+    frame.append(elev)
 
+
+
+
+    # Debug print
+    for i, arr in enumerate(frame):
+        print(f"Frame {i} shape: {arr.shape}")
+    print(f"Elevation shape: {elev.shape}")
+    inputs_norm.append(np.stack(frame))
+
+
+
+
+
+# Closing for memory issues : DEBUG 
+for ds in datasets.values():
+    ds.close()
+
+    
+ds_ref.close()
 
 
 # Models
@@ -181,18 +223,25 @@ n_samples = args.n_samples
 all_samples = []
 unet_baseline = []
 
-for idx in range(inputs_norm.shape[0]):
-    input_sample = torch.tensor(inputs_norm[idx]).unsqueeze(0).to(device)  # shape: (1, 5, H, W)
-    frame_samples = []
-    with torch.no_grad():
-        unet_pred = model_UNet(input_sample)
-        unet_pred_np = denorm_sample(unet_pred[0].cpu().numpy())
-        unet_baseline.append(unet_pred_np)
-    for seed in range(n_samples):
-        sample = pipeline(input_sample, seed=seed)
-        sample_denorm = denorm_sample(sample)
-        frame_samples.append(sample_denorm)
-    all_samples.append(np.stack(frame_samples))
+inputs_norm = np.stack(inputs_norm)
+
+with tqdm(total=len(dates), desc="Frame") as pbar:
+    for idx in range(inputs_norm.shape[0]):
+        input_sample = torch.tensor(inputs_norm[idx]).unsqueeze(0).to(device)  # shape: (1, 5, H, W)
+        frame_samples = []
+        with torch.no_grad():
+            unet_pred = model_UNet(input_sample)
+            unet_pred_np = denorm_sample(unet_pred[0].cpu().numpy())
+            unet_baseline.append(unet_pred_np)
+        for seed in range(n_samples):
+            sample = pipeline(input_sample, seed=seed)
+            sample_denorm = denorm_sample(sample)
+            frame_samples.append(sample_denorm)
+        all_samples.append(np.stack(frame_samples))
+        pbar.update(1)
+
+
+
 
 all_samples = np.stack(all_samples)  # shape: (N, n_samples, 4, H, W)
 unet_baseline = np.stack(unet_baseline)  # shape: (N, 4, H, W)

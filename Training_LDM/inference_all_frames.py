@@ -7,6 +7,7 @@ import config
 import json
 import xarray as xr
 import argparse
+from tqdm import tqdm
 
 from models.components.unet import DownscalingUnetLightning
 from models.ae_module import AutoencoderKL
@@ -203,37 +204,37 @@ def denorm_sample(sample):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--n_samples", type=int, default=15, help="Number of samples per frame")
+    parser.add_argument("--n_samples", type=int, default=10, help="Number of samples per frame")
     args = parser.parse_args()
 
     n_samples = args.n_samples
     all_samples = []
     unet_baseline = []
 
-    for batch in test_loader:
-        test_inputs, test_targets = batch
-        batch_size = test_inputs.shape[0]
-        for idx in range(batch_size):
-            input_sample = test_inputs[idx].unsqueeze(0).to(device)
-            target_sample = test_targets[idx].unsqueeze(0).to(device)
-            frame_samples = []
-            # baseline pred
-            with torch.no_grad():
-                unet_pred = model_UNet(input_sample)
-                unet_pred_np = denorm_sample(unet_pred[0].cpu().numpy())
-                unet_baseline.append(unet_pred_np)
-            for seed in range(n_samples):
-                sample = pipeline(input_sample, target_sample, seed=seed)
-                sample_denorm = denorm_sample(sample)
-                frame_samples.append(sample_denorm)
-            all_samples.append(np.stack(frame_samples))
+    total_frames = len(test_loader.dataset)
 
-    all_samples = np.stack(all_samples)  # shape: (N, n_samples, 4, H, W)
-    unet_baseline = np.stack(unet_baseline)  # shape: (N, 4, H, W)
+    with tqdm(total=total_frames, desc="Frames") as pbar:
+        for batch in test_loader:
+            test_inputs, test_targets = batch
+            batch_size = test_inputs.shape[0]
+            for idx in range(batch_size):
+                input_sample = test_inputs[idx].unsqueeze(0).to(device)
+                target_sample = test_targets[idx].unsqueeze(0).to(device)
+                frame_samples = []
 
+                # baseline pred
+                with torch.no_grad():
+                    unet_pred = model_UNet(input_sample)
+                    unet_pred_np = denorm_sample(unet_pred[0].cpu().numpy())
+                    unet_baseline.append(unet_pred_np)
+                for seed in range(n_samples):
+                    sample = pipeline(input_sample, target_sample, seed=seed)
+                    sample_denorm = denorm_sample(sample)
+                    frame_samples.append(sample_denorm)
+                all_samples.append(np.stack(frame_samples))
+                pbar.update(1)
 
-
-    # LDM samples
+    #  samples
     da_ldm = xr.DataArray(
         all_samples,
         dims=["time", "sample", "variable", "y", "x"],
@@ -245,8 +246,7 @@ if __name__ == "__main__":
     )
     da_ldm.to_netcdf("testset_2021_2023_samples_LDM.nc")
 
-
-#unet pred
+    # unet pred
     da_unet = xr.DataArray(
         unet_baseline,
         dims=["time", "variable", "y", "x"],
@@ -258,6 +258,6 @@ if __name__ == "__main__":
     )
     da_unet.to_netcdf("testset_2021_2023_samples_UNet_baseline.nc")
 
-    print(f"LDM samples saved with shape: {all_samples.shape}")
-    print(f"UNet baseline saved with shape: {unet_baseline.shape}")
+    print(f"LDM samples saved with shape: {np.array(all_samples).shape}")
+    print(f"UNet baseline saved with shape: {np.array(unet_baseline).shape}")
 
