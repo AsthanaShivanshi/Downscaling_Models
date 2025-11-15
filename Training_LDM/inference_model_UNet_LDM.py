@@ -16,7 +16,7 @@ from models.components.ldm.denoiser.ddim import DDIMSampler
 from models.ldm_module import LatentDiffusion
 from models.components.ldm.denoiser import UNetModel
 
-# dOTC runs
+# QDM runs
 model_input_paths = {
     'precip': ('BC_Model_Runs/QDM/precip_BC_bicubic_r01.nc', 'precip'),   #first element : path, second,,variable
     'temp': ('BC_Model_Runs/QDM/temp_BC_bicubic_r01.nc', 'temp'),
@@ -96,6 +96,23 @@ inputs_norm = []
 
 
 datasets = {var: xr.open_dataset(path[0]) for var, path in model_input_paths.items()}
+
+
+
+var_to_dsvar = {
+    "precip": "precip",
+    "temp": "temp",
+    "temp_min": "tmin",
+    "temp_max": "tmax"
+}
+orig_inputs = []
+for var in ["precip", "temp", "temp_min", "temp_max"]:
+    ds_in = xr.open_dataset(model_input_paths[var][0])
+    orig_inputs.append(ds_in[model_input_paths[var][1]].values)  # shape: (time, N, E)
+    ds_in.close()
+orig_inputs = np.stack(orig_inputs, axis=1)  # shape: (time, 4, N, E)
+
+
 
 for t in dates:
     frame = []
@@ -232,10 +249,12 @@ inputs_norm = np.stack(inputs_norm)
 with tqdm(total=len(dates), desc="Frame") as pbar:
     for idx in range(inputs_norm.shape[0]):
         input_sample = torch.tensor(inputs_norm[idx], dtype=torch.float32).unsqueeze(0).to(device)
-        #frame_samples = []
         with torch.no_grad():
             unet_pred = model_UNet(input_sample)
             unet_pred_np = denorm_sample(unet_pred[0].cpu().numpy())
+            # Mask using original bicubic input NaNs
+            nan_mask = np.isnan(orig_inputs[idx])  # shape: (4, N, E)
+            unet_pred_np[nan_mask] = np.nan
             unet_baseline.append(unet_pred_np)
         #for seed in range(n_samples):
         #    sample = pipeline(input_sample, seed=seed)

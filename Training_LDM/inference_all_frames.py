@@ -179,6 +179,22 @@ def denorm_sample(sample):
     return out
 
 
+orig_inputs = []
+var_to_dsvar = {
+    "precip": "RhiresD",
+    "temp": "TabsD",
+    "temp_min": "TminD",
+    "temp_max": "TmaxD"
+}
+
+
+for var in ["precip", "temp", "temp_min", "temp_max"]:
+    ds_in = xr.open_dataset(test_input_paths[var])
+    orig_inputs.append(ds_in[var_to_dsvar[var]].values)  # shape: (time, N, E)
+    ds_in.close()
+orig_inputs = np.stack(orig_inputs, axis=1)  # shape: (time, 4, N, E)
+
+
 
 
 if __name__ == "__main__":
@@ -204,8 +220,11 @@ if __name__ == "__main__":
                 with torch.no_grad():
                     unet_pred = model_UNet(input_sample)
              
+                    input_np = test_inputs[idx].cpu().numpy()
+                    frame_idx = len(unet_baseline)  # This assumes you append in order!
+                    nan_mask = np.isnan(orig_inputs[frame_idx])  # shape: (4, N, E)
                     unet_pred_np = denorm_sample(unet_pred[0].cpu().numpy())
-
+                    unet_pred_np[nan_mask] = np.nan
                     unet_baseline.append(unet_pred_np)
                     
                 #for seed in range(n_samples):
@@ -244,6 +263,7 @@ if __name__ == "__main__":
             for i, var in enumerate(var_names)
         },
         coords={
+            "time": dates,
             "N": np.arange(lat2d.shape[0]),
             "E": np.arange(lat2d.shape[1]),
             "lat": (("N", "E"), lat2d),

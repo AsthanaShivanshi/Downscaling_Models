@@ -67,6 +67,7 @@ def train(cfg: DictConfig):
         callbacks=callbacks,
         logger=logger,
         max_epochs=200,
+        
         #accelerator="cpu",  # Forcing CPU for debugging on interactive partition : AsthanaSh
         #devices=1,
 
