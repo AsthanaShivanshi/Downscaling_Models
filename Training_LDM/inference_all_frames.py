@@ -25,8 +25,8 @@ dates = np.array([str(np.datetime64(t)) for t in times])
 
 # Model checkpoints
 ckpt_unet = "Training_LDM/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt"
-ckpt_vae = "Training_LDM/trained_ckpts/Training_LDM.models.ae_module.AutoencoderKL_checkpoint.ckpt"
-ckpt_ldm = "Training_LDM/trained_ckpts/LDM_checkpoint.ckpt"
+#ckpt_vae = "Training_LDM/trained_ckpts/Training_LDM.models.ae_module.AutoencoderKL_checkpoint.ckpt"
+#ckpt_ldm = "Training_LDM/trained_ckpts/LDM_checkpoint.ckpt"
 
 
 
@@ -38,63 +38,60 @@ unet_state_dict = torch.load(ckpt_unet, map_location="cpu")["state_dict"]
 model_UNet.load_state_dict(unet_state_dict, strict=False)
 model_UNet.eval()
 
-encoder = SimpleConvEncoder(in_dim=4, levels=1, min_ch=64, ch_mult=1)
-decoder = SimpleConvDecoder(in_dim=64, levels=1, min_ch=16)
-model_VAE = AutoencoderKL.load_from_checkpoint(
-    ckpt_vae, encoder=encoder, decoder=decoder, kl_weight=0.01, strict=False
-)
-model_VAE.eval()
+encoder = SimpleConvEncoder(in_dim=4, levels=2, min_ch=16, ch_mult=4)
+decoder = SimpleConvDecoder(in_dim=64, levels=2, min_ch=16)
+#model_VAE = AutoencoderKL.load_from_checkpoint(
+#    ckpt_vae, encoder=encoder, decoder=decoder, kl_weight=0.001, strict=False
+#)
+#model_VAE.eval()
 
 
 
 
-ldm_ckpt = torch.load(ckpt_ldm, map_location="cpu")
-remapped_ldm_state_dict = {}
-for k, v in ldm_ckpt["state_dict"].items():
-    if k.startswith("autoencoder.unet_regr.unet."):
-        new_key = "autoencoder.unet." + k[len("autoencoder.unet_regr.unet."):]
-    elif k.startswith("autoencoder.unet_regr."):
-        new_key = "autoencoder.unet." + k[len("autoencoder.unet_regr."):]
-    else:
-        new_key = k
-    remapped_ldm_state_dict[new_key] = v
-
-denoiser = UNetModel(
-    in_channels=32, out_channels=32, model_channels=64, num_res_blocks=2,
-    attention_resolutions=[1,2,4], context_ch=None, channel_mult=[1,2,4,4],
-    conv_resample=True, dims=2, use_fp16=False, num_heads=4
-)
-model_LDM = LatentDiffusion(denoiser=denoiser, autoencoder=model_VAE)
-model_LDM.load_state_dict(remapped_ldm_state_dict, strict=False)
-model_LDM.eval()
-
-
-
-
-ddim_num_steps = 129
-ddim_eta = 0.0
-sampler = DDIMSampler(model_LDM, schedule="linear")
-sampler.make_schedule(ddim_num_steps=ddim_num_steps, ddim_eta=ddim_eta, verbose=False)
+#ldm_ckpt = torch.load(ckpt_ldm, map_location="cpu")
+#remapped_ldm_state_dict = {}
+#for k, v in ldm_ckpt["state_dict"].items():
+#    if k.startswith("autoencoder.unet_regr.unet."):
+#        new_key = "autoencoder.unet." + k[len("autoencoder.unet_regr.unet."):]
+#    elif k.startswith("autoencoder.unet_regr."):
+#        new_key = "autoencoder.unet." + k[len("autoencoder.unet_regr."):]
+#    else:
+#        new_key = k
+#    remapped_ldm_state_dict[new_key] = v
+#denoiser = UNetModel(
+#    in_channels=32, out_channels=32, model_channels=64, num_res_blocks=2,
+#    attention_resolutions=[1,2,4], context_ch=None, channel_mult=[1,2,4,4],
+#    conv_resample=True, dims=2, use_fp16=False, num_heads=4
+#)
+#model_LDM = LatentDiffusion(denoiser=denoiser, autoencoder=model_VAE)
+#model_LDM.load_state_dict(remapped_ldm_state_dict, strict=False)
+#model_LDM.eval()
 
 
 
 
-def ddim_sample_from_t(sampler, model, x_t, t_start, t_end=0, shape=None, **kwargs):
-    device = x_t.device
-    timesteps = torch.arange(t_start, t_end-1, -1, device=device)
-    x = x_t
-    for i, t in enumerate(timesteps):
-        x, _ = sampler.p_sample_ddim(x, None, t.repeat(x.shape[0]), i, **kwargs)
-    return x
+#ddim_num_steps = 129
+#ddim_eta = 0.0
+#sampler = DDIMSampler(model_LDM, schedule="linear")
+#sampler.make_schedule(ddim_num_steps=ddim_num_steps, ddim_eta=ddim_eta, verbose=False)
+
+
+
+#def ddim_sample_from_t(sampler, model, x_t, t_start, t_end=0, shape=None, **kwargs):
+#   device = x_t.device
+#    timesteps = torch.arange(t_start, t_end-1, -1, device=device)
+#    x = x_t
+#    for i, t in enumerate(timesteps):
+#        x, _ = sampler.p_sample_ddim(x, None, t.repeat(x.shape[0]), i, **kwargs)
+#    return x
 
 
 
 
-def get_latent_shape(input_sample):
-    dummy_residual = torch.zeros((1, 4, input_sample.shape[-2], input_sample.shape[-1]), device=input_sample.device)
-    mean, _ = model_VAE.encode(dummy_residual)
-    return mean.shape
-
+#def get_latent_shape(input_sample):
+#    dummy_residual = torch.zeros((1, 4, input_sample.shape[-2], input_sample.shape[-1]), device=input_sample.device)
+#    mean, _ = model_VAE.encode(dummy_residual)
+#    return mean.shape
 
 
 def pipeline(input_sample, seed=None):
@@ -103,16 +100,15 @@ def pipeline(input_sample, seed=None):
             torch.manual_seed(seed)
             np.random.seed(seed)
         unet_prediction = model_UNet(input_sample)
-        latent_shape = get_latent_shape(input_sample)
-        latent = torch.randn(latent_shape, device=unet_prediction.device)
-        global ddim_num_steps
-        t = torch.tensor([ddim_num_steps-1], device=latent.device).long()
-        noisy_latent = model_LDM.q_sample(latent, t, noise=torch.randn_like(latent))
-        denoised_latent = ddim_sample_from_t(sampler, model_LDM, noisy_latent, t_start=t.item())
-        sampled_residuals = model_VAE.decode(denoised_latent)
-        final_prediction = unet_prediction + sampled_residuals
-        return final_prediction[0].cpu().numpy()  # shape: (4, H, W)
-
+        #latent_shape = get_latent_shape(input_sample)
+        #latent = torch.randn(latent_shape, device=unet_prediction.device)
+        #global ddim_num_steps
+        #t = torch.tensor([ddim_num_steps-1], device=latent.device).long()
+        #noisy_latent = model_LDM.q_sample(latent, t, noise=torch.randn_like(latent))
+        #denoised_latent = ddim_sample_from_t(sampler, model_LDM, noisy_latent, t_start=t.item())
+        #sampled_residuals = model_VAE.decode(denoised_latent)
+        #final_prediction = unet_prediction + sampled_residuals
+        #return final_prediction[0].cpu().numpy()  # shape: (4, H, W)
 
 # Data paths
 test_input_paths = {
@@ -150,8 +146,8 @@ test_loader = dm.test_dataloader()
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model_UNet.to(device)
-model_VAE.to(device)
-model_LDM.to(device)
+#model_VAE.to(device)
+#model_LDM.to(device)
 
 
 
@@ -185,10 +181,10 @@ def denorm_sample(sample):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--n_samples", type=int, default=10, help="Number of samples per frame")
+    #parser.add_argument("--n_samples", type=int, default=10, help="Number of samples per frame")
     args = parser.parse_args()
 
-    n_samples = args.n_samples
+    #n_samples = args.n_samples
     all_samples = []
     unet_baseline = []
 
@@ -207,26 +203,26 @@ if __name__ == "__main__":
                     unet_pred = model_UNet(input_sample)
                     unet_pred_np = denorm_sample(unet_pred[0].cpu().numpy())
                     unet_baseline.append(unet_pred_np)
-                for seed in range(n_samples):
-                    sample = pipeline(input_sample, seed=seed)
-                    sample_denorm = denorm_sample(sample)
-                    frame_samples.append(sample_denorm)
-                all_samples.append(np.stack(frame_samples))
+                #for seed in range(n_samples):
+                #    sample = pipeline(input_sample, seed=seed)
+                #    sample_denorm = denorm_sample(sample)
+                #    frame_samples.append(sample_denorm)
+                #all_samples.append(np.stack(frame_samples))
                 pbar.update(1)
 
 
 
     # Save LDM samples
-    da_ldm = xr.DataArray(
-        all_samples,
-        dims=["time", "sample", "variable", "y", "x"],
-        coords={
-            "time": dates,
-            "variable": ["precip", "temp", "temp_min", "temp_max"]
-        },
-        name="ldm_samples"
-    )
-    da_ldm.to_netcdf("testset_2021_2023_samples_LDM.nc")
+    #da_ldm = xr.DataArray(
+    #    all_samples,
+    #    dims=["time", "sample", "variable", "y", "x"],
+    #    coords={
+    #        "time": dates,
+    #        "variable": ["precip", "temp", "temp_min", "temp_max"]
+    #    },
+    #    name="ldm_samples"
+    #)
+    #da_ldm.to_netcdf("testset_2021_2023_samples_LDM.nc")
 
 
 
@@ -242,5 +238,5 @@ if __name__ == "__main__":
     )
     da_unet.to_netcdf("testset_2021_2023_samples_UNet_baseline.nc")
 
-    print(f"LDM samples saved with shape: {np.array(all_samples).shape}")
+    #print(f"LDM samples saved with shape: {np.array(all_samples).shape}")
     print(f"UNet baseline saved with shape: {np.array(unet_baseline).shape}")

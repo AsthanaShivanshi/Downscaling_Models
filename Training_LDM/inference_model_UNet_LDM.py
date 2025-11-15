@@ -18,10 +18,10 @@ from models.components.ldm.denoiser import UNetModel
 
 # dOTC runs
 model_input_paths = {
-    'precip': ('BC_Model_Runs/EQM/precip_BC_bicubic_r01.nc', 'precip'),   #first element : path, second,,variable
-    'temp': ('BC_Model_Runs/EQM/temp_BC_bicubic_r01.nc', 'temp'),
-    'temp_min': ('BC_Model_Runs/EQM/tmin_BC_bicubic_r01.nc', 'tmin'),  
-    'temp_max': ('BC_Model_Runs/EQM/tmax_BC_bicubic_r01.nc', 'tmax'), 
+    'precip': ('BC_Model_Runs/dOTC/precip_temp_tmin_tmax_bicubic_r01.nc', 'precip'),   #first element : path, second,,variable
+    'temp': ('BC_Model_Runs/dOTC/precip_temp_tmin_tmax_bicubic_r01.nc', 'temp'),
+    'temp_min': ('BC_Model_Runs/dOTC/precip_temp_tmin_tmax_bicubic_r01.nc', 'tmin'),  
+    'temp_max': ('BC_Model_Runs/dOTC/precip_temp_tmin_tmax_bicubic_r01.nc', 'tmax'), 
 }
 
 
@@ -136,8 +136,8 @@ ds_ref.close()
 
 # Models
 ckpt_unet = "Training_LDM/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt"
-ckpt_vae = "Training_LDM/trained_ckpts/Training_LDM.models.ae_module.AutoencoderKL_checkpoint.ckpt"
-ckpt_ldm = "Training_LDM/trained_ckpts/LDM_checkpoint.ckpt"
+#ckpt_vae = "Training_LDM/trained_ckpts/Training_LDM.models.ae_module.AutoencoderKL_checkpoint.ckpt"
+#ckpt_ldm = "Training_LDM/trained_ckpts/LDM_checkpoint.ckpt"
 
 model_UNet = DownscalingUnetLightning(
     in_ch=5, out_ch=4, features=[64, 128, 256, 512],
@@ -147,97 +147,84 @@ unet_state_dict = torch.load(ckpt_unet, map_location="cpu")["state_dict"]
 model_UNet.load_state_dict(unet_state_dict, strict=False)
 model_UNet.eval()
 
-encoder = SimpleConvEncoder(in_dim=4, levels=1, min_ch=64, ch_mult=1)
-decoder = SimpleConvDecoder(in_dim=64, levels=1, min_ch=16)
-model_VAE = AutoencoderKL.load_from_checkpoint(
-    ckpt_vae, encoder=encoder, decoder=decoder, kl_weight=0.01, strict=False
-)
-model_VAE.eval()
+#encoder = SimpleConvEncoder(in_dim=4, levels=1, min_ch=64, ch_mult=1)
+#decoder = SimpleConvDecoder(in_dim=64, levels=1, min_ch=16)
+#model_VAE = AutoencoderKL.load_from_checkpoint(
+#    ckpt_vae, encoder=encoder, decoder=decoder, kl_weight=0.01, strict=False
+#)
+#model_VAE.eval()
 
+#ldm_ckpt = torch.load(ckpt_ldm, map_location="cpu")
+#remapped_ldm_state_dict = {}
+#for k, v in ldm_ckpt["state_dict"].items():
+#    if k.startswith("autoencoder.unet_regr.unet."):
+#        new_key = "autoencoder.unet." + k[len("autoencoder.unet_regr.unet."):]
+#    elif k.startswith("autoencoder.unet_regr."):
+#        new_key = "autoencoder.unet." + k[len("autoencoder.unet_regr."):]
+#    else:
+#        new_key = k
+#    remapped_ldm_state_dict[new_key] = v
 
-
-ldm_ckpt = torch.load(ckpt_ldm, map_location="cpu")
-remapped_ldm_state_dict = {}
-for k, v in ldm_ckpt["state_dict"].items():
-    if k.startswith("autoencoder.unet_regr.unet."):
-        new_key = "autoencoder.unet." + k[len("autoencoder.unet_regr.unet."):]
-    elif k.startswith("autoencoder.unet_regr."):
-        new_key = "autoencoder.unet." + k[len("autoencoder.unet_regr."):]
-    else:
-        new_key = k
-    remapped_ldm_state_dict[new_key] = v
-
-
-denoiser = UNetModel(
-    in_channels=32, out_channels=32, model_channels=64, num_res_blocks=2,
-    attention_resolutions=[1,2,4], context_ch=None, channel_mult=[1,2,4,4],
-    conv_resample=True, dims=2, use_fp16=False, num_heads=4
-)
-model_LDM = LatentDiffusion(denoiser=denoiser, autoencoder=model_VAE)
-model_LDM.load_state_dict(remapped_ldm_state_dict, strict=False)
-model_LDM.eval()
-
-
-
+#denoiser = UNetModel(
+#    in_channels=32, out_channels=32, model_channels=64, num_res_blocks=2,
+#    attention_resolutions=[1,2,4], context_ch=None, channel_mult=[1,2,4,4],
+#    conv_resample=True, dims=2, use_fp16=False, num_heads=4
+#)
+#model_LDM = LatentDiffusion(denoiser=denoiser, autoencoder=model_VAE)
+#model_LDM.load_state_dict(remapped_ldm_state_dict, strict=False)
+#model_LDM.eval()
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model_UNet.to(device)
-model_VAE.to(device)
-model_LDM.to(device)
+#model_VAE.to(device)
+#model_LDM.to(device)
 
-ddim_num_steps = 129
-ddim_eta = 0.0
-sampler = DDIMSampler(model_LDM, schedule="linear")
-sampler.make_schedule(ddim_num_steps=ddim_num_steps, ddim_eta=ddim_eta, verbose=False)
+#ddim_num_steps = 129
+#ddim_eta = 0.0
+#sampler = DDIMSampler(model_LDM, schedule="linear")
+#sampler.make_schedule(ddim_num_steps=ddim_num_steps, ddim_eta=ddim_eta, verbose=False)
 
+#def ddim_sample_from_t(sampler, model, x_t, t_start, t_end=0, shape=None, **kwargs):
+#    device = x_t.device
+#    timesteps = torch.arange(t_start, t_end-1, -1, device=device)
+#    x = x_t
+#    for i, t in enumerate(timesteps):
+#        x, _ = sampler.p_sample_ddim(x, None, t.repeat(x.shape[0]), i, **kwargs)
+#    return x
 
-
-
-def ddim_sample_from_t(sampler, model, x_t, t_start, t_end=0, shape=None, **kwargs):
-    device = x_t.device
-    timesteps = torch.arange(t_start, t_end-1, -1, device=device)
-    x = x_t
-    for i, t in enumerate(timesteps):
-        x, _ = sampler.p_sample_ddim(x, None, t.repeat(x.shape[0]), i, **kwargs)
-    return x
-
-
-def pipeline(input_sample, seed=None):
-    with torch.no_grad():
-        if seed is not None:
-            torch.manual_seed(seed)
-            np.random.seed(seed)
-        # UNet prediction
-        unet_prediction = model_UNet(input_sample)
-        # Bicubic input: first 4 channels (exclude elevation)
-        input_bicubic = input_sample[:, :4, :, :]
-        # Residuals: input_bicubic - unet_prediction
-        residuals = input_bicubic - unet_prediction
-        # Encode residuals to VAE latent
-        mean, log_var = model_VAE.encode(residuals)
-        std = torch.exp(0.5 * log_var)
-        eps = torch.randn_like(std)
-        latent = mean + eps * std
-        # LDM sampling
-        t = torch.tensor([ddim_num_steps-1], device=latent.device).long()
-        noise = torch.randn_like(latent)
-        noisy_latent = model_LDM.q_sample(latent, t, noise=noise)
-        denoised_latent = ddim_sample_from_t(sampler, model_LDM, noisy_latent, t_start=t.item())
-        # Decode denoised residuals
-        refined_residuals = model_VAE.decode(denoised_latent)
-        # Add back to UNet prediction
-        final_prediction = unet_prediction + refined_residuals
-        return final_prediction[0].cpu().numpy()
-    
-
-
+#def pipeline(input_sample, seed=None):
+#    with torch.no_grad():
+#        if seed is not None:
+#            torch.manual_seed(seed)
+#            np.random.seed(seed)
+#        # UNet prediction
+#        unet_prediction = model_UNet(input_sample)
+#        # Bicubic input: first 4 channels (exclude elevation)
+#        input_bicubic = input_sample[:, :4, :, :]
+#        # Residuals: input_bicubic - unet_prediction
+#        residuals = input_bicubic - unet_prediction
+#        # Encode residuals to VAE latent
+#        mean, log_var = model_VAE.encode(residuals)
+#        std = torch.exp(0.5 * log_var)
+#        eps = torch.randn_like(std)
+#        latent = mean + eps * std
+#        # LDM sampling
+#        t = torch.tensor([ddim_num_steps-1], device=latent.device).long()
+#        noise = torch.randn_like(latent)
+#        noisy_latent = model_LDM.q_sample(latent, t, noise=noise)
+#        denoised_latent = ddim_sample_from_t(sampler, model_LDM, noisy_latent, t_start=t.item())
+#        # Decode denoised residuals
+#        refined_residuals = model_VAE.decode(denoised_latent)
+#        # Add back to UNet prediction
+#        final_prediction = unet_prediction + refined_residuals
+#        return final_prediction[0].cpu().numpy()
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_samples", type=int, default=10, help="N(Samples) per t")
+#parser.add_argument("--n_samples", type=int, default=10, help="N(Samples) per t")
 args = parser.parse_args()
-n_samples = args.n_samples
+#n_samples = args.n_samples
 
-all_samples = []
+#all_samples = []
 unet_baseline = []
 
 inputs_norm = np.stack(inputs_norm)
@@ -245,35 +232,31 @@ inputs_norm = np.stack(inputs_norm)
 with tqdm(total=len(dates), desc="Frame") as pbar:
     for idx in range(inputs_norm.shape[0]):
         input_sample = torch.tensor(inputs_norm[idx], dtype=torch.float32).unsqueeze(0).to(device)
-        frame_samples = []
+        #frame_samples = []
         with torch.no_grad():
             unet_pred = model_UNet(input_sample)
             unet_pred_np = denorm_sample(unet_pred[0].cpu().numpy())
             unet_baseline.append(unet_pred_np)
-        for seed in range(n_samples):
-            sample = pipeline(input_sample, seed=seed)
-            sample_denorm = denorm_sample(sample)
-            frame_samples.append(sample_denorm)
-        all_samples.append(np.stack(frame_samples))
+        #for seed in range(n_samples):
+        #    sample = pipeline(input_sample, seed=seed)
+        #    sample_denorm = denorm_sample(sample)
+        #    frame_samples.append(sample_denorm)
+        #all_samples.append(np.stack(frame_samples))
         pbar.update(1)
 
-
-
-
-all_samples = np.stack(all_samples)  # shape: (N, n_samples, 4, H, W)
+#all_samples = np.stack(all_samples)  # shape: (N, n_samples, 4, H, W)
 unet_baseline = np.stack(unet_baseline)  # shape: (N, 4, H, W)
 
-da_ldm = xr.DataArray(
-    all_samples,
-    dims=["time", "sample", "variable", "y", "x"],
-    coords={
-        "time": dates,
-        "variable": ["precip", "temp", "temp_min", "temp_max"]
-    },
-    name="ldm_samples"
-)
-da_ldm.to_netcdf("EQM_BC_modelrun_1981_2010_samples_LDM.nc")
-
+#da_ldm = xr.DataArray(
+#    all_samples,
+#    dims=["time", "sample", "variable", "y", "x"],
+#    coords={
+#        "time": dates,
+#        "variable": ["precip", "temp", "temp_min", "temp_max"]
+#    },
+#    name="ldm_samples"
+#)
+#da_ldm.to_netcdf("EQM_BC_modelrun_1981_2010_samples_LDM.nc")
 
 da_unet = xr.DataArray(
     unet_baseline,
@@ -284,4 +267,4 @@ da_unet = xr.DataArray(
     },
     name="unet_baseline"
 )
-da_unet.to_netcdf("EQM_BC_modelrun_1981_2010_samples_UNet_baseline.nc")
+da_unet.to_netcdf("dOTC_BC_modelrun_1981_2010_samples_UNet_baseline.nc")
