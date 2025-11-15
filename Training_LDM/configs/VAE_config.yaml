@@ -94,3 +94,11 @@ model:
   ae_flag: "residual"
 
   unet_regr: Training_LDM/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt  # set only if using residuals
+
+
+lr_scheduler:
+  _target_: lightning.pytorch.lr_scheduler.ReduceLROnPlateau
+  mode: min
+  factor: 0.25
+  patience: 5
+  min_lr: 1e-6

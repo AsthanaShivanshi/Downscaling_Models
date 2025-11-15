@@ -39,8 +39,13 @@ class AutoencoderKL(LightningModule):
             kernel_size=1)
         # self.log_var = nn.Parameter(torch.zeros(size=()))
         self.kl_weight = kl_weight
+
+        #For correcting systemic bias : AsthanaSh
+        self.bias = nn.Parameter(torch.zeros(size=(1,4,1,1)))  #4 output channels
         self.ae_flag = ae_flag
         assert self.ae_flag in [None, 'residual', 'hres'], f'ae_flag {self.ae_flag} not recognized!!'
+        
+        
         if self.ae_flag=='residual':
             assert unet_regr is not None, 'If you want to work with residuals, provide a unet_regression network!'
         if unet_regr is not None:
@@ -57,7 +62,7 @@ class AutoencoderKL(LightningModule):
     def decode(self, z):
         z = self.to_decoder(z)
         dec = self.decoder(z)
-        return dec
+        return dec + self.bias
 
     def forward(self, input, sample_posterior=True):
         (mean, log_var) = self.encode(input)
@@ -85,11 +90,11 @@ class AutoencoderKL(LightningModule):
             min_w = min(y.shape[-1], y_pred.shape[-1])
             y = y[..., :min_h, :min_w]
             y_pred = y_pred[..., :min_h, :min_w]
-        rec_loss = ((y - y_pred) ** 2).mean()  # L2 loss instead of L1, changed
+        rec_loss = (y - y_pred).abs().mean()  # L1 loss. #for perceptual quality
         kl_loss = kl_from_standard_normal(mean, log_var)
 
         #Beta annealing for KL loss stability : AsthanaSh
-        beta= min(1.0, self.current_epoch / 100.0)*self.kl_weight # linear increase from 0 to 1 in first 100 epochs
+        beta= min(1.0, self.current_epoch / 200.0)* self.kl_weight # linear increase from 0 to 1 in first 100 epochs
         total_loss = rec_loss + beta * kl_loss
 
         return (total_loss, rec_loss, kl_loss)
@@ -114,18 +119,18 @@ class AutoencoderKL(LightningModule):
         self.val_test_step(batch, batch_idx, split="test")
 
     def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(self.parameters(), lr=1e-3,
-            betas=(0.5, 0.9), weight_decay=1e-3)
-        reduce_lr = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, patience=3, factor=0.25 
-        ) #AsthanaSh : removed the verbose flag, was not working 
+        optimizer = torch.optim.AdamW(self.parameters(), lr=1e-3, betas=(0.5, 0.9), weight_decay=1e-3)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode='min', factor=0.5, patience=5, min_lr=1e-6
+        )
         return {
             "optimizer": optimizer,
             "lr_scheduler": {
-                "scheduler": reduce_lr,
-                "monitor": "val/rec_loss",
+                "scheduler": scheduler,
+                "monitor": "val/loss",  # or your validation loss key
+                "interval": "epoch",
                 "frequency": 1,
-            },
+            }
         }
     
     def preprocess_batch(self, batch):

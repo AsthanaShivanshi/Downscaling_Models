@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=QDM_inference_model_run
 #SBATCH --output=logs/bc_unet_inference/job_output-%j.txt
-#SBATCH --error=logs/bc_net_inference/job_error-%j.txt
+#SBATCH --error=logs/bc_unet_inference/job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-00:00:00
