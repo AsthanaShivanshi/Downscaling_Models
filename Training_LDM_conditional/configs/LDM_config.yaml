@@ -36,14 +36,14 @@ data:
     elevation: ${paths.data.static.elevation}
 
 encoder:
-  _target_: Training_LDM.models.components.ae.SimpleConvEncoder
+  _target_: Training_LDM_conditional.models.components.ae.SimpleConvEncoder
   in_dim: 4
   levels: 2
   min_ch: 16
   ch_mult: 4
 
 decoder:
-  _target_: Training_LDM.models.components.ae.SimpleConvDecoder
+  _target_: Training_LDM_conditional.models.components.ae.SimpleConvDecoder
   in_dim: 64
   levels: 2
   min_ch: 16
@@ -51,22 +51,22 @@ decoder:
 
 
 sampler:
-  _target_: Training_LDM.models.components.ldm.denoiser.DDIMSampler
+  _target_: Training_LDM_conditional.models.components.ldm.denoiser.DDIMSampler
   model: ${denoiser}
-  schedule: "cosine"
+  schedule: "linear"
   device: "cuda"
   ddim_num_steps: 250
   ddim_eta: 0.0
 
 
 ema:
-  _target_: Training_LDM.models.components.ldm.denoiser.LitEma
+  _target_: Training_LDM_conditional.models.components.ldm.denoiser.LitEma
   model: ${denoiser}
   decay: 0.9999
   use_num_updates: true
 
 datamodule:
-  _target_: Training_LDM.DownscalingDataModule.DownscalingDataModule #Path to the exact class, not the module file : AsthanaSh
+  _target_: Training_LDM_conditional.DownscalingDataModule.DownscalingDataModule #Path to the exact class, not the module file : AsthanaSh
   train_input: ${data.train.input}
   train_target: ${data.train.target}
   val_input: ${data.val.input}
@@ -89,15 +89,15 @@ callbacks:
     mode: min
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
-    dirpath: Training_LDM/trained_ckpts
-    filename: LDM_checkpoint_V1_linear_schedule_1000_steps
+    dirpath: Training_LDM_conditional/trained_ckpts
+    filename: LDM_checkpoint_V1_linear_schedule_250_steps
     save_top_k: 1
     monitor: val/loss
     mode: min
 
 conditioner:
-  _target_: Training_LDM.models.components.ldm.conditioner.AFNOConditionerNetBase
-  autoencoder: null 
+  _target_: Training_LDM_conditional.models.components.ldm.conditioner.AFNOConditionerNetBase
+  autoencoder: ??? #Conditions with the VAE encoder output : AsthanaSh 
   embed_dim: 128
   embed_dim_out: 128
   analysis_depth: 4
@@ -108,13 +108,13 @@ conditioner:
 
 
 denoiser:
-  _target_: Training_LDM.models.components.ldm.denoiser.UNetModel
+  _target_: Training_LDM_conditional.models.components.ldm.denoiser.UNetModel
   in_channels: 32 #Matching VAE latent channels : AsthanaSh
   out_channels: 32
   model_channels: 64
   num_res_blocks: 2
   attention_resolutions: [1,2,4]
-  context_ch: 128 #Conditioning with AFNO conditioner output : AsthanaSh
+  context_ch: [128, 128, 128, 128] #Conditioning with AFNO conditioner output : AsthanaSh
   channel_mult: [1,2,4,4]
   conv_resample: true
   dims: 2
@@ -123,16 +123,16 @@ denoiser:
 
 model:
 #Need to pass VAE autoencoder , not encoder and decoder : AsthanaSh
-  _target_: Training_LDM.models.ldm_module.LatentDiffusion
+  _target_: Training_LDM_conditional.models.ldm_module.LatentDiffusion
   denoiser: ${denoiser}
   autoencoder:
-    _target_: Training_LDM.models.ae_module.AutoencoderKL
+    _target_: Training_LDM_conditional.models.ae_module.AutoencoderKL
     encoder: ${encoder}
     decoder: ${decoder}
-    unet_regr: Training_LDM/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt
+    unet_regr: Training_LDM_conditional/trained_ckpts/Training_LDM_conditional.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt
   context_encoder: ${conditioner}  #Conditions the denoiser with Unet prediction : AsthanaSh
   #VAE ckpt loaded from the ae_load_state_file 
-  ae_load_state_file: Training_LDM/trained_ckpts/Training_LDM.models.ae_module.AutoencoderKL_checkpoint.ckpt
+  ae_load_state_file: Training_LDM_conditional/trained_ckpts/Training_LDM_conditional.models.ae_module.AutoencoderKL_checkpoint.ckpt
   #Note : Output from LDM : [batch_size, 4, height, width] (AsthanaSh)
   parameterization: "eps"
   loss_type: "l2"

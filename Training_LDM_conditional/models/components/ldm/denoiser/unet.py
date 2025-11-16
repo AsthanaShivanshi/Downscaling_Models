@@ -323,6 +323,12 @@ class UNetModel(nn.Module):
         )
 
     def forward(self, x, timesteps, context=None):
+
+        if context is not None:
+            print(f"Context conditioning is being used. Context shape: {type(context)} {getattr(context, 'shape', None)}")
+        else:
+            print(f"No context conditioning in use.")
+            #AsthanaSh sebug prints for checking context usage
         #Padding required for shape mismatch : AsthanaSh
         factor = 2 ** len(self.channel_mult)
         height, width = x.shape[-2], x.shape[-1]

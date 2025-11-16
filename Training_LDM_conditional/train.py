@@ -51,7 +51,11 @@ def train(cfg: DictConfig):
 #For LDM, pass
     autoencoder_cfg = cfg.model.autoencoder
     autoencoder = hydra.utils.instantiate(autoencoder_cfg, unet_regr=unet_model if cfg.model.get("unet_regr") else None)
-    model= hydra.utils.instantiate(cfg.model,autoencoder=autoencoder)
+    #Need to pass conditioner
+    conditioner_cfg = cfg.model.context_encoder
+    conditioner = hydra.utils.instantiate(conditioner_cfg,autoencoder=autoencoder)
+    
+    model= hydra.utils.instantiate(cfg.model,autoencoder=autoencoder, context_encoder=conditioner)
 
     # WandB logger
     logger = WandbLogger(project="LDM_res_cascade", log_model=True)
@@ -66,7 +70,7 @@ def train(cfg: DictConfig):
     trainer = Trainer(
         callbacks=callbacks,
         logger=logger,
-        max_epochs=200,
+        max_epochs=300,
         
         #accelerator="cpu",  # Forcing CPU for debugging on interactive partition : AsthanaSh
         #devices=1,
