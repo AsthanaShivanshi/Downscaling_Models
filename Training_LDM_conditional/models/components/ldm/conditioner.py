@@ -54,13 +54,14 @@ class AFNOConditionerNetBase(nn.Module):
         self.fusion = FusionBlock2d(embed_dim, input_size_ratios,
             afno_fusion=afno_fusion, dim_out=embed_dim_out)
 
-
     def forward(self, x):
-        (x, t_relative) = list(zip(*x))
+        # Accept either a tensor or a list of tensors
+        if not isinstance(x, (list, tuple)):
+            x = [x]  # Wrap single tensor in a list
 
-        # encoding + analysis for each input
         def process_input(i):
-            z = self.autoencoder[i].encode(x[i])[0]
+            # Always pass only the first 4 channels to the autoencoder
+            z = self.autoencoder[i].encode(x[i][:, :4, ...])[0]
             z = self.proj[i](z)
             z = z.permute(0,2,3,1)
             z = self.analysis[i](z)

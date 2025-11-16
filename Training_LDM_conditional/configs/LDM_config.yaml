@@ -98,8 +98,8 @@ callbacks:
 conditioner:
   _target_: Training_LDM_conditional.models.components.ldm.conditioner.AFNOConditionerNetBase
   autoencoder: ??? #Conditions with the VAE encoder output : AsthanaSh 
-  embed_dim: 128
-  embed_dim_out: 128
+  embed_dim: 32
+  embed_dim_out: 32
   analysis_depth: 4
   forecast_depth: 4
   input_size_ratios: [1]
@@ -114,7 +114,7 @@ denoiser:
   model_channels: 64
   num_res_blocks: 2
   attention_resolutions: [1,2,4]
-  context_ch: [128, 128, 128, 128] #Conditioning with AFNO conditioner output : AsthanaSh
+  context_ch: [32,32,32,32] #Conditioning with AFNO conditioner output : AsthanaSh
   channel_mult: [1,2,4,4]
   conv_resample: true
   dims: 2
@@ -129,10 +129,10 @@ model:
     _target_: Training_LDM_conditional.models.ae_module.AutoencoderKL
     encoder: ${encoder}
     decoder: ${decoder}
-    unet_regr: Training_LDM_conditional/trained_ckpts/Training_LDM_conditional.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt
+    unet_regr: Training_LDM_conditional/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt
   context_encoder: ${conditioner}  #Conditions the denoiser with Unet prediction : AsthanaSh
   #VAE ckpt loaded from the ae_load_state_file 
-  ae_load_state_file: Training_LDM_conditional/trained_ckpts/Training_LDM_conditional.models.ae_module.AutoencoderKL_checkpoint.ckpt
+  ae_load_state_file: Training_LDM_conditional/trained_ckpts/Training_LDM.models.ae_module.AutoencoderKL_checkpoint.ckpt
   #Note : Output from LDM : [batch_size, 4, height, width] (AsthanaSh)
   parameterization: "eps"
   loss_type: "l2"

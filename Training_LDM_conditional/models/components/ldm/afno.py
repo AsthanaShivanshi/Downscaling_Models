@@ -135,12 +135,30 @@ class AFNOCrossAttentionBlock(nn.Module):
             self.einops_ops =  ("b c h w -> b h w c", "b h w c -> b c h w") 
 
     def forward(self, x, y):
-
+        
         if self.channels_first:
             x = rearrange(x, self.einops_ops[0])
             y = rearrange(y, self.einops_ops[0])
 
-        xy = torch.concat((self.norm1(x),y), axis=-1)
+        #Debug print
+        print("self.norm1(x) shape:", self.norm1(x).shape)
+        print("y shape:", y.shape)
+
+
+        # Assume tensors are [B, H, W, C]
+        target_shape = self.norm1(x).shape[1:3]  # (H, W)
+
+        if y.shape[1:3] != target_shape:
+            # Permute to [B, C, H, W] for interpolation
+            y = y.permute(0, 3, 1, 2)
+            y = F.interpolate(y, size=target_shape, mode="bilinear", align_corners=False)
+            y = y.permute(0, 2, 3, 1)
+
+        #Debug print
+        print("self.norm1(x) shape after correction:", self.norm1(x).shape)
+        print("y shape after correction:", y.shape)
+
+        xy = torch.concat((self.norm1(x), y), axis=-1)
         xy = self.pre_proj(xy) + xy
         xy = self.filter(self.norm2(xy)) + xy # AFNO filter
         x = self.mlp(xy) + x # feed-forward

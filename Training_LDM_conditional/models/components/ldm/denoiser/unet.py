@@ -69,7 +69,7 @@ class TimestepEmbedSequential(nn.Sequential, TimestepBlock):
             elif isinstance(layer, AFNOCrossAttentionBlock):
                 img_shape = tuple(x.shape[-2:])
                 if context is not None:
-                    x = layer(x, context[img_shape])
+                    x = layer(x, context)
                 else:
                     x = layer(x, None)
             else:
