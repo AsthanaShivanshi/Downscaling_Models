@@ -95,6 +95,7 @@ dates = ds_ref['time'].sel(time=slice("1981-01-01", "2010-12-31")).values
 inputs_norm = []
 
 
+
 datasets = {var: xr.open_dataset(path[0]) for var, path in model_input_paths.items()}
 
 
@@ -105,6 +106,8 @@ var_to_dsvar = {
     "temp_min": "tmin",
     "temp_max": "tmax"
 }
+
+
 orig_inputs = []
 for var in ["precip", "temp", "temp_min", "temp_max"]:
     ds_in = xr.open_dataset(model_input_paths[var][0])
@@ -156,12 +159,21 @@ ckpt_unet = "Training_LDM/trained_ckpts/Training_LDM.models.components.unet.Down
 #ckpt_vae = "Training_LDM/trained_ckpts/Training_LDM.models.ae_module.AutoencoderKL_checkpoint.ckpt"
 #ckpt_ldm = "Training_LDM/trained_ckpts/LDM_checkpoint.ckpt"
 
+
 model_UNet = DownscalingUnetLightning(
     in_ch=5, out_ch=4, features=[64, 128, 256, 512],
     channel_names=["precip", "temp", "temp_min", "temp_max"]
 )
+
+
 unet_state_dict = torch.load(ckpt_unet, map_location="cpu")["state_dict"]
 model_UNet.load_state_dict(unet_state_dict, strict=False)
+
+for name, param in model_UNet.named_parameters():
+    if torch.isnan(param).any():
+        print(f"NaN detected in model parameter: {name}")
+
+
 model_UNet.eval()
 
 #encoder = SimpleConvEncoder(in_dim=4, levels=1, min_ch=64, ch_mult=1)
@@ -246,16 +258,41 @@ unet_baseline = []
 
 inputs_norm = np.stack(inputs_norm)
 
+print("inputs_norm shape:", inputs_norm.shape)
+print("inputs_norm min/max:", np.nanmin(inputs_norm), np.nanmax(inputs_norm))
+print("inputs_norm NaNs:", np.isnan(inputs_norm).sum())
+
+
+
+
 with tqdm(total=len(dates), desc="Frame") as pbar:
-    for idx in range(inputs_norm.shape[0]):
-        input_sample = torch.tensor(inputs_norm[idx], dtype=torch.float32).unsqueeze(0).to(device)
-        with torch.no_grad():
+    with torch.no_grad():
+        for idx in range(len(dates)):
+            input_sample = torch.from_numpy(inputs_norm[idx]).unsqueeze(0).float().to(device)  # (1, 5, H, W)
+
+            print(f"[{idx}] input_sample min/max:", np.nanmin(input_sample.cpu().numpy()), np.nanmax(input_sample.cpu().numpy()))
+            print(f"[{idx}] input_sample NaNs:", np.isnan(input_sample.cpu().numpy()).sum())
+
+
             unet_pred = model_UNet(input_sample)
-            unet_pred_np = denorm_sample(unet_pred[0].cpu().numpy())
-            # Mask using original bicubic input NaNs
-            nan_mask = np.isnan(orig_inputs[idx])  # shape: (4, N, E)
-            unet_pred_np[nan_mask] = np.nan
+            unet_pred_arr = unet_pred[0].cpu().numpy()
+
+
+            print(f"[{idx}] UNet output min/max:", np.nanmin(unet_pred_arr), np.nanmax(unet_pred_arr))
+            print(f"[{idx}] UNet output NaNs:", np.isnan(unet_pred_arr).sum())
+
+
+            unet_pred_np = denorm_sample(unet_pred_arr)
+
+
+            print(f"[{idx}] UNet denorm min/max:", np.nanmin(unet_pred_np), np.nanmax(unet_pred_np))
+            print(f"[{idx}] UNet denorm NaNs:", np.isnan(unet_pred_np).sum())
+
+
             unet_baseline.append(unet_pred_np)
+            pbar.update(1)
+
+
         #for seed in range(n_samples):
         #    sample = pipeline(input_sample, seed=seed)
         #    sample_denorm = denorm_sample(sample)
@@ -306,3 +343,6 @@ ds_out = xr.Dataset(
 encoding = {var: {"_FillValue": np.nan} for var in var_names}
 ds_out.to_netcdf("QDM_BC_modelrun_1981_2010_samples_UNet_baseline.nc", encoding=encoding)
 print(f"UNet baseline saved with shape: {unet_baseline_np.shape}")
+
+print("Final unet_baseline_np shape:", unet_baseline_np.shape)
+print("Final unet_baseline_np NaNs:", np.isnan(unet_baseline_np).sum())

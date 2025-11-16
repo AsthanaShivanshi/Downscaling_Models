@@ -100,8 +100,10 @@ class DownscalingDataModule(LightningDataModule):
 
     def test_dataloader(self):
         if self.test_dataset:
-            return DataLoader(self.test_dataset, 
-                              batch_size=self.batch_size, 
-                              num_workers=self.num_workers,
-                              persistent_workers=True)
+            return DataLoader(
+                self.test_dataset, 
+                batch_size=self.batch_size, 
+                num_workers=self.num_workers,
+                persistent_workers=(self.num_workers > 0)
+            )
         return None
