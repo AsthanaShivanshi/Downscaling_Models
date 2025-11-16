@@ -54,7 +54,7 @@ class LatentDiffusion(LightningModule):
         denoiser,
         autoencoder,
         context_encoder=None,
-        timesteps=130,
+        timesteps=200,
         beta_schedule="linear",
         loss_type="l2",
         use_ema=True,

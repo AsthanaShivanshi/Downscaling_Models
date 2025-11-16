@@ -38,14 +38,14 @@ data:
 encoder:
   _target_: Training_LDM.models.components.ae.SimpleConvEncoder
   in_dim: 4
-  levels: 1
-  min_ch: 64
-  ch_mult: 1
+  levels: 2
+  min_ch: 16
+  ch_mult: 4
 
 decoder:
   _target_: Training_LDM.models.components.ae.SimpleConvDecoder
   in_dim: 64
-  levels: 1
+  levels: 2
   min_ch: 16
 
 
@@ -67,8 +67,11 @@ denoiser:
 sampler:
   _target_: Training_LDM.models.components.ldm.denoiser.DDIMSampler
   model: ${denoiser}
-  schedule: "linear"
+  schedule: "cosine"
   device: "cuda"
+  ddim_num_steps: 1000
+  ddim_eta: 0.0
+
 
 ema:
   _target_: Training_LDM.models.components.ldm.denoiser.LitEma
@@ -101,7 +104,7 @@ callbacks:
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: Training_LDM/trained_ckpts
-    filename: LDM_checkpoint
+    filename: LDM_checkpoint_V1_linear_schedule_1000_steps
     save_top_k: 1
     monitor: val/loss
     mode: min
@@ -119,3 +122,6 @@ model:
   #VAE ckpt loaded from the ae_load_state_file 
   ae_load_state_file: Training_LDM/trained_ckpts/Training_LDM.models.ae_module.AutoencoderKL_checkpoint.ckpt
   #Note : Output from LDM : [batch_size, 4, height, width] (AsthanaSh)
+  parameterization: "eps"
+  loss_type: "l2"
+  timesteps: 1000
