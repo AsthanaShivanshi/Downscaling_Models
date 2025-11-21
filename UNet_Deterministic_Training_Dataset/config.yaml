@@ -22,7 +22,7 @@ preprocessing:
 
 
 train:
-  num_epochs: 100
+  num_epochs: 200
   checkpoint_path: training_model_huber.pth
   inference_weights_path: training_model_weights_huber.pth
   model_config_path: training_model_config_huber.json
@@ -36,7 +36,7 @@ train:
   scheduler_mode: "min"
   scheduler_factor: 0.8
   scheduler_patience: 2 # Waiting for N epochs for no improvement
-  early_stopping_patience: 5
+  early_stopping_patience: 10
   #scheduler: "CyclicLR"
   #scheduler_mode: "triangular2"
   #base_lr: 1e-4
@@ -50,7 +50,7 @@ train:
   #So following from above, step size up= Number iter per epoch/2
   wandb_project: "UNet_Deterministic"
   wandb_run_name: "Training_Dataset"
-  loss_weights: [0.25, 0.25, 0.25, 0.25] #Will be overwritten during Optuna Optimisation, if run from Main.py , these weights used, proportionate for each channel
+  loss_weights: [10, 1, 1, 1] #Will be overwritten during Optuna Optimisation, if run from Main.py , these weights used, proportionate for each channel
 
 # Placeholder for the paths in the untracked .paths.yaml file
 data: {}
