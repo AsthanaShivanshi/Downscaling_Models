@@ -11,6 +11,8 @@ import numpy as np
 import xarray as xr
 from pathlib import Path
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
 print("Main.py started")
 
 def load_dataset(file_group: dict, config: dict, section: str) -> xr.Dataset:
@@ -35,8 +37,8 @@ def evaluate_test(model, test_dataset, config):
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     model.eval()
     loss_fn_name = config["train"].get("loss_fn", "huber").lower()
+    weights = config["train"].get("loss_weights", [1, 1, 1, 1])  # <-- Use config weights
     if loss_fn_name == "huber":
-        weights = [1,1,1,1] #Weights to be loaded from config for additive loss : AsthanaSh
         delta = config["train"].get("huber_delta", 0.05)
         criterion = WeightedHuberLoss(weights=weights, delta=delta)
         def channel_loss_fn(pred, target):
@@ -45,14 +47,12 @@ def evaluate_test(model, test_dataset, config):
                 for c in range(pred.shape[1])
             ]
     else:
-        weights = [1,1,1,1] #Weights to be loaded from config for additive loss : AsthanaSh
         criterion = WeightedMSELoss(weights=weights)
         def channel_loss_fn(pred, target):
             return [
                 nn.functional.mse_loss(pred[:, c], target[:, c], reduction='mean').item()
                 for c in range(pred.shape[1])
             ]
-
 
     total_loss = 0.0
     channel_losses_individual = []
@@ -64,29 +64,55 @@ def evaluate_test(model, test_dataset, config):
             outputs = model(inputs)
             loss = criterion(outputs, targets)
             total_loss += loss.item()
-            # Channel-wise loss
             individual = channel_loss_fn(outputs, targets)
             channel_losses_individual.append(individual)
     avg_loss = total_loss / len(test_loader)
     print(f"Test Loss: {avg_loss}")
 
-    # Channel-wise average loss
     var_names = ["RhiresD", "TabsD", "TminD", "TmaxD"]
     channel_losses_individual = np.array(channel_losses_individual)
     avg_channel_losses = np.mean(channel_losses_individual, axis=0)
     for var, loss in zip(var_names, avg_channel_losses):
         print(f"Average test loss for channel {var}: {loss}")
 
-    # Log total weighted test loss
     wandb.log({"loss/test": avg_loss})
-
-    # Log per-channel test losses
     for var, loss in zip(var_names, avg_channel_losses):
         wandb.log({f"{var}/test": loss})    
 
     return avg_loss, avg_channel_losses
 
+def downscale_testset(model, test_dataset, config, output_path):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    test_loader = DataLoader(test_dataset, batch_size=config["experiment"].get("batch_size", 32), shuffle=False)
+    model.eval()
+    all_outputs = []
+    with torch.no_grad():
+        for inputs, _ in test_loader:
+            inputs = inputs.to(device)
+            outputs = model(inputs)
+            all_outputs.append(outputs.cpu().numpy())
+    all_outputs = np.concatenate(all_outputs, axis=0)  # shape: (samples, channels, lat, lon)
+
+    # Coords from target input
+    target_ds = test_dataset.target_ds
+    coords = {dim: target_ds.coords[dim] for dim in target_ds.dims}
+    var_names = list(target_ds.data_vars.keys()) 
+
+    ds = xr.Dataset(
+        {var: (list(target_ds[var].dims), all_outputs[:, i]) for i, var in enumerate(var_names)},
+        coords=coords
+    )
+    try:
+        ds.to_netcdf(output_path)
+        print(f"Downscaled test set saved to {output_path}")
+    except Exception as e:
+        print("Failed to save NetCDF:", e)
+
+
+
 def main(config):
+
+    wandb.init(project="UNet_Deterministic_Training_Dataset", config=config, reinit=True)
     paths = config["data"]
     elevation_path = paths.get("static", {}).get("elevation", None)
 
@@ -111,9 +137,14 @@ def main(config):
     test_loss = evaluate_test(model, test_dataset, config)
     print({"test_loss": test_loss})
 
+    # Downscale and save test set
+    output_path = "/work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/downscaled_files_LDM_res/testset_2021_2023_samples_UNet_baseline.nc"
+    downscale_testset(model, test_dataset, config, output_path)
+
+    wandb.finish()
+
 
 if __name__ == "__main__":
-    import sys
     parser=argparse.ArgumentParser()
     parser.add_argument("--quick_test", action="store_true",help="Run quick for small amount of samples")
     args=parser.parse_args()
