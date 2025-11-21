@@ -24,27 +24,27 @@ class DoubleConv(nn.Module):
         return x
 
 
-class EncoderBlock(nn.Module):
-    def __init__(self, in_c, out_c):
+class Encoder_Block(nn.Module):
+    def __init__(self, in_channels, out_channels):
         super().__init__()
-        self.conv = DoubleConv(in_c, out_c)
+        self.conv = DoubleConv(in_channels, out_channels)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
-    
     def forward(self, inputs):
         x = self.conv(inputs)
         p = self.pool(x)
         return x, p
 
 
-class DecoderBlock(nn.Module):
-    def __init__(self, in_c, out_c):
+class Decoder_Block(nn.Module):
+    def __init__(self, in_channels, out_channels):
         super().__init__()
-        self.up = nn.ConvTranspose2d(in_c, out_c, kernel_size=2, stride=2, padding=0)
-        self.conv = DoubleConv(out_c*2, out_c)
-        
+        self.up = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2)
+        self.conv = DoubleConv(out_channels * 2, out_channels)
     def forward(self, inputs, skip):
         x = self.up(inputs)
-        x = torch.cat([x, skip], axis=1)
+        if x.shape[2:] != skip.shape[2:]:
+            x = F.interpolate(x, size=skip.shape[2:], mode='bilinear', align_corners=False)
+        x = torch.cat([x, skip], dim=1)
         x = self.conv(x)
         return x
 
@@ -52,49 +52,50 @@ class DecoderBlock(nn.Module):
 class DownscalingUnet(nn.Module):
     def __init__(self, in_ch=1, out_ch=1, features=[64,128,256,512]):
         super().__init__()
-        self.e1 = EncoderBlock(in_ch, features[0])
-        self.e2 = EncoderBlock(features[0], features[1])
-        self.e3 = EncoderBlock(features[1], features[2])
-        self.e4 = EncoderBlock(features[2], features[3])         
-        self.b = DoubleConv(features[3], features[3]*2)         
-        self.d1 = DecoderBlock(features[3]*2, features[3])
-        self.d2 = DecoderBlock(features[3], features[2])
-        self.d3 = DecoderBlock(features[2], features[1])
-        self.d4 = DecoderBlock(features[1], features[0])         
-        self.outputs = nn.Conv2d(features[0], out_ch, kernel_size=1, padding=0)
-        #RELU for precip channel for outputs to be non negative
-        self.relu= nn.ReLU()
+        self.Encoder1 = Encoder_Block(in_ch, features[0])
+        self.Encoder2 = Encoder_Block(features[0], features[1])
+        self.Encoder3 = Encoder_Block(features[1], features[2])
+        self.Encoder4 = Encoder_Block(features[2], features[3])
+        self.bottleneck = DoubleConv(features[3], features[3]*2)
+        self.Decoder1 = Decoder_Block(features[3]*2, features[3])
+        self.Decoder2 = Decoder_Block(features[3], features[2])
+        self.Decoder3 = Decoder_Block(features[2], features[1])
+        self.Decoder4 = Decoder_Block(features[1], features[0])
+        self.outputs = nn.Conv2d(features[0], out_ch, kernel_size=1)
+
+        # He initialization
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.ones_(m.weight)
+                nn.init.zeros_(m.bias)
+
 
     def forward(self, x):
-
-        #og size before padding
-        original_height=x.shape[2] #OG dims : batchsize, channel, height and width
-        original_width=x.shape[3]
-        #padding to make it multiple of 16 for feeding into UNet
+        original_height = x.shape[2]
+        original_width = x.shape[3]
         pad_height = (16 - original_height % 16) % 16
         pad_width = (16 - original_width % 16) % 16
         x_padded = F.pad(x, (0, pad_width, 0, pad_height))
 
-        # Encoder
-        s1, p1 = self.e1(x_padded)
-        s2, p2 = self.e2(p1)
-        s3, p3 = self.e3(p2)
-        s4, p4 = self.e4(p3)
-        # Bottleneck
-
-        b = self.b(p4)
-
-        # Decoder
-        d1 = self.d1(b, s4)
-        d2 = self.d2(d1, s3)
-        d3 = self.d3(d2, s2)
-        d4 = self.d4(d3, s1)
-
-        # Output
+        s1, p1 = self.Encoder1(x_padded)
+        s2, p2 = self.Encoder2(p1)
+        s3, p3 = self.Encoder3(p2)
+        s4, p4 = self.Encoder4(p3)
+        b = self.bottleneck(p4)
+        d1 = self.Decoder1(b, s4)
+        d2 = self.Decoder2(d1, s3)
+        d3 = self.Decoder3(d2, s2)
+        d4 = self.Decoder4(d3, s1)
         out = self.outputs(d4)
-        out_cropped= out[:,:,:original_height, :original_width]
-        out_cropped[:,0]=self.relu(out_cropped[:,0]) #RELU for precip channel
-        return out_cropped
+        out_cropped = out[:, :, :original_height, :original_width]
+        x_cropped = x[:, :, :original_height, :original_width]
+        final_out = out_cropped + x_cropped[:, :out_cropped.shape[1], :, :]
+        final_out[:, 0:1, :, :] = F.relu(final_out[:, 0:1, :, :]) # Only for precip channel
+        return final_out
 
 
 
@@ -113,7 +114,6 @@ class DownscalingUnetLightning(LightningModule):
     def forward(self, x):
         return self.unet(x)
     
-
     #weighted loss needed: due to channel loss not going down for precip
     def compute_weighted_loss(self, y_hat, y):
 
