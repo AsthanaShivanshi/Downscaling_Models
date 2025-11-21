@@ -127,7 +127,7 @@ class UNet(nn.Module):
             #mask = (inputs_cropped[:, 0, :, :] >= 0.1).float()
             #final_outputs[:,0:1,:,:]=final_outputs[:,0:1,:,:] * mask.unsqueeze(1)  # Apply mask only to precip channel (channel ==0) only during training, not at inference
                 # ReLU to precip channel for handle neg values
-        final_outputs[:, 0:1, :, :] = F.relu(final_outputs[:, 0:1, :, :])
+        final_outputs[:, 0:1, :, :] = F.relu(final_outputs[:, 0:1, :, :]) #Only for precip channel
         return final_outputs
 
 
