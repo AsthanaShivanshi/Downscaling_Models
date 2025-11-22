@@ -3,12 +3,11 @@
 #SBATCH --output=logs/UNet_inference_model_dOTC/UNet_inference_%j.out
 #SBATCH --error=logs/UNet_inference_model_dOTC/UNet_inference_%j.err
 #SBATCH --time=3-00:00:00
-#SBATCH --partition=gpu
-#SBATCH --gres=gpu:1
+#SBATCH --partition=cpu
 
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=128G
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=256G
 
 mkdir -p logs/UNet_inference_model_dOTC
 module load python
