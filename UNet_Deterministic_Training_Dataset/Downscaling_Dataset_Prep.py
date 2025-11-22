@@ -11,8 +11,6 @@ class DownscalingDataset(Dataset):
         config: in the config.yaml file
         """
         input_var_names = list(config["variables"]["input"].values())
-        target_var_names = list(config["variables"]["target"].values())
-
         input_channel_names = input_var_names.copy()
         if elevation_path is not None:
             input_channel_names.append("elevation")
@@ -20,16 +18,20 @@ class DownscalingDataset(Dataset):
         # Printing channel index mapping (debugging)
         #for i, name in enumerate(input_channel_names):
         #    print(f"Input channel {i}: {name}")
-        #for i, name in enumerate(target_var_names):
-        #    print(f"Output channel {i}: {name}")
 
         self.input_vars = [input_ds[var] for var in input_var_names]
-        self.target_vars = [target_ds[var] for var in target_var_names]
+        self.length = len(self.input_vars[0].time)
+
+        # Only set target_vars if target_ds is not None
+        self.target_vars = None
+        if target_ds is not None:
+            target_var_names = list(config["variables"]["target"].values())
+            #for i, name in enumerate(target_var_names):
+            #    print(f"Output channel {i}: {name}")
+            self.target_vars = [target_ds[var] for var in target_var_names]
 
         self.handle_nan = config.get("preprocessing", {}).get("nan_to_num", True)
         self.nan_value = config.get("preprocessing", {}).get("nan_value", 0.0)
-
-        self.length = len(self.input_vars[0].time)
 
         # Loading elevation 
         self.elevation = None
@@ -50,11 +52,8 @@ class DownscalingDataset(Dataset):
     def __getitem__(self, index):
         # Extracting time slice for each variable
         input_slices = [var.isel(time=index).values for var in self.input_vars]
-        target_slices = [var.isel(time=index).values for var in self.target_vars]
-
         if self.handle_nan:
             input_slices = [np.nan_to_num(arr, nan=self.nan_value) for arr in input_slices]
-            target_slices = [np.nan_to_num(arr, nan=self.nan_value) for arr in target_slices]
 
         if self.elevation is not None:
             elev = self.elevation
@@ -64,7 +63,15 @@ class DownscalingDataset(Dataset):
             input_slices.append(elev.astype(np.float32))
 
         input_tensor = torch.tensor(np.stack(input_slices)).float()
-        target_tensor = torch.tensor(np.stack(target_slices)).float()
-        #print(f"Input tensor shape: {input_tensor.shape}, Target tensor shape: {target_tensor.shape}")
 
-        return input_tensor, target_tensor
+        # Only return target if available
+        if self.target_vars is not None:
+            target_slices = [var.isel(time=index).values for var in self.target_vars]
+            if self.handle_nan:
+                target_slices = [np.nan_to_num(arr, nan=self.nan_value) for arr in target_slices]
+            target_tensor = torch.tensor(np.stack(target_slices)).float()
+            #print(f"Input tensor shape: {input_tensor.shape}, Target tensor shape: {target_tensor.shape}")
+            return input_tensor, target_tensor
+        else:
+            #print(f"Input tensor shape: {input_tensor.shape}")
+            return input_tensor

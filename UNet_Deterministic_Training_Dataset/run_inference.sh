@@ -1,19 +1,26 @@
 #!/bin/bash
-#SBATCH --job-name=UNet_inference_training_dataset
-#SBATCH --output=logs/training/UNet_inference_%j.out
-#SBATCH --error=logs/training/UNet_inference_%j.err
+#SBATCH --job-name=UNet_inference_model_dOTC
+#SBATCH --output=logs/UNet_inference_model_dOTC/UNet_inference_%j.out
+#SBATCH --error=logs/UNet_inference_model_dOTC/UNet_inference_%j.err
 #SBATCH --time=3-00:00:00
-#SBATCH --partition=cpu
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:1
+
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=64G
+#SBATCH --mem=128G
 
-mkdir -p logs/training
+mkdir -p logs/UNet_inference_model_dOTC
 module load python
 source environment.sh
 
-cd models_UNet/UNet_Deterministic_Training_Dataset
+cd /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/UNet_Deterministic_Training_Dataset
 
-python Inference.py
+#python Inference_Test_Set.py
 
-echo "Inference done, test loss printed"
+
+python Inference_Model_Runs.py
+
+
+#echo "Inference done, test set predictions saved"
+echo "Inference done, model run predictions saved"
