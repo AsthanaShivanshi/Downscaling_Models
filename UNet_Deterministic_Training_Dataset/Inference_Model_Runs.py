@@ -161,10 +161,10 @@ ds_out.to_netcdf("dOTC_ModelRun_Downscaled_Predictions.nc")
 
 #For EQM and QDM
 
-temp_path    = "/work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/BC_Model_Runs/EQM/temp_BC_bicubic_r01.nc"
-precip_path  = "/work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/BC_Model_Runs/EQM/precip_BC_bicubic_r01.nc"
-tmin_path    = "/work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/BC_Model_Runs/EQM/tmin_BC_bicubic_r01.nc"
-tmax_path    = "/work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/BC_Model_Runs/EQM/tmax_BC_bicubic_r01.nc"
+temp_path    = "/work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/BC_Model_Runs/QDM/temp_BC_bicubic_r01.nc"
+precip_path  = "/work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/BC_Model_Runs/QDM/precip_BC_bicubic_r01.nc"
+tmin_path    = "/work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/BC_Model_Runs/QDM/tmin_BC_bicubic_r01.nc"
+tmax_path    = "/work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/BC_Model_Runs/QDM/tmax_BC_bicubic_r01.nc"
 
 temp_ds   = xr.open_dataset(temp_path)
 precip_ds = xr.open_dataset(precip_path)
@@ -283,4 +283,4 @@ precip_ds.close()
 tmin_ds.close()
 tmax_ds.close()
 
-ds_out.to_netcdf("EQM_ModelRun_Downscaled_Predictions.nc")
+ds_out.to_netcdf("QDM_ModelRun_Downscaled_Predictions.nc")

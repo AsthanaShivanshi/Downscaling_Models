@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=UNet_inference_model_EQM
-#SBATCH --output=logs/UNet_inference_model_EQM/UNet_inference_%j.out
-#SBATCH --error=logs/UNet_inference_model_EQM/UNet_inference_%j.err
+#SBATCH --job-name=UNet_inference_model_QDM
+#SBATCH --output=logs/UNet_inference_model_QDM/UNet_inference_%j.out
+#SBATCH --error=logs/UNet_inference_model_QDM/UNet_inference_%j.err
 #SBATCH --time=3-00:00:00
 #SBATCH --partition=cpu
 
