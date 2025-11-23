@@ -81,8 +81,8 @@ if args.validation_1981_2010:
     n_save = n_time  # Downscale and save all frames in the selected period
     output_filename = "QDM_ModelRun_Downscaled_Predictions_Validation_1981_2010.nc"
 else:
-    n_save = min(10, n_time)  # Debug mode: only first 10 frames
-    output_filename = "QDM_ModelRun_Downscaled_Predictions_Debug_10.nc"
+    n_save = min(50, n_time)  # Debug mode: only first 50 frames
+    output_filename = "QDM_ModelRun_Downscaled_Predictions_Debug_50.nc"
 
 precip_out = np.zeros((n_save, target_shape[0], target_shape[1]), dtype=np.float32)
 temp_out   = np.zeros_like(precip_out)
@@ -114,28 +114,33 @@ if elevation_2d.shape != target_shape:
 elevation_da.close()
 
 for t in trange(n_save, desc="Downscaling frames", file=sys.stdout):
-    precip_data = model_vars["RhiresD"][0][model_vars["RhiresD"][1]][t].values.astype(float)
-    rhiresd = scale_precip_log(
-        np.where(precip_data < 0, 0, precip_data),
-        rhiresd_params["mean"], rhiresd_params["std"], rhiresd_params["epsilon"]
-    )
-    tabsd = scale_temp(
-        model_vars["TabsD"][0][model_vars["TabsD"][1]][t].values,
-        tabsd_params["mean"], tabsd_params["std"]
-    )
-    tmind = scale_temp(
-        model_vars["TminD"][0][model_vars["TminD"][1]][t].values,
-        tmind_params["mean"], tmind_params["std"]
-    )
-    tmaxd = scale_temp(
-        model_vars["TmaxD"][0][model_vars["TmaxD"][1]][t].values,
-        tmaxd_params["mean"], tmaxd_params["std"]
-    )
-    rhiresd = np.squeeze(rhiresd)
-    tabsd   = np.squeeze(tabsd)
-    tmind   = np.squeeze(tmind)
-    tmaxd   = np.squeeze(tmaxd)
-    elev    = elevation_2d
+    # Get original precip and mask
+    orig_precip = model_vars["RhiresD"][0][model_vars["RhiresD"][1]][t].values.astype(float)
+    orig_mask = np.isnan(orig_precip)
+
+    # Set negative precip to zero, handle NaNs
+    precip = np.where(orig_precip < 0, 0, orig_precip)
+    precip = np.nan_to_num(precip, nan=0.0)
+
+    # Prepare other variables
+    temp  = model_vars["TabsD"][0][model_vars["TabsD"][1]][t].values
+    tmin  = model_vars["TminD"][0][model_vars["TminD"][1]][t].values
+    tmax  = model_vars["TmaxD"][0][model_vars["TmaxD"][1]][t].values
+
+    temp  = np.nan_to_num(temp, nan=0.0)
+    tmin  = np.nan_to_num(tmin, nan=0.0)
+    tmax  = np.nan_to_num(tmax, nan=0.0)
+
+    elev = elevation_2d
+    if elev.shape != precip.shape:
+        elev = resize(elev, precip.shape, order=1, preserve_range=True, anti_aliasing=True)
+    elev = elev.astype(np.float32)
+
+    # Stack and scale
+    rhiresd = scale_precip_log(precip, rhiresd_params["mean"], rhiresd_params["std"], rhiresd_params["epsilon"])
+    tabsd   = scale_temp(temp, tabsd_params["mean"], tabsd_params["std"])
+    tmind   = scale_temp(tmin, tmind_params["mean"], tmind_params["std"])
+    tmaxd   = scale_temp(tmax, tmaxd_params["mean"], tmaxd_params["std"])
 
     frame_input = np.stack([rhiresd, tabsd, tmind, tmaxd, elev], axis=0)
     frame_input = torch.from_numpy(frame_input[np.newaxis, ...]).float().to(device)
@@ -144,10 +149,23 @@ for t in trange(n_save, desc="Downscaling frames", file=sys.stdout):
         output = model_instance(frame_input)
         output_np = output.cpu().numpy()[0]
 
-    precip_out[t] = descale_precip_log(output_np[0], **scaling_params["RhiresD"])
-    temp_out[t]   = descale_temp(output_np[1], scaling_params["TabsD"]["mean"], scaling_params["TabsD"]["std"])
-    tmin_out[t]   = descale_temp(output_np[2], scaling_params["TminD"]["mean"], scaling_params["TminD"]["std"])
-    tmax_out[t]   = descale_temp(output_np[3], scaling_params["TmaxD"]["mean"], scaling_params["TmaxD"]["std"])
+    # Descale and restore original NaNs
+    precip_out_frame = descale_precip_log(output_np[0], **scaling_params["RhiresD"])
+    precip_out_frame = np.maximum(precip_out_frame, 0)
+    precip_out_frame[orig_mask] = np.nan
+    precip_out[t] = precip_out_frame
+
+    temp_out_frame = descale_temp(output_np[1], scaling_params["TabsD"]["mean"], scaling_params["TabsD"]["std"])
+    temp_out_frame[orig_mask] = np.nan
+    temp_out[t] = temp_out_frame
+
+    tmin_out_frame = descale_temp(output_np[2], scaling_params["TminD"]["mean"], scaling_params["TminD"]["std"])
+    tmin_out_frame[orig_mask] = np.nan
+    tmin_out[t] = tmin_out_frame
+
+    tmax_out_frame = descale_temp(output_np[3], scaling_params["TmaxD"]["mean"], scaling_params["TmaxD"]["std"])
+    tmax_out_frame[orig_mask] = np.nan
+    tmax_out[t] = tmax_out_frame
 
     if t % 10 == 0:
         print(f"Processed frame {t}/{n_save}")
