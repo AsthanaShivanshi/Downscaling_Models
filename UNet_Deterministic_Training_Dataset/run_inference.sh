@@ -9,7 +9,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=256G
 
-mkdir -p logs/UNet_inference_model_dOTC_1981_2010
+mkdir -p logs/UNet_inference_model_dOTC
 module load python
 source environment.sh
 
@@ -18,7 +18,7 @@ cd /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Mo
 #python Inference_Test_Set.py
 
 
-python Inference_Model_Runs.py #--validation_1981_2010
+python Inference_Model_dOTC.py #--validation_1981_2010
 
 
 #echo "Inference done, test set predictions saved"
