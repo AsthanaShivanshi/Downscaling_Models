@@ -87,64 +87,66 @@ if os.path.exists(dotc_input_path):
     tmin_out   = np.zeros_like(precip_out)
     tmax_out   = np.zeros_like(precip_out)
 
-    for t in trange(n_time, desc="Downscaling frames", file=sys.stdout):
-        rhiresd = scale_precip_log(np.where(dotc_input["precip"][t] < 0, 0, dotc_input["precip"][t].values), rhiresd_params["mean"], rhiresd_params["std"], rhiresd_params["epsilon"])
-        tabsd   = scale_temp(dotc_input["temp"][t].values, tabsd_params["mean"], tabsd_params["std"])
-        tmind   = scale_temp(dotc_input["tmin"][t].values, tmind_params["mean"], tmind_params["std"])
-        tmaxd   = scale_temp(dotc_input["tmax"][t].values, tmaxd_params["mean"], tmaxd_params["std"])
-
-        rhiresd = np.squeeze(rhiresd)
-        tabsd   = np.squeeze(tabsd)
-        tmind   = np.squeeze(tmind)
-        tmaxd   = np.squeeze(tmaxd)
-        elev    = elevation_2d
-
-        frame_input = np.stack([rhiresd, tabsd, tmind, tmaxd, elev], axis=0)
-        frame_input = torch.from_numpy(frame_input[np.newaxis, ...]).float().to(device)
-
-        with torch.no_grad():
-            output = model_instance(frame_input)
-            output_np = output.cpu().numpy()[0]
-
-        precip_out[t] = descale_precip_log(output_np[0], **scaling_params["RhiresD"])
-        temp_out[t]   = descale_temp(output_np[1], scaling_params["TabsD"]["mean"], scaling_params["TabsD"]["std"])
-        tmin_out[t]   = descale_temp(output_np[2], scaling_params["TminD"]["mean"], scaling_params["TminD"]["std"])
-        tmax_out[t]   = descale_temp(output_np[3], scaling_params["TmaxD"]["mean"], scaling_params["TmaxD"]["std"])
-
-        if t % 10 == 0:
-            print(f"Processed frame {t}/{n_time}")
-
-    dotc_input.close()
-
-    coords = {
-        "time": dotc_input.time.values,
-        "lat": lat_1d,
-        "lon": lon_1d
-    }
-
-    ds_out = xr.Dataset(
-        {
-            "precip": (("time", "lat", "lon"), precip_out),
-            "temp":   (("time", "lat", "lon"), temp_out),
-            "tmin":   (("time", "lat", "lon"), tmin_out),
-            "tmax":   (("time", "lat", "lon"), tmax_out),
-        },
-        coords=coords
-    )
-
-    if "units" in dotc_input.time.attrs:
-        ds_out["time"].attrs["units"] = dotc_input.time.attrs["units"]
-    if "calendar" in dotc_input.time.attrs:
-        ds_out["time"].attrs["calendar"] = dotc_input.time.attrs["calendar"]
-
-    if args.validation_1981_2010:
-        output_filename = "dOTC_ModelRun_Downscaled_Predictions_Validation_1981_2010.nc"
-    else:
-        output_filename = "dOTC_ModelRun_Downscaled_Predictions.nc"
-
-    ds_out.to_netcdf(output_filename)
 
 
+for t in trange(n_time, desc="Downscaling frames(debugging)", file=sys.stdout):
+    rhiresd = scale_precip_log(np.where(dotc_input["precip"][t] < 0, 0, dotc_input["precip"][t].values), rhiresd_params["mean"], rhiresd_params["std"], rhiresd_params["epsilon"])
+    tabsd   = scale_temp(dotc_input["temp"][t].values, tabsd_params["mean"], tabsd_params["std"])
+    tmind   = scale_temp(dotc_input["tmin"][t].values, tmind_params["mean"], tmind_params["std"])
+    tmaxd   = scale_temp(dotc_input["tmax"][t].values, tmaxd_params["mean"], tmaxd_params["std"])
+
+
+
+    rhiresd = np.squeeze(rhiresd)
+    tabsd   = np.squeeze(tabsd)
+    tmind   = np.squeeze(tmind)
+    tmaxd   = np.squeeze(tmaxd)
+    elev    = elevation_2d
+
+    frame_input = np.stack([rhiresd, tabsd, tmind, tmaxd, elev], axis=0)
+    frame_input = torch.from_numpy(frame_input[np.newaxis, ...]).float().to(device)
+
+    with torch.no_grad():
+        output = model_instance(frame_input)
+        output_np = output.cpu().numpy()[0]
+
+    precip_out[t] = descale_precip_log(output_np[0], **scaling_params["RhiresD"])
+    temp_out[t]   = descale_temp(output_np[1], scaling_params["TabsD"]["mean"], scaling_params["TabsD"]["std"])
+    tmin_out[t]   = descale_temp(output_np[2], scaling_params["TminD"]["mean"], scaling_params["TminD"]["std"])
+    tmax_out[t]   = descale_temp(output_np[3], scaling_params["TmaxD"]["mean"], scaling_params["TmaxD"]["std"])
+
+
+
+var_names = ["precip", "temp", "tmin", "tmax"]
+out_arrays = [precip_out[:n_time], temp_out[:n_time], tmin_out[:n_time], tmax_out[:n_time]]
+
+if dotc_input.lat.ndim == 2:
+    lat_1d = dotc_input.lat.values[:, 0]
+    lon_1d = dotc_input.lon.values[0, :]
+else:
+    lat_1d = dotc_input.lat.values
+    lon_1d = dotc_input.lon.values
+    pred_vars = {}
+for i, var in enumerate(var_names):
+    pred_vars[var] = xr.DataArray(
+        out_arrays[i],
+        dims=("time", "lat", "lon"),
+        coords={
+                "time": dotc_input.time.values[:n_time],
+                "lat": lat_1d,
+                "lon": lon_1d,
+            },
+            name=var
+        )
+
+pred_ds = xr.Dataset(pred_vars)
+
+
+if args.validation_1981_2010:
+    output_filename = "dOTC_ModelRun_Downscaled_Predictions_Validation_1981_2010.nc"
+else:
+    output_filename = "dOTC_ModelRun_Downscaled_Predictions.nc"
+pred_ds.to_netcdf(output_filename)
 
 
 # EQM/QDM
@@ -248,36 +250,34 @@ for t in trange(n_time, desc="Downscaling frames", file=sys.stdout):
     if t % 10 == 0:
         print(f"Processed frame {t}/{n_time}")
 
-coords = {
-    "time": temp_ds.time.values,
-    "lat": lat_1d,
-    "lon": lon_1d
-}
 
-ds_out = xr.Dataset(
-    {
-        "precip": (("time", "lat", "lon"), precip_out),
-        "temp":   (("time", "lat", "lon"), temp_out),
-        "tmin":   (("time", "lat", "lon"), tmin_out),
-        "tmax":   (("time", "lat", "lon"), tmax_out),
-    },
-    coords=coords
-)
+var_names = ["precip", "temp", "tmin", "tmax"]
+out_arrays = [precip_out[:n_time], temp_out[:n_time], tmin_out[:n_time], tmax_out[:n_time]]
 
-if "units" in temp_ds.time.attrs:
-    ds_out["time"].attrs["units"] = temp_ds.time.attrs["units"]
-if "calendar" in temp_ds.time.attrs:
-    ds_out["time"].attrs["calendar"] = temp_ds.time.attrs["calendar"]
+if qdm_input.lat.ndim == 2:
+    lat_1d = qdm_input.lat.values[:, 0]
+    lon_1d = qdm_input.lon.values[0, :]
+else:
+    lat_1d = qdm_input.lat.values
+    lon_1d = qdm_input.lon.values
+    pred_vars = {}
+for i, var in enumerate(var_names):
+    pred_vars[var] = xr.DataArray(
+        out_arrays[i],
+        dims=("time", "lat", "lon"),
+        coords={
+                "time": qdm.input.time.values[:n_time],
+                "lat": lat_1d,
+                "lon": lon_1d,
+            },
+            name=var
+        )
 
-temp_ds.close()
-precip_ds.close()
-tmin_ds.close()
-tmax_ds.close()
+pred_ds = xr.Dataset(pred_vars)
 
 
 if args.validation_1981_2010:
     output_filename = "QDM_ModelRun_Downscaled_Predictions_Validation_1981_2010.nc"
 else:
     output_filename = "QDM_ModelRun_Downscaled_Predictions.nc"
-
-ds_out.to_netcdf(output_filename)"""
+pred_ds.to_netcdf(output_filename)"""
