@@ -114,19 +114,18 @@ if elevation_2d.shape != target_shape:
 elevation_da.close()
 
 for t in trange(n_save, desc="Downscaling frames", file=sys.stdout):
-    # Get original precip and mask
-    orig_precip = model_vars["RhiresD"][0][model_vars["RhiresD"][1]][t].values.astype(float)
+    # Get original precip and mask from QDM file
+    orig_precip = precip_ds["precip"].isel(time=t).values
     orig_mask = np.isnan(orig_precip)
 
     # Set negative precip to zero, handle NaNs
     precip = np.where(orig_precip < 0, 0, orig_precip)
     precip = np.nan_to_num(precip, nan=0.0)
 
-    # Prepare other variables
-    temp  = model_vars["TabsD"][0][model_vars["TabsD"][1]][t].values
-    tmin  = model_vars["TminD"][0][model_vars["TminD"][1]][t].values
-    tmax  = model_vars["TmaxD"][0][model_vars["TmaxD"][1]][t].values
-
+    # Prepare other variables from QDM files
+    temp  = temp_ds["temp"].isel(time=t).values
+    tmin  = tmin_ds["tmin"].isel(time=t).values
+    tmax  = tmax_ds["tmax"].isel(time=t).values
     temp  = np.nan_to_num(temp, nan=0.0)
     tmin  = np.nan_to_num(tmin, nan=0.0)
     tmax  = np.nan_to_num(tmax, nan=0.0)
@@ -136,14 +135,14 @@ for t in trange(n_save, desc="Downscaling frames", file=sys.stdout):
         elev = resize(elev, precip.shape, order=1, preserve_range=True, anti_aliasing=True)
     elev = elev.astype(np.float32)
 
-    # Stack and scale
+    # Stack and scale in correct order
     rhiresd = scale_precip_log(precip, rhiresd_params["mean"], rhiresd_params["std"], rhiresd_params["epsilon"])
     tabsd   = scale_temp(temp, tabsd_params["mean"], tabsd_params["std"])
     tmind   = scale_temp(tmin, tmind_params["mean"], tmind_params["std"])
     tmaxd   = scale_temp(tmax, tmaxd_params["mean"], tmaxd_params["std"])
 
-    frame_input = np.stack([rhiresd, tabsd, tmind, tmaxd, elev], axis=0)
-    frame_input = torch.from_numpy(frame_input[np.newaxis, ...]).float().to(device)
+    input_tensor = torch.tensor(np.stack([rhiresd, tabsd, tmind, tmaxd, elev])).float()
+    frame_input = input_tensor.unsqueeze(0)
 
     with torch.no_grad():
         output = model_instance(frame_input)
@@ -167,12 +166,12 @@ for t in trange(n_save, desc="Downscaling frames", file=sys.stdout):
     tmax_out_frame[orig_mask] = np.nan
     tmax_out[t] = tmax_out_frame
 
-    if t % 10 == 0:
-        print(f"Processed frame {t}/{n_save}")
 
 
 var_names = ["precip", "temp", "tmin", "tmax"]
 out_arrays = [precip_out, temp_out, tmin_out, tmax_out]
+
+
 
 pred_vars = {}
 for i, var in enumerate(var_names):
@@ -189,7 +188,11 @@ for i, var in enumerate(var_names):
         name=var
     )
 
+
+
 pred_ds = xr.Dataset(pred_vars)
+
+
 
 if "units" in temp_ds.time.attrs:
     pred_ds["time"].attrs["units"] = temp_ds.time.attrs["units"]
