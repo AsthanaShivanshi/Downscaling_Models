@@ -18,7 +18,8 @@ cd /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Mo
 #python Inference_Test_Set.py
 
 
-python Inference_Model_dOTC.py #--validation_1981_2010
+python Inference_Model_dOTC.py --validation_1981_2010
+#python Inference_Model_EQM_QDM.py  #--validation_1981_2010
 
 
 #echo "Inference done, test set predictions saved"
