@@ -66,7 +66,7 @@ callbacks:
     mode: min
 
 model:
-  _target_: Training_LDM.models.components.unet.DownscalingUnetLightning_Fold_I
+  _target_: Training_LDM.models.components.unet.DownscalingUnetLightning
   in_ch: 5
   out_ch: 4
   features: [64,128,256,512]
