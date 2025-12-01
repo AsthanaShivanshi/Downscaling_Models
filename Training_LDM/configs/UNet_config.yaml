@@ -1,5 +1,5 @@
 defaults:
-  - paths: paths_fold_I.yaml
+  - paths: paths_fold_II.yaml
   - _self_
 
 experiment:
@@ -59,7 +59,7 @@ callbacks:
 
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
-    dirpath: Training_LDM/trained_ckpts
+    dirpath: Training_LDM/trained_ckpts/Fold_II
     filename: ${model._target_}_checkpoint
     save_top_k: 1
     monitor: val/loss
