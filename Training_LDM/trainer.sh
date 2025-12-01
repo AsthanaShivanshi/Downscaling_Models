@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=LDM_ckpts
-#SBATCH --output=logs/ckpts_LDM/job_output-%j.txt
-#SBATCH --error=logs/ckpts_LDM/job_error-%j.txt
+#SBATCH --job-name=UNet_ckpts_fold_I
+#SBATCH --output=logs/ckpts_LDM/UNet_fold_I/job_output-%j.txt
+#SBATCH --error=logs/ckpts_LDM/UNet_fold_I/job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=23:00:00
@@ -11,7 +11,7 @@
 
 source diffscaler.sh
 export PYTHONPATH="$PROJECT_DIR"
-mkdir -p logs
+mkdir -p logs/ckpts_LDM/UNet_fold_I
 
 cd "$PROJECT_DIR"
 export WANDB_MODE=online
@@ -21,10 +21,10 @@ which python
 python -c "import wandb; print(wandb.__version__)"
 
 # Training the Unet
-#python Training_LDM/train.py --config-name UNet_config.yaml
+python Training_LDM/train.py --config-name UNet_config.yaml
 
 # Training the VAE
 #python Training_LDM/train.py --config-name VAE_config.yaml   
 
 # Training the LDM
-python Training_LDM/train.py --config-name LDM_config.yaml
+#python Training_LDM/train.py --config-name LDM_config.yaml

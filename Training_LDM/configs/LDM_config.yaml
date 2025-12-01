@@ -1,5 +1,5 @@
 defaults:
-  - paths: paths.yaml
+  - paths: paths_fold_I.yaml
   - _self_
 
 experiment:

@@ -1,0 +1,39 @@
+data:
+  train:
+    input: 
+      precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/RhiresD_input_train_fold_II_scaled.nc
+      temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/TabsD_input_train_fold_II_scaled.nc
+      temp_min: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/TminD_input_train_fold_II_scaled.nc
+      temp_max: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/TmaxD_input_train_fold_II_scaled.nc
+    target:
+      precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/RhiresD_target_train_fold_II_scaled.nc
+      temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/TabsD_target_train_fold_II_scaled.nc
+      temp_min: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/TminD_target_train_fold_II_scaled.nc
+      temp_max: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/TmaxD_target_train_fold_II_scaled.nc
+
+  val:
+    input:
+      precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/RhiresD_input_val_fold_II_scaled.nc
+      temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/TabsD_input_val_fold_II_scaled.nc
+      temp_min: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/TminD_input_val_fold_II_scaled.nc
+      temp_max: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/TmaxD_input_val_fold_II_scaled.nc
+    target:
+      precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/RhiresD_target_val_fold_II_scaled.nc
+      temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/TabsD_target_val_fold_II_scaled.nc
+      temp_min: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/TminD_target_val_fold_II_scaled.nc
+      temp_max: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/TmaxD_target_val_fold_II_scaled.nc
+
+  test:
+    input:
+      precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/RhiresD_input_test_fold_II_scaled.nc
+      temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/TabsD_input_test_fold_II_scaled.nc
+      temp_min: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/TminD_input_test_fold_II_scaled.nc
+      temp_max: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/TmaxD_input_test_fold_II_scaled.nc
+    target:
+      precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/RhiresD_target_test_fold_II_scaled.nc
+      temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/TabsD_target_test_fold_II_scaled.nc
+      temp_min: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/TminD_target_test_fold_II_scaled.nc
+      temp_max: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Training_Chronological_Dataset_Fold_II/TmaxD_target_test_fold_II_scaled.nc
+
+  static:
+    elevation: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/elevation.tif

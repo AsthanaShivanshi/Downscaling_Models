@@ -1,5 +1,5 @@
 defaults:
-  - paths: paths.yaml
+  - paths: paths_fold_I.yaml
   - _self_
 
 experiment:
@@ -66,7 +66,7 @@ callbacks:
     mode: min
 
 model:
-  _target_: Training_LDM.models.components.unet.DownscalingUnetLightning
+  _target_: Training_LDM.models.components.unet.DownscalingUnetLightning_Fold_I
   in_ch: 5
   out_ch: 4
   features: [64,128,256,512]
