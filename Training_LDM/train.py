@@ -25,6 +25,7 @@ def train(cfg: DictConfig):
             out_ch=cfg.model.get("out_ch", 4),
             features=cfg.model.get("features", [64,128,256,512])
         )
+
         checkpoint = torch.load(cfg.model.unet_regr, map_location="cpu")
         state_dict = checkpoint["state_dict"]
         new_state_dict = {}
@@ -37,17 +38,16 @@ def train(cfg: DictConfig):
     # Instantiate model: for UNet and VAE
     model: LightningModule = hydra.utils.instantiate(cfg.model, unet_regr=unet_model if cfg.model.get("unet_regr") else None)
 
-    #Checking that files exist /debugging prints cz val files were not being read for some reason : AsthanaSh
+    #Checking that files exist /debugging prints cz val files were not being read: AsthanaSh
     print("DataModule val files", datamodule.val_input, datamodule.val_target)
     if isinstance(datamodule.val_input, dict):
         for k, v in datamodule.val_input.items():
             if not os.path.exists(v):
-                raise FileNotFoundError(f"Validation input file for {k} not found: {v}")
+                raise FileNotFoundError(f"Val input file for {k} not found: {v}")
     if isinstance(datamodule.val_target, dict):
         for k, v in datamodule.val_target.items():
             if not os.path.exists(v):
-                raise FileNotFoundError(f"Validation target file for {k} not found: {v}")
-
+                raise FileNotFoundError(f"Val target file for {k} not found: {v}")
 #For LDM, pass
     #autoencoder_cfg = cfg.model.autoencoder
     #autoencoder = hydra.utils.instantiate(autoencoder_cfg, unet_regr=unet_model if cfg.model.get("unet_regr") else None)
