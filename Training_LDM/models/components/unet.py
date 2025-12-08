@@ -161,7 +161,22 @@ class DownscalingUnetLightning(LightningModule):
         return total_loss
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode='min',
+            factor=0.8,
+            patience=3,  
+        )
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "monitor": "val/loss", 
+                "interval": "epoch",
+                "frequency": 1
+            }
+        }
     
     def last_layer(self):
         return self.unet.outputs
