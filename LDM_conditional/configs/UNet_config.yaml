@@ -1,5 +1,5 @@
 defaults:
-  - paths: paths_30km.yaml
+  - paths: paths_40km.yaml
   - _self_
 
 experiment:
@@ -59,7 +59,7 @@ callbacks:
 
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
-    dirpath: LDM_conditional/trained_ckpts/30km
+    dirpath: LDM_conditional/trained_ckpts/40km
     filename: ${model._target_}_checkpoint
     save_top_k: 1
     monitor: val/loss
