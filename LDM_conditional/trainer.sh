@@ -21,10 +21,10 @@ which python
 python -c "import wandb; print(wandb.__version__)"
 
 # Training the Unet
-python Training_LDM/train.py --config-name UNet_config.yaml
+python LDM_conditional/train.py --config-name UNet_config.yaml
 
 # Training the VAE
-#python Training_LDM/train.py --config-name VAE_config.yaml   
+#python LDM_conditional/train.py --config-name VAE_config.yaml   
 
 # Training the LDM
-#python Training_LDM/train.py --config-name LDM_config.yaml
+#python LDM_conditional/train.py --config-name LDM_config.yaml

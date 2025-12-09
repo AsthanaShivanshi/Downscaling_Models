@@ -56,7 +56,13 @@ class DownscalingUnet(nn.Module):
         self.Encoder2 = Encoder_Block(features[0], features[1])
         self.Encoder3 = Encoder_Block(features[1], features[2])
         self.Encoder4 = Encoder_Block(features[2], features[3])
+
+
+
         self.bottleneck = DoubleConv(features[3], features[3]*2)
+
+
+
         self.Decoder1 = Decoder_Block(features[3]*2, features[3])
         self.Decoder2 = Decoder_Block(features[3], features[2])
         self.Decoder3 = Decoder_Block(features[2], features[1])
@@ -91,6 +97,7 @@ class DownscalingUnet(nn.Module):
         d3 = self.Decoder3(d2, s2)
         d4 = self.Decoder4(d3, s1)
         out = self.outputs(d4)
+        
         out_cropped = out[:, :, :original_height, :original_width]
         x_cropped = x[:, :, :original_height, :original_width]
         final_out = out_cropped + x_cropped[:, :out_cropped.shape[1], :, :]

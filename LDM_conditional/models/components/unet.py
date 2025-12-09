@@ -1,6 +1,10 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
+#Additional citation : https://github.com/soof-golan/spacecutter-lightning/tree/14febad15c47ba1861c7c3c3397a1929fd47e65d/README.md
+
+#AsthanaSh : This is the reference Unet upon which the GAN is based.
 
 class DoubleConv(nn.Module):
     def __init__(self, in_c, out_c):
@@ -40,6 +44,8 @@ class DecoderBlock(nn.Module):
         
     def forward(self, inputs, skip):
         x = self.up(inputs)
+        if x.shape[2:] != skip.shape[2:]:
+            x = torch.nn.functional.interpolate(x, size=skip.shape[2:], mode='bilinear', align_corners=False)
         x = torch.cat([x, skip], axis=1)
         x = self.conv(x)
         return x
@@ -65,11 +71,20 @@ class DownscalingUnet(nn.Module):
         """ Classifier """
         self.outputs = nn.Conv2d(features[0], out_ch, kernel_size=1, padding=0)
     
-    def forward(self, inputs):
+    def forward(self, x):
+
+
+        original_height=x.shape[2]
+        original_width=x.shape[3]
+        # Pad input if the size is not divisible by 16
+        pad_height = (16 - original_height % 16) % 16
+        pad_width = (16 - original_width % 16) % 16
+        x_padded = F.pad(x, (0, pad_width, 0, pad_height))
+
         """ Encoder """
         # note: ss are for the skip connections!
         #       ps are results of an encoder block!
-        s1, p1 = self.e1(inputs)
+        s1, p1 = self.e1(x_padded)
         s2, p2 = self.e2(p1)
         s3, p3 = self.e3(p2)
         s4, p4 = self.e4(p3)
@@ -80,9 +95,16 @@ class DownscalingUnet(nn.Module):
         d2 = self.d2(d1, s3)
         d3 = self.d3(d2, s2)
         d4 = self.d4(d3, s1)
+        out= self.outputs(d4)
+
+
         """ Classifier """
-        outputs = self.outputs(d4)
-        return outputs
+
+        out_cropped = out[:, :, :original_height, :original_width]
+        x_cropped = x[:, :, :original_height, :original_width]
+        final_out = out_cropped + x_cropped[:, :out_cropped.shape[1], :, :]
+        final_out[:, 0:1, :, :] = F.relu(final_out[:, 0:1, :, :]) # Only for precip channel
+        return final_out
     
     def last_layer(self):
         return self.outputs

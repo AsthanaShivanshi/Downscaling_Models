@@ -66,7 +66,7 @@ callbacks:
     mode: min
 
 model:
-  _target_: LDM_conditional.models.components.unet.DownscalingUnetLightning
+  _target_: LDM_conditional.models.unet_module.DownscalingUnetLightning
   in_ch: 5
   out_ch: 4
   features: [64,128,256,512]
