@@ -1,5 +1,5 @@
 defaults:
-  - paths: paths_40km.yaml
+  - paths: paths_fold_I.yaml
   - _self_
 
 experiment:
@@ -35,8 +35,21 @@ data:
   static:
     elevation: ${paths.data.static.elevation}
 
+encoder:
+  _target_: Training_LDM.models.components.ae.SimpleConvEncoder
+  in_dim: 4  #AsthanaSh: Output from Unet is four channels (minus static), fed into VAE for latent representaton of noise. 
+  levels: 2
+  min_ch: 16
+  ch_mult: 4
+
+decoder:
+  _target_: Training_LDM.models.components.ae.SimpleConvDecoder
+  in_dim: 64 #Matching encoders OP
+  levels: 2
+  min_ch: 16
+
 datamodule:
-  _target_: LDM_conditional.DownscalingDataModule.DownscalingDataModule
+  _target_: Training_LDM.DownscalingDataModule.DownscalingDataModule
   train_input: ${data.train.input}
   train_target: ${data.train.target}
   val_input: ${data.val.input}
@@ -56,18 +69,36 @@ callbacks:
     monitor: val/loss
     patience: 10
     mode: min
-
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
-    dirpath: LDM_conditional/trained_ckpts/40km/
+    dirpath: Training_LDM/trained_ckpts
     filename: ${model._target_}_checkpoint
     save_top_k: 1
     monitor: val/loss
     mode: min
 
-model:
-  _target_: LDM_conditional.models.unet_module.DownscalingUnetLightning
-  in_ch: 5
+unet_arch:
+  _target_: Training_LDM.models.components.unet.DownscalingUnet
+  in_ch: 5  #4 vars + elevation
   out_ch: 4
   features: [64,128,256,512]
-  channel_names: ["precip", "temp", "temp_min", "temp_max"]
+
+
+model:
+  _target_: Training_LDM.models.ae_module.AutoencoderKL
+  encoder: ${encoder}
+  decoder: ${decoder}
+
+
+  kl_weight: 0.01
+  ae_flag: "residual"
+
+  unet_regr: Training_LDM/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt  # set only if using residuals
+
+
+lr_scheduler:
+  _target_: lightning.pytorch.lr_scheduler.ReduceLROnPlateau
+  mode: min
+  factor: 0.25
+  patience: 5
+  min_lr: 1e-6
