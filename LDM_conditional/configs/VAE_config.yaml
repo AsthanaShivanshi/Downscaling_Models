@@ -1,5 +1,5 @@
 defaults:
-  - paths: paths_fold_I.yaml
+  - paths: paths_50km.yaml
   - _self_
 
 experiment:
@@ -36,20 +36,20 @@ data:
     elevation: ${paths.data.static.elevation}
 
 encoder:
-  _target_: Training_LDM.models.components.ae.SimpleConvEncoder
-  in_dim: 4  #AsthanaSh: Output from Unet is four channels (minus static), fed into VAE for latent representaton of noise. 
+  _target_: LDM_conditional.models.components.ae.SimpleConvEncoder
+  in_dim: 4  #AsthanaSh: Output from Unet is four channels (minus static), fed into VAE for latent representaton of residuals. 
   levels: 2
   min_ch: 16
   ch_mult: 4
 
 decoder:
-  _target_: Training_LDM.models.components.ae.SimpleConvDecoder
+  _target_: LDM_conditional.models.components.ae.SimpleConvDecoder
   in_dim: 64 #Matching encoders OP
   levels: 2
   min_ch: 16
 
 datamodule:
-  _target_: Training_LDM.DownscalingDataModule.DownscalingDataModule
+  _target_: LDM_conditional.DownscalingDataModule.DownscalingDataModule
   train_input: ${data.train.input}
   train_target: ${data.train.target}
   val_input: ${data.val.input}
@@ -71,21 +71,21 @@ callbacks:
     mode: min
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
-    dirpath: Training_LDM/trained_ckpts
+    dirpath: LDM_conditional/trained_ckpts/50km/
     filename: ${model._target_}_checkpoint
     save_top_k: 1
     monitor: val/loss
     mode: min
 
 unet_arch:
-  _target_: Training_LDM.models.components.unet.DownscalingUnet
+  _target_: LDM_conditional.models.unet_module.DownscalingUnet
   in_ch: 5  #4 vars + elevation
   out_ch: 4
   features: [64,128,256,512]
 
 
 model:
-  _target_: Training_LDM.models.ae_module.AutoencoderKL
+  _target_: LDM_conditional.models.ae_module.AutoencoderKL
   encoder: ${encoder}
   decoder: ${decoder}
 
@@ -93,12 +93,12 @@ model:
   kl_weight: 0.01
   ae_flag: "residual"
 
-  unet_regr: Training_LDM/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt  # set only if using residuals
+  unet_regr: LDM_conditional/trained_ckpts/50km/LDM_conditional.models.unet_module.DownscalingUnetLightning_checkpoint.ckpt  # set only if using residuals
 
 
 lr_scheduler:
   _target_: lightning.pytorch.lr_scheduler.ReduceLROnPlateau
   mode: min
-  factor: 0.25
-  patience: 5
+  factor: 0.5
+  patience: 3
   min_lr: 1e-6
