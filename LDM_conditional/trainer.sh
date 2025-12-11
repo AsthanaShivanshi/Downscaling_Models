@@ -4,7 +4,7 @@
 #SBATCH --error=logs/ckpts_LDM/10km/job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --time=05:00:00
+#SBATCH --time=15:00:00
 #SBATCH --mem=256G
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
