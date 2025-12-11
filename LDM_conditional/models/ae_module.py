@@ -118,7 +118,12 @@ class AutoencoderKL(LightningModule):
         }
     
     def preprocess_batch(self, batch):
-        (low_res, high_res, smt) = batch
+
+        if len(batch) == 2:
+            (low_res, high_res) = batch
+            smt = None
+        elif len(batch) == 3:
+            (low_res, high_res, smt) = batch
         if self.ae_flag is None:
             return low_res, high_res
         elif self.ae_flag == 'residual':

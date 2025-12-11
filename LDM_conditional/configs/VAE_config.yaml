@@ -2,8 +2,6 @@ defaults:
   - paths: paths_10km.yaml
   - _self_
 
-latent_dim : 32
-
 experiment:
   batch_size: 32
   num_workers: 4
@@ -39,16 +37,16 @@ data:
 
 encoder:
   _target_: LDM_conditional.models.components.ae.SimpleConvEncoder
-  in_dim: 4  #AsthanaSh: Output from Unet is four channels (minus static), fed into VAE for latent representaton of residuals. 
+  in_dim: 4  #AsthanaSh: Output from Unet is four channels (minus static), fed into VAE for latent representaton of noise. 
   levels: 2
-  min_ch: ${latent_dim}
-  ch_mult: 1
+  min_ch: 16
+  ch_mult: 4
 
 decoder:
   _target_: LDM_conditional.models.components.ae.SimpleConvDecoder
-  in_dim: ${latent_dim} #Matching encoders OP
+  in_dim: 64 #Matching encoders OP
   levels: 2
-  min_ch: ${latent_dim}
+  min_ch: 16
 
 datamodule:
   _target_: LDM_conditional.DownscalingDataModule.DownscalingDataModule
@@ -73,7 +71,7 @@ callbacks:
     mode: min
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
-    dirpath: LDM_conditional/trained_ckpts/50km/
+    dirpath: Training_LDM/trained_ckpts/10km/
     filename: ${model._target_}_checkpoint
     save_top_k: 1
     monitor: val/loss
@@ -95,12 +93,11 @@ model:
   kl_weight: 0.01
   ae_flag: "residual"
 
-  unet_regr: LDM_conditional/trained_ckpts/10km/LDM_conditional.models.unet_module.DownscalingUnetLightning_checkpoint.ckpt  # set only if using residuals
-
+  unet_regr: Training_LDM/trained_ckpts/LDM_conditional.models.unet_module.DownscalingUnetLightning_checkpoint.ckpt  # set only if using residuals
 
 lr_scheduler:
   _target_: lightning.pytorch.lr_scheduler.ReduceLROnPlateau
   mode: min
-  factor: 0.5
-  patience: 3
+  factor: 0.50
+  patience: 5
   min_lr: 1e-6
