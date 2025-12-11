@@ -1,6 +1,8 @@
 defaults:
-  - paths: paths_50km.yaml
+  - paths: paths_10km.yaml
   - _self_
+
+latent_dim : 32
 
 experiment:
   batch_size: 32
@@ -39,14 +41,14 @@ encoder:
   _target_: LDM_conditional.models.components.ae.SimpleConvEncoder
   in_dim: 4  #AsthanaSh: Output from Unet is four channels (minus static), fed into VAE for latent representaton of residuals. 
   levels: 2
-  min_ch: 16
-  ch_mult: 4
+  min_ch: ${latent_dim}
+  ch_mult: 1
 
 decoder:
   _target_: LDM_conditional.models.components.ae.SimpleConvDecoder
-  in_dim: 64 #Matching encoders OP
+  in_dim: ${latent_dim} #Matching encoders OP
   levels: 2
-  min_ch: 16
+  min_ch: ${latent_dim}
 
 datamodule:
   _target_: LDM_conditional.DownscalingDataModule.DownscalingDataModule
@@ -93,7 +95,7 @@ model:
   kl_weight: 0.01
   ae_flag: "residual"
 
-  unet_regr: LDM_conditional/trained_ckpts/50km/LDM_conditional.models.unet_module.DownscalingUnetLightning_checkpoint.ckpt  # set only if using residuals
+  unet_regr: LDM_conditional/trained_ckpts/10km/LDM_conditional.models.unet_module.DownscalingUnetLightning_checkpoint.ckpt  # set only if using residuals
 
 
 lr_scheduler:

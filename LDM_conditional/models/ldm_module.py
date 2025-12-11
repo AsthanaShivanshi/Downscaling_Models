@@ -222,7 +222,10 @@ class LatentDiffusion(LightningModule):
             y = self.autoencoder.encode(residual)[0]
         else:
             y = self.autoencoder.encode(y)[0]   # returns mean ONLY!!!
-        context_list = [(z, [0]),(x, [0])]
+        
+        #Context encoding
+        coarse_pred= self.unet_regr(x)  #Conditioned on coarse prediction from Unet Regressor
+        context_list = [(coarse_pred, ts)]
         context = self.context_encoder(context_list) if self.conditional else None
         # context = x if self.conditional else None
         return self(y, context=context)

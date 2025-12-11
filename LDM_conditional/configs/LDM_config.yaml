@@ -1,0 +1,130 @@
+defaults:
+  - paths: paths_fold_I.yaml
+  - _self_
+latent_dim : 32
+
+
+
+experiment:
+  batch_size: 32
+  num_workers: 4
+
+variables:
+  input:
+    precip: RhiresD
+    temp: TabsD
+    temp_min: TminD
+    temp_max: TmaxD
+  target:
+    precip: RhiresD
+    temp: TabsD
+    temp_min: TminD
+    temp_max: TmaxD
+
+preprocessing:
+  nan_to_num: true
+  nan_value : 0.0
+
+data:
+  train:
+    input: ${paths.data.train.input}
+    target: ${paths.data.train.target}
+  val:
+    input: ${paths.data.val.input}
+    target: ${paths.data.val.target}
+  test:
+    input: ${paths.data.test.input}
+    target: ${paths.data.test.target}
+  static:
+    elevation: ${paths.data.static.elevation}
+
+encoder:
+  _target_: Training_LDM.models.components.ae.SimpleConvEncoder
+  in_dim: 4
+  levels: 2
+  min_ch: ${latent_dim}
+  ch_mult: 1
+
+decoder:
+  _target_: Training_LDM.models.components.ae.SimpleConvDecoder
+  in_dim: ${latent_dim}
+  levels: 2
+  min_ch: ${latent_dim}
+
+
+#Denoising Unet should expect the dims of the VAE output (latent): AsthanaSh
+denoiser:
+  _target_: Training_LDM.models.components.ldm.denoiser.UNetModel
+  in_channels: ${latent_dim} #Must match the VAE latent channels : AsthanaSh
+  out_channels: ${latent_dim}
+  model_channels: 64
+  num_res_blocks: 2
+  attention_resolutions: [1,2,4]
+  context_ch: null #[128,128,128,128] #Changed to null for a first experiment (unconditional generation from latent space): AsthanaSh
+  channel_mult: [1,2,4,4]
+  conv_resample: true
+  dims: 2
+  use_fp16: false
+  num_heads: 4
+
+sampler:
+  _target_: Training_LDM.models.components.ldm.denoiser.DDIMSampler
+  model: ${denoiser}
+  schedule: "cosine"
+  device: "cuda"
+  ddim_num_steps: 1000
+  ddim_eta: 0.0
+
+
+ema:
+  _target_: Training_LDM.models.components.ldm.denoiser.LitEma
+  model: ${denoiser}
+  decay: 0.9999
+  use_num_updates: true
+
+datamodule:
+  _target_: Training_LDM.DownscalingDataModule.DownscalingDataModule #Path to the exact class, not the module file : AsthanaSh
+  train_input: ${data.train.input}
+  train_target: ${data.train.target}
+  val_input: ${data.val.input}
+  val_target: ${data.val.target}
+  test_input: ${data.test.input}
+  test_target: ${data.test.target}
+  elevation: ${data.static.elevation} #Added elevation to datamodule for context conditioning : AsthanaSh
+  batch_size: ${experiment.batch_size}
+  num_workers: ${experiment.num_workers}
+  preprocessing:
+    variables: ${variables}
+    preprocessing: ${preprocessing}
+
+  
+callbacks:
+  early_stopping:
+    _target_: lightning.pytorch.callbacks.EarlyStopping
+    monitor: val/loss
+    patience: 10
+    mode: min
+  model_checkpoint:
+    _target_: lightning.pytorch.callbacks.ModelCheckpoint
+    dirpath: Training_LDM/trained_ckpts
+    filename: LDM_checkpoint_V1_linear_schedule_1000_steps
+    save_top_k: 1
+    monitor: val/loss
+    mode: min
+
+model:
+#Need to pass VAE autoencoder , not encoder and decoder : AsthanaSh
+  _target_: Training_LDM.models.ldm_module.LatentDiffusion
+  denoiser: ${denoiser}
+  autoencoder:
+    _target_: Training_LDM.models.ae_module.AutoencoderKL
+    encoder: ${encoder}
+    decoder: ${decoder}
+    unet_regr: Training_LDM/trained_ckpts/Training_LDM.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt
+  context_encoder: ${conditioner}  #Conditions the denoiser with coarse UNet predictors: AsthanaSh
+  #VAE ckpt loaded from the ae_load_state_file 
+  ae_load_state_file: Training_LDM/trained_ckpts/Training_LDM.models.ae_module.AutoencoderKL_checkpoint.ckpt
+  #Note : Output from LDM : [batch_size, 4, height, width] (AsthanaSh)
+  parameterization: "eps"
+  loss_type: "l2"
+  timesteps: 1000

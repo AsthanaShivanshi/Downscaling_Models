@@ -1,17 +1,17 @@
 #!/bin/bash
-#SBATCH --job-name=50km_VAE_LDM
-#SBATCH --output=logs/ckpts_LDM/50km/job_output-%j.txt
-#SBATCH --error=logs/ckpts_LDM/50km/job_error-%j.txt
+#SBATCH --job-name=10km_VAE_LDM
+#SBATCH --output=logs/ckpts_LDM/10km/job_output-%j.txt
+#SBATCH --error=logs/ckpts_LDM/10km/job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --time=10:00:00
+#SBATCH --time=05:00:00
 #SBATCH --mem=256G
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
 
 source diffscaler.sh
 export PYTHONPATH="$PROJECT_DIR"
-mkdir -p logs/ckpts_LDM/50km
+mkdir -p logs/ckpts_LDM/10km
 
 
 cd "$PROJECT_DIR"
