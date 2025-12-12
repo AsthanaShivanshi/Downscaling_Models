@@ -124,7 +124,9 @@ model:
     _target_: LDM_conditional.models.ae_module.AutoencoderKL
     encoder: ${encoder}
     decoder: ${decoder}
-    unet_regr: LDM_conditional/trained_ckpts/10km/LDM_conditional.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt
+    unet_regr: 
+    _target_: LDM_conditional.models.components.unet.DownscalingUnetLightning.load_from_checkpoint
+    checkpoint_path: LDM_conditional/trained_ckpts/10km/DownscalingUnetLightning_checkpoint.ckpt
   context_encoder: ${conditioner}  #Conditions the denoiser with coarse UNet predictors: AsthanaSh
   #VAE ckpt loaded from the ae_load_state_file 
   ae_load_state_file: LDM_conditional/trained_ckpts/10km/LDM_conditional.models.ae_module.AutoencoderKL_checkpoint.ckpt
