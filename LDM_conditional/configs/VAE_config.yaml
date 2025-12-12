@@ -47,6 +47,8 @@ decoder:
   in_dim: 64 #Matching encoders OP
   levels: 2
   min_ch: 16
+  out_dim: 4
+
 
 datamodule:
   _target_: LDM_conditional.DownscalingDataModule.DownscalingDataModule
@@ -71,7 +73,7 @@ callbacks:
     mode: min
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
-    dirpath: Training_LDM/trained_ckpts/10km/
+    dirpath: LDM_conditional/trained_ckpts/10km/
     filename: ${model._target_}_checkpoint
     save_top_k: 1
     monitor: val/loss
@@ -93,11 +95,11 @@ model:
   kl_weight: 0.01
   ae_flag: "residual"
 
-  unet_regr: Training_LDM/trained_ckpts/LDM_conditional.models.unet_module.DownscalingUnetLightning_checkpoint.ckpt  # set only if using residuals
+  unet_regr: LDM_conditional/trained_ckpts/10km/LDM_conditional.models.unet_module.DownscalingUnetLightning_checkpoint.ckpt  # set only if using residuals
 
 lr_scheduler:
   _target_: lightning.pytorch.lr_scheduler.ReduceLROnPlateau
   mode: min
   factor: 0.50
-  patience: 5
+  patience: 3
   min_lr: 1e-6

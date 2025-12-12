@@ -70,13 +70,19 @@ class AutoencoderKL(LightningModule):
         return (dec, mean, log_var)
 
     def _loss(self, batch):
-        # (low_res, high_res, ts) = batch
-        x,y = self.preprocess_batch(batch)
+        x, y = self.preprocess_batch(batch)
         while isinstance(x, list) or isinstance(x, tuple):
             x = x[0][0]
-        (y_pred, mean, log_var) = self.forward(x)
+        y_pred, mean, log_var = self.forward(x)
 
-        rec_loss = (y-y_pred).abs().mean()
+        # Crop y_pred to match y's spatial size
+        if y_pred.shape[-2:] != y.shape[-2:]:
+            min_h = min(y_pred.shape[-2], y.shape[-2])
+            min_w = min(y_pred.shape[-1], y.shape[-1])
+            y_pred = y_pred[..., :min_h, :min_w]
+            y = y[..., :min_h, :min_w]
+
+        rec_loss = (y - y_pred).abs().mean()
         kl_loss = kl_from_standard_normal(mean, log_var)
         total_loss = rec_loss + self.kl_weight * kl_loss
 
