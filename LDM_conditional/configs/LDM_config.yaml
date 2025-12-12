@@ -49,6 +49,12 @@ decoder:
   min_ch: 16
   out_dim: 4
 
+conditioner:
+  _target_: LDM_conditional.models.components.ldm.conditioner.AFNOConditionerNetBase
+  autoencoder: ${model.autoencoder}
+  embed_dim: 128
+  analysis_depth: 4
+
 
 #Denoising Unet should expect the dims of the VAE output (latent): AsthanaSh
 denoiser:
@@ -58,7 +64,7 @@ denoiser:
   model_channels: 64
   num_res_blocks: 2
   attention_resolutions: [1,2,4]
-  context_ch: null #[128,128,128,128] #Changed to null for a first experiment (unconditional generation from latent space): AsthanaSh
+  context_ch: [128,128,128,128] 
   channel_mult: [1,2,4,4]
   conv_resample: true
   dims: 2
@@ -121,7 +127,7 @@ model:
     unet_regr: LDM_conditional/trained_ckpts/10km/LDM_conditional.models.components.unet.DownscalingUnetLightning_checkpoint.ckpt
   context_encoder: ${conditioner}  #Conditions the denoiser with coarse UNet predictors: AsthanaSh
   #VAE ckpt loaded from the ae_load_state_file 
-  ae_load_state_file: LDM_conditional/trained_ckpts/LDM_conditional.models.ae_module.AutoencoderKL_checkpoint.ckpt
+  ae_load_state_file: LDM_conditional/trained_ckpts/10km/LDM_conditional.models.ae_module.AutoencoderKL_checkpoint.ckpt
   #Note : Output from LDM : [batch_size, 4, height, width] (AsthanaSh)
   parameterization: "v"
   loss_type: "l2"
