@@ -26,12 +26,16 @@ class AutoencoderKL(LightningModule):
         kl_weight=0.01,     
         ae_flag=None,
         unet_regr=None,
+        beta_anneal_steps=10000,
         **kwargs
     ):
         super().__init__(**kwargs)
         self.encoder = encoder
         self.decoder = decoder
-        # self.hidden_width = hidden_width
+        self.kl_weight = kl_weight
+        self.beta_anneal_steps = beta_anneal_steps
+        self.register_buffer("current_step", torch.tensor(0, dtype=torch.long))
+
         self.encoded_channels = self.encoder.net[-1].out_channels
         self.to_moments = nn.Conv2d(self.encoded_channels, self.encoded_channels,
             kernel_size=1)
@@ -39,8 +43,12 @@ class AutoencoderKL(LightningModule):
             kernel_size=1)
         # self.log_var = nn.Parameter(torch.zeros(size=()))
         self.kl_weight = kl_weight
+
+        #For correcting systemic bias : AsthanaSh
+        self.bias = nn.Parameter(torch.zeros(size=(1,4,1,1)))  #4 output channels
         self.ae_flag = ae_flag
         assert self.ae_flag in [None, 'residual', 'hres'], f'ae_flag {self.ae_flag} not recognized!!'
+        
         if self.ae_flag=='residual':
             assert unet_regr is not None, 'If you want to work with residuals, provide a unet_regression network!'
         if unet_regr is not None:
@@ -57,7 +65,7 @@ class AutoencoderKL(LightningModule):
     def decode(self, z):
         z = self.to_decoder(z)
         dec = self.decoder(z)
-        return dec
+        return dec + self.bias
 
     def forward(self, input, sample_posterior=True):
         (mean, log_var) = self.encode(input)
@@ -65,9 +73,16 @@ class AutoencoderKL(LightningModule):
             z = sample_from_standard_normal(mean, log_var)
         else:
             z = mean
-        # print(f'BOTTLENECK SIZE: {z.shape}')
+        print(f'BOTTLENECK SIZE: {z.shape}')
         dec = self.decode(z)
         return (dec, mean, log_var)
+    
+
+    def _get_annealed_kl_weight(self):
+        # Linear annealing from 0 to self.kl_weight over beta_anneal_steps
+        progress = min(1.0, self.current_step.item() / self.beta_anneal_steps)
+        return self.kl_weight * progress
+
 
     def _loss(self, batch):
         x, y = self.preprocess_batch(batch)
@@ -84,23 +99,27 @@ class AutoencoderKL(LightningModule):
 
         rec_loss = (y - y_pred).abs().mean()
         kl_loss = kl_from_standard_normal(mean, log_var)
-        total_loss = rec_loss + self.kl_weight * kl_loss
+        beta = self._get_annealed_kl_weight()
+        total_loss = rec_loss + beta * kl_loss
 
-        return (total_loss, rec_loss, kl_loss)
+        return (total_loss, rec_loss, kl_loss, beta)
 
     def training_step(self, batch, batch_idx):
-        loss = self._loss(batch)[0]
-        self.log("train/train_loss", loss, sync_dist=True)
-        return loss
+        self.current_step += 1
+        total_loss, rec_loss, kl_loss, beta = self._loss(batch)
+        self.log("train/train_loss", total_loss, sync_dist=True)
+        self.log("train/kl_beta", beta, sync_dist=True)
+        return total_loss
 
     @torch.no_grad()
     
     def val_test_step(self, batch, batch_idx, split="val"):
-        (total_loss, rec_loss, kl_loss) = self._loss(batch)
+        (total_loss, rec_loss, kl_loss, beta) = self._loss(batch)
         log_params = {"on_step": False, "on_epoch": True, "prog_bar": True}
         self.log(f"{split}/loss", total_loss, **log_params, sync_dist=True)
         self.log(f"{split}/rec_loss", rec_loss.mean(), **log_params, sync_dist=True)
         self.log(f"{split}/kl_loss", kl_loss, **log_params, sync_dist=True)
+        self.log(f"{split}/kl_beta", beta, **log_params, sync_dist=True)
 
     def validation_step(self, batch, batch_idx):
         self.val_test_step(batch, batch_idx, split="val")
