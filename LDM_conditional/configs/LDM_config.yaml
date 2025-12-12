@@ -117,16 +117,22 @@ callbacks:
     mode: min
 
 model:
-#Need to pass VAE autoencoder , not encoder and decoder : AsthanaSh
   _target_: LDM_conditional.models.ldm_module.LatentDiffusion
   denoiser: ${denoiser}
   autoencoder:
     _target_: LDM_conditional.models.ae_module.AutoencoderKL
     encoder: ${encoder}
     decoder: ${decoder}
-    unet_regr: 
-    _target_: LDM_conditional.models.components.unet.DownscalingUnetLightning.load_from_checkpoint
-    checkpoint_path: LDM_conditional/trained_ckpts/10km/DownscalingUnetLightning_checkpoint.ckpt
+  unet_regr: 
+    _target_: LDM_conditional.models.unet_module.DownscalingUnetLightning.load_from_checkpoint
+    checkpoint_path: LDM_conditional/trained_ckpts/10km/LDM_conditional.models.unet_module.DownscalingUnetLightning_checkpoint.ckpt
+    in_ch: 5
+    out_ch: 4
+    features: [64,128,256,512]
+    channel_names: ["precip", "temp", "temp_min", "temp_max"]
+  
+  
+  
   context_encoder: ${conditioner}  #Conditions the denoiser with coarse UNet predictors: AsthanaSh
   #VAE ckpt loaded from the ae_load_state_file 
   ae_load_state_file: LDM_conditional/trained_ckpts/10km/LDM_conditional.models.ae_module.AutoencoderKL_checkpoint.ckpt
