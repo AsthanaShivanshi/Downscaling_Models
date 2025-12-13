@@ -49,6 +49,8 @@ def make_beta_schedule(schedule, n_timestep, linear_start=1e-4, linear_end=2e-2,
     return betas.numpy()
 
 
+# ...existing code...
+
 class LatentDiffusion(LightningModule):
     def __init__(self,
         denoiser,
@@ -70,8 +72,14 @@ class LatentDiffusion(LightningModule):
         super().__init__()
         self.denoiser = denoiser
         self.autoencoder = autoencoder.requires_grad_(False)
-        self.unet_regr= unet_regr
-        self.autoencoder.load_state_dict(torch.load(ae_load_state_file)["state_dict"])
+        self.unet_regr = unet_regr
+
+        # Only load state_dict if a path is given and autoencoder is not already loaded
+        if ae_load_state_file is not None and not hasattr(autoencoder, "_is_loaded"):
+            print(f"Loading VAE weights from: {ae_load_state_file}")
+            self.autoencoder.load_state_dict(torch.load(ae_load_state_file)["state_dict"])
+            self.autoencoder._is_loaded = True  # Mark as loaded to avoid double-load
+
         self.conditional = (context_encoder is not None)
         self.context_encoder = context_encoder
         self.lr = lr

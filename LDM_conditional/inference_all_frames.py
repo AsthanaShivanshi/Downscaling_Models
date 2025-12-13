@@ -47,7 +47,6 @@ def main(cfg: DictConfig):
     datamodule.setup(stage="test")
     test_loader = datamodule.test_dataloader()
 
-    # --- Checkpoint existence checks before loading ---
     print("UNet checkpoint path:", cfg.model.unet_regr)
     assert os.path.exists(cfg.model.unet_regr), f"UNet checkpoint not found: {cfg.model.unet_regr}"
     unet_ckpt = torch.load(cfg.model.unet_regr, map_location=device)
@@ -87,7 +86,7 @@ def main(cfg: DictConfig):
     conditioner = hydra.utils.instantiate(cfg.conditioner, autoencoder=vae)
     conditioner = conditioner.to(device)
     conditioner.eval()
-
+    
     ldm = LatentDiffusion(
         denoiser=hydra.utils.instantiate(cfg.denoiser),
         autoencoder=vae,
