@@ -131,21 +131,17 @@ class AFNOCrossAttentionBlock(nn.Module):
         if self.channels_first:
             self.einops_ops = ("b c h w -> b h w c", "b h w c -> b c h w")
 
-        # Always define context_proj for robustness
-        self.context_proj = nn.Identity() if context_dim == dim else nn.Linear(context_dim, dim)
+        # context_proj for robustness : AsthanaSh
+        self.context_proj = nn.Linear(context_dim, dim) if context_dim != dim else nn.Identity()
 
 
     def forward(self, x, y):
-        print("AFNO x shape:", x.shape)
-        print("AFNO y shape:", y.shape)
-
         if self.channels_first:
             x = rearrange(x, self.einops_ops[0])  # [B, C, H, W] -> [B, H, W, C]
             y = rearrange(y, self.einops_ops[0])  # [B, C, H, W] -> [B, H, W, C]
 
         # Ensure y matches x's spatial size
         if y.shape[1:3] != x.shape[1:3]:
-            # y is [B, H, W, C] -> [B, C, H, W] for interpolation
             y = y.permute(0, 3, 1, 2)
             y = torch.nn.functional.interpolate(y, size=x.shape[1:3], mode="bilinear", align_corners=False)
             y = y.permute(0, 2, 3, 1)  # Back to [B, H, W, C]
@@ -155,7 +151,8 @@ class AFNOCrossAttentionBlock(nn.Module):
 
         print("AFNO norm1(x) shape:", self.norm1(x).shape)
         print("AFNO y (after proj/interp) shape:", y.shape)
-        
+        assert y.shape == self.norm1(x).shape, "Context and main tensor shapes must match after projection"
+
         # Concatenate along channel axis (last axis in channels_last)
         xy = torch.cat((self.norm1(x), y), dim=-1)
         xy = self.pre_proj(xy) + xy
@@ -166,7 +163,6 @@ class AFNOCrossAttentionBlock(nn.Module):
             x = rearrange(x, self.einops_ops[1])  # [B, H, W, C] -> [B, C, H, W]
 
         return x
-
 
 class AFNOBlock2d(nn.Module):
     def __init__(

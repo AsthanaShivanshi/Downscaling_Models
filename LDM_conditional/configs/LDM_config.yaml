@@ -50,10 +50,12 @@ decoder:
   out_dim: 4
 
 conditioner:
-  _target_: LDM_conditional.models.components.ldm.conditioner.AFNOConditionerNetBase
+  _target_: LDM_conditional.models.components.ldm.conditioner.AFNOConditionerNetCascade
   autoencoder: ${model.autoencoder}
-  embed_dim: [64,128,256,256]
+  embed_dim: [64,128,256,256]  #Must match the denoiser context_ch : AsthanaSh
   analysis_depth: 4
+  cascade_depth: 4
+  context_ch: [64,128,256,256]  #Must match the denoiser context_ch : AsthanaSh
 
 
 #Denoising Unet should expect the dims of the VAE output (latent): AsthanaSh

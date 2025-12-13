@@ -109,6 +109,8 @@ class AFNOConditionerNetCascade(AFNOConditionerNetBase):
             cascade.append(x)
         # Project each scale to the correct channel size
         cascade = [proj(t) for proj, t in zip(self.cascade_proj, cascade)]
+        for i, t in enumerate(cascade):
+            print(f"Conditioner cascade[{i}] shape after proj: {t.shape}")
         return cascade  # List: [high_res, ..., low_res]
 
 
