@@ -214,20 +214,18 @@ class LatentDiffusion(LightningModule):
         return self.p_losses(x, t, *args, **kwargs)
 
     def shared_step(self, batch):
-        (x, y, z, ts) = batch  # low_res, high_res_target, static_hres, time
-        assert not torch.any(torch.isnan(x)).item(), 'low_res data has NaNs'
-        assert not torch.any(torch.isnan(y)).item(), 'high_res has NaNs'
-        assert not torch.any(torch.isnan(z)).item(), 'static has NaNs'
+        (x, y) = batch  # input, target
+        assert not torch.any(torch.isnan(x)).item(), 'input data has NaNs'
+        assert not torch.any(torch.isnan(y)).item(), 'target has NaNs'
         if self.autoencoder.ae_flag == 'residual':
-            residual, _ = self.autoencoder.preprocess_batch([x, y, z])
+            residual, _ = self.autoencoder.preprocess_batch([x, y])
             y = self.autoencoder.encode(residual)[0]
         else:
             y = self.autoencoder.encode(y)[0]   # returns mean ONLY!!!
 
         # Use UNet mean prediction as context, processed by conditioner (AFNO)
         coarse_pred = self.unet_regr(x)  # [B, 4, H, W]
-        context_list = [(coarse_pred, ts)]
-        context = self.context_encoder(context_list) if self.conditional else None
+        context = self.context_encoder([(coarse_pred, None)]) if self.conditional else None
         return self(y, context=context)
 
     def training_step(self, batch, batch_idx):
@@ -261,7 +259,7 @@ class LatentDiffusion(LightningModule):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr,
             betas=(0.5, 0.9), weight_decay=1e-3)
         reduce_lr = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, patience=3, factor=0.25, verbose=True
+            optimizer, patience=3, factor=0.25
         )
         return {
             "optimizer": optimizer,

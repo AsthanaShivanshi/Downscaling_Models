@@ -40,7 +40,7 @@ encoder:
   in_dim: 4
   levels: 2
   min_ch: 16
-  ch_mult: 1
+  ch_mult: 4
 
 decoder:
   _target_: LDM_conditional.models.components.ae.SimpleConvDecoder
@@ -124,15 +124,10 @@ model:
     encoder: ${encoder}
     decoder: ${decoder}
   unet_regr: LDM_conditional/trained_ckpts/10km/LDM_conditional.models.unet_module.DownscalingUnetLightning_checkpoint.ckpt
-  in_ch: 5
-  out_ch: 4
-  features: [64,128,256,512]
-  channel_names: ["precip", "temp", "temp_min", "temp_max"]
-  
   
   context_encoder: ${conditioner}  #Conditions the denoiser with coarse UNet predictors: AsthanaSh
   #VAE ckpt loaded from the ae_load_state_file 
-  ae_load_state_file: LDM_conditional/trained_ckpts/10km/LDM_conditional.models.ae_module.AutoencoderKL_checkpoint.ckpt
+  ae_load_state_file: LDM_conditional/trained_ckpts/10km/LDM_conditional.models.ae_module.AutoencoderKL_checkpoint-v1.ckpt
   #Note : Output from LDM : [batch_size, 4, height, width] (AsthanaSh)
   parameterization: "v"
   loss_type: "l2"

@@ -92,13 +92,18 @@ class TimestepEmbedSequential(nn.Sequential, TimestepBlock):
     support it as an extra input.
     """
 
-    def forward(self, x, emb, context=None):
-        for layer in self:
+    def forward(self, x, emb, context=None): #Covering all three cases : AsthanaSh
+        for layer in self: 
             if isinstance(layer, TimestepBlock):
                 x = layer(x, emb)
+
+
             elif isinstance(layer, AFNOCrossAttentionBlock):
-                img_shape = tuple(x.shape[-2:])
-                x = layer(x, context[img_shape])
+                if isinstance(context, dict):
+                    img_shape = tuple(x.shape[-2:])
+                    x = layer(x, context[img_shape])
+                else:
+                    x = layer(x, context)
             else:
                 x = layer(x)
         return x
