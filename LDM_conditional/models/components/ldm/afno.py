@@ -116,14 +116,13 @@ class AFNOCrossAttentionBlock(nn.Module):
         super().__init__()
 
         self.norm1 = norm_layer(dim)
-        self.norm2 = norm_layer(dim + dim)  # After projection, context channels = dim (AsthanaSh)
-        mlp_hidden_dim = int((dim + dim) * mlp_ratio)
-        self.pre_proj = nn.Linear(dim + dim, dim + dim)
-
-        self.filter = AFNO2D(dim + dim, num_blocks, sparsity_threshold, hard_thresholding_fraction)
-
+        self.concat_dim = dim + context_dim
+        self.norm2 = norm_layer(self.concat_dim)
+        mlp_hidden_dim = int(self.concat_dim * mlp_ratio)
+        self.pre_proj = nn.Linear(self.concat_dim, self.concat_dim)
+        self.filter = AFNO2D(self.concat_dim, num_blocks, sparsity_threshold, hard_thresholding_fraction)
         self.mlp = Mlp(
-            in_features=dim + dim,
+            in_features=self.concat_dim,
             out_features=dim,
             hidden_features=mlp_hidden_dim,
             act_layer=act_layer, drop=drop
