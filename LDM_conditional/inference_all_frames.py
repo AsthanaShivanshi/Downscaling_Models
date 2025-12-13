@@ -11,12 +11,17 @@ from LDM_conditional.models.ae_module import AutoencoderKL
 from LDM_conditional.models.ldm_module import LatentDiffusion
 from LDM_conditional.models.components.ldm.denoiser import DDIMSampler
 
-
+import argparse 
 
 config_path = "LDM_conditional/configs/LDM_config.yaml"
 cfg = OmegaConf.load(config_path)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
+parser= argparse.ArgumentParser()
+parser.add_argument('--n_samples', type=int, required=True, help='Number of samples to generate per frame in testset')
+args = parser.parse_args()
+n_samples = args.n_samples
 
 
 with open("Dataset_Setup_I_Chronological_10km/RhiresD_scaling_params.json") as f:
@@ -95,8 +100,6 @@ sampler = DDIMSampler(
     ddim_eta=cfg.sampler.get("ddim_eta", 0.0)
 )
 
-# 10 per frame: customisable
-n_samples = 10
 all_samples = []
 
 with torch.no_grad():
@@ -139,7 +142,8 @@ ref_ds.close()
 # all_samples: (num_frames, n_samples, 4, H, W)
 var_names = ["precip", "temp", "temp_min", "temp_max"]
 
-# Create DataArray
+
+
 ds = xr.DataArray(
     all_samples,
     dims=["time", "sample", "variable", "y", "x"],
