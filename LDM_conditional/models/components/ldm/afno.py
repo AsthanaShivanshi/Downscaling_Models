@@ -134,13 +134,18 @@ class AFNOCrossAttentionBlock(nn.Module):
         if self.channels_first:
             self.einops_ops =  ("b c h w -> b h w c", "b h w c -> b c h w") 
 
+    
     def forward(self, x, y):
 
         if self.channels_first:
             x = rearrange(x, self.einops_ops[0])
             y = rearrange(y, self.einops_ops[0])
 
-        xy = torch.concat((self.norm1(x),y), axis=-1)
+        # Ensure y matches x's spatial size : AsthanaSh
+        if y.shape[-3:-1] != x.shape[-3:-1]:
+            y = torch.nn.functional.interpolate(y, size=x.shape[-3:-1], mode="bilinear", align_corners=False)
+
+        xy = torch.concat((self.norm1(x), y), axis=-1)
         xy = self.pre_proj(xy) + xy
         xy = self.filter(self.norm2(xy)) + xy # AFNO filter
         x = self.mlp(xy) + x # feed-forward
