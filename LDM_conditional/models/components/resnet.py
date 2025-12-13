@@ -1,12 +1,15 @@
 from torch import nn
 from torch.nn.utils.parametrizations import spectral_norm as sn
 
-def normalization(channels, norm_type="group", num_groups=32):
+def normalization(channels, norm_type="group", **norm_kwargs):
+    print(f"normalization called with channels={channels}, norm_type={norm_type}, norm_kwargs={norm_kwargs}")
+    norm_type = norm_type.lower() if norm_type else "none"
     if norm_type == "batch":
         return nn.BatchNorm2d(channels)
     elif norm_type == "group":
+        num_groups = norm_kwargs.get("num_groups", 8)
         return nn.GroupNorm(num_groups=num_groups, num_channels=channels)
-    elif (not norm_type) or (norm_type.tolower() == 'none'):
+    elif norm_type == "none":
         return nn.Identity()
     else:
         raise NotImplementedError(norm_type)

@@ -88,7 +88,8 @@ class AFNOConditionerNetCascade(AFNOConditionerNetBase):
             ch_out = 2*ch
             self.cascade_dims.append(ch_out)
             self.resnet.append(
-                ResBlock2D(ch, ch_out, kernel_size=(3,3), norm=None)
+                ResBlock2D(ch, ch_out, kernel_size=(3,3), 
+                           norm="group", norm_kwargs={"num_groups": 8})
             )
             ch = ch_out
 
