@@ -6,7 +6,7 @@ from LDM_conditional.models.ldm_module import LatentDiffusion
 from LDM_conditional.models.components.ldm.denoiser import DDIMSampler
 from omegaconf import DictConfig
 
-
+import os
 
 @hydra.main(version_base="1.3", config_path="configs", config_name="LDM_config")
 def main(cfg: DictConfig):
@@ -43,13 +43,28 @@ def main(cfg: DictConfig):
         out[3] = denorm_temp(sample[3], temp_max_params)
         return out
 
-
-
     datamodule = hydra.utils.instantiate(cfg.datamodule)
     datamodule.setup(stage="test")
     test_loader = datamodule.test_dataloader()
 
+    # --- Checkpoint existence checks before loading ---
+    print("UNet checkpoint path:", cfg.model.unet_regr)
+    assert os.path.exists(cfg.model.unet_regr), f"UNet checkpoint not found: {cfg.model.unet_regr}"
     unet_ckpt = torch.load(cfg.model.unet_regr, map_location=device)
+    print("Loaded UNet checkpoint from:", cfg.model.unet_regr)
+
+    print("VAE checkpoint path:", cfg.model.ae_load_state_file)
+    assert os.path.exists(cfg.model.ae_load_state_file), f"VAE checkpoint not found: {cfg.model.ae_load_state_file}"
+    vae_ckpt = torch.load(cfg.model.ae_load_state_file, map_location=device)
+    print("Loaded VAE checkpoint from:", cfg.model.ae_load_state_file)
+
+    ldm_ckpt_path = cfg.callbacks.model_checkpoint.dirpath + "/" + cfg.callbacks.model_checkpoint.filename + ".ckpt"
+    print("LDM checkpoint path:", ldm_ckpt_path)
+    assert os.path.exists(ldm_ckpt_path), f"LDM checkpoint not found: {ldm_ckpt_path}"
+    ldm_ckpt = torch.load(ldm_ckpt_path, map_location=device)
+    print("Loaded LDM checkpoint from:", ldm_ckpt_path)
+
+    # Instantiate models
     unet_model = DownscalingUnet(
         in_ch=cfg.model.get("in_ch", 5),
         out_ch=cfg.model.get("out_ch", 4),
@@ -61,12 +76,11 @@ def main(cfg: DictConfig):
     unet_model = unet_model.to(device)
     unet_model.eval()
 
-    vae_ckpt = torch.load(cfg.model.ae_load_state_file, map_location=device)
     vae = AutoencoderKL(
         encoder=hydra.utils.instantiate(cfg.encoder),
         decoder=hydra.utils.instantiate(cfg.decoder)
     )
-    vae.load_state_dict(vae_ckpt["state_dict"],strict=False)
+    vae.load_state_dict(vae_ckpt["state_dict"], strict=False)
     vae = vae.to(device)
     vae.eval()
 
@@ -83,7 +97,6 @@ def main(cfg: DictConfig):
         loss_type=cfg.model.get("loss_type", "l2"),
         timesteps=cfg.model.get("timesteps", 1000)
     )
-    ldm_ckpt = torch.load(cfg.callbacks.model_checkpoint.dirpath + "/" + cfg.callbacks.model_checkpoint.filename + ".ckpt", map_location=device)
     ldm.load_state_dict(ldm_ckpt["state_dict"])
     ldm = ldm.to(device)
     ldm.eval()
@@ -127,7 +140,6 @@ def main(cfg: DictConfig):
 
     all_samples = np.concatenate(all_samples, axis=0)
 
-    # Load time, lat, lon from a reference test file
     ref_ds = xr.open_dataset("Dataset_Setup_I_Chronological_10km/RhiresD_target_test_scaled.nc")
     times = ref_ds["time"].values
     lat = ref_ds["lat"].values
@@ -136,8 +148,6 @@ def main(cfg: DictConfig):
 
     # all_samples: (num_frames, n_samples, 4, H, W)
     var_names = ["precip", "temp", "temp_min", "temp_max"]
-
-
 
     ds = xr.DataArray(
         all_samples,
