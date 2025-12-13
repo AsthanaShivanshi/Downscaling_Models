@@ -99,8 +99,7 @@ class AFNO2D(nn.Module):
 
 
 class AFNOCrossAttentionBlock(nn.Module):
-    """ AFNO 2D Block with channel mixing from two sources.
-    """
+    """ AFNO 2D Block with channel mixing from two sources. """
     def __init__(
         self,
         dim,
@@ -117,41 +116,55 @@ class AFNOCrossAttentionBlock(nn.Module):
         super().__init__()
 
         self.norm1 = norm_layer(dim)
-        self.norm2 = norm_layer(dim+context_dim)
-        mlp_hidden_dim = int((dim+context_dim) * mlp_ratio)
-        self.pre_proj = nn.Linear(dim+context_dim, dim+context_dim)
-        
-        self.filter = AFNO2D(dim+context_dim, num_blocks, sparsity_threshold, 
-            hard_thresholding_fraction) 
-        
+        self.norm2 = norm_layer(dim + dim)  # After projection, context channels = dim (AsthanaSh)
+        mlp_hidden_dim = int((dim + dim) * mlp_ratio)
+        self.pre_proj = nn.Linear(dim + dim, dim + dim)
+
+        self.filter = AFNO2D(dim + dim, num_blocks, sparsity_threshold, hard_thresholding_fraction)
+
         self.mlp = Mlp(
-            in_features=dim+context_dim,
+            in_features=dim + dim,
             out_features=dim,
             hidden_features=mlp_hidden_dim,
             act_layer=act_layer, drop=drop
         )
         self.channels_first = (data_format == "channels_first")
         if self.channels_first:
-            self.einops_ops =  ("b c h w -> b h w c", "b h w c -> b c h w") 
+            self.einops_ops = ("b c h w -> b h w c", "b h w c -> b c h w")
 
-    
+        # Always define context_proj for robustness
+        self.context_proj = nn.Identity() if context_dim == dim else nn.Linear(context_dim, dim)
+
+
     def forward(self, x, y):
+        print("AFNO x shape:", x.shape)
+        print("AFNO y shape:", y.shape)
 
         if self.channels_first:
-            x = rearrange(x, self.einops_ops[0])
-            y = rearrange(y, self.einops_ops[0])
+            x = rearrange(x, self.einops_ops[0])  # [B, C, H, W] -> [B, H, W, C]
+            y = rearrange(y, self.einops_ops[0])  # [B, C, H, W] -> [B, H, W, C]
 
-        # Ensure y matches x's spatial size : AsthanaSh
-        if y.shape[-3:-1] != x.shape[-3:-1]:
-            y = torch.nn.functional.interpolate(y, size=x.shape[-3:-1], mode="bilinear", align_corners=False)
+        # Ensure y matches x's spatial size
+        if y.shape[1:3] != x.shape[1:3]:
+            # y is [B, H, W, C] -> [B, C, H, W] for interpolation
+            y = y.permute(0, 3, 1, 2)
+            y = torch.nn.functional.interpolate(y, size=x.shape[1:3], mode="bilinear", align_corners=False)
+            y = y.permute(0, 2, 3, 1)  # Back to [B, H, W, C]
 
-        xy = torch.concat((self.norm1(x), y), axis=-1)
+        # Project y's channels if needed
+        y = self.context_proj(y)
+
+        print("AFNO norm1(x) shape:", self.norm1(x).shape)
+        print("AFNO y (after proj/interp) shape:", y.shape)
+        
+        # Concatenate along channel axis (last axis in channels_last)
+        xy = torch.cat((self.norm1(x), y), dim=-1)
         xy = self.pre_proj(xy) + xy
-        xy = self.filter(self.norm2(xy)) + xy # AFNO filter
-        x = self.mlp(xy) + x # feed-forward
+        xy = self.filter(self.norm2(xy)) + xy  # AFNO filter
+        x = self.mlp(xy) + x  # feed-forward
 
         if self.channels_first:
-            x = rearrange(x, self.einops_ops[1])
+            x = rearrange(x, self.einops_ops[1])  # [B, H, W, C] -> [B, C, H, W]
 
         return x
 

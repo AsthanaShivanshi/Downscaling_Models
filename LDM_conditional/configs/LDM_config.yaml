@@ -52,7 +52,7 @@ decoder:
 conditioner:
   _target_: LDM_conditional.models.components.ldm.conditioner.AFNOConditionerNetBase
   autoencoder: ${model.autoencoder}
-  embed_dim: 128
+  embed_dim: [64,128,256,256]
   analysis_depth: 4
 
 
@@ -64,7 +64,7 @@ denoiser:
   model_channels: 64
   num_res_blocks: 2
   attention_resolutions: [1,2,4]
-  context_ch: [128,128,128,128] 
+  context_ch: [64,128,256,256]  #Must match the conditioner embed_dim : AsthanaSh
   channel_mult: [1,2,4,4]
   conv_resample: true
   dims: 2

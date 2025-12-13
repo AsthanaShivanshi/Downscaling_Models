@@ -78,7 +78,7 @@ class AFNOConditionerNetBase(nn.Module):
 
 
 class AFNOConditionerNetCascade(AFNOConditionerNetBase):
-    def __init__(self, *args, cascade_depth=4, **kwargs):
+    def __init__(self, *args, cascade_depth=4, context_ch=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.cascade_depth = cascade_depth
         self.resnet = nn.ModuleList()        
@@ -92,17 +92,25 @@ class AFNOConditionerNetCascade(AFNOConditionerNetBase):
             )
             ch = ch_out
 
+        # Add per-scale projection layers to match UNet context channels
+        assert context_ch is not None, "context_ch (list of UNet context channels per scale) must be provided"
+        assert len(context_ch) == cascade_depth, "context_ch length must match cascade_depth"
+        self.cascade_proj = nn.ModuleList([
+            nn.Conv2d(c_in, c_out, kernel_size=1)
+            for c_in, c_out in zip(self.cascade_dims, context_ch)
+        ])
+
     def forward(self, x):
         x = super().forward(x)
-        # print(f"post AFNONowcastNetBase forward: {x.shape}")
-        img_shape = tuple(x.shape[-2:])
-        cascade = {img_shape: x}
+        cascade = [x]  # Multi res representations : AsthanaSh
         for i in range(self.cascade_depth-1):
             x = F.avg_pool2d(x, (2,2))
             x = self.resnet[i](x)
-            img_shape = tuple(x.shape[-2:])
-            cascade[img_shape] = x
-        return cascade
+            cascade.append(x)
+        # Project each scale to the correct channel size
+        cascade = [proj(t) for proj, t in zip(self.cascade_proj, cascade)]
+        return cascade  # List: [high_res, ..., low_res]
+
 
 
 class FusionBlock2d(nn.Module):

@@ -87,25 +87,27 @@ class TimestepBlock(nn.Module):
 
 
 class TimestepEmbedSequential(nn.Sequential, TimestepBlock):
-    """
-    A sequential module that passes timestep embeddings to the children that
-    support it as an extra input.
-    """
-
-    def forward(self, x, emb, context=None): #Covering all three cases : AsthanaSh
-        for layer in self: 
+    def forward(self, x, emb, context=None):
+        # Reset context index at the start of each forward
+        self._context_idx = 0
+        for layer in self:
             if isinstance(layer, TimestepBlock):
                 x = layer(x, emb)
-
-
             elif isinstance(layer, AFNOCrossAttentionBlock):
-                if isinstance(context, dict):
+                if isinstance(context, (list, tuple)):
+                    if not hasattr(self, '_context_idx'):
+                        self._context_idx = 0
+                    x = layer(x, context[self._context_idx])
+                    self._context_idx += 1
+                elif isinstance(context, dict):
                     img_shape = tuple(x.shape[-2:])
                     x = layer(x, context[img_shape])
                 else:
                     x = layer(x, context)
             else:
                 x = layer(x)
+        if hasattr(self, '_context_idx'):
+            del self._context_idx
         return x
 
 
