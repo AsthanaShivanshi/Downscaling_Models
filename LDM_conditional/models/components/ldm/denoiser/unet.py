@@ -406,6 +406,13 @@ class UNetModel(nn.Module):
         :param context: conditioning plugged in via crossattn
         :return: an [N x C x ...] Tensor of outputs.
         """
+        print(f"UNet forward called with x shape: {x.shape}, timesteps shape: {timesteps.shape}")
+        if context is not None:
+            if isinstance(context, (list, tuple)):
+                for i, ctx in enumerate(context):
+                    print(f"UNet forward context[{i}] shape: {ctx.shape}")
+            else:
+                print(f"UNet forward context shape: {context.shape}")
         hs = []
         t_emb = timestep_embedding(timesteps, self.model_channels, repeat_only=False)
 
