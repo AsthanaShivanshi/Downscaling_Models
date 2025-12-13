@@ -55,6 +55,7 @@ class LatentDiffusion(LightningModule):
         autoencoder,
         context_encoder=None,
         timesteps=1000,
+        unet_regr=None,
         beta_schedule="linear",
         loss_type="l2",
         use_ema=True,
@@ -69,8 +70,8 @@ class LatentDiffusion(LightningModule):
         super().__init__()
         self.denoiser = denoiser
         self.autoencoder = autoencoder.requires_grad_(False)
-        if ae_load_state_file is not None:
-            self.autoencoder.load_state_dict(torch.load(ae_load_state_file)["state_dict"])
+        self.unet_regr= unet_regr
+        self.autoencoder.load_state_dict(torch.load(ae_load_state_file)["state_dict"])
         self.conditional = (context_encoder is not None)
         self.context_encoder = context_encoder
         self.lr = lr
@@ -213,7 +214,7 @@ class LatentDiffusion(LightningModule):
         return self.p_losses(x, t, *args, **kwargs)
 
     def shared_step(self, batch):
-        (x,y,z,ts) = batch      # low_res, high_res_target, static_hres, time
+        (x, y, z, ts) = batch  # low_res, high_res_target, static_hres, time
         assert not torch.any(torch.isnan(x)).item(), 'low_res data has NaNs'
         assert not torch.any(torch.isnan(y)).item(), 'high_res has NaNs'
         assert not torch.any(torch.isnan(z)).item(), 'static has NaNs'
@@ -222,12 +223,11 @@ class LatentDiffusion(LightningModule):
             y = self.autoencoder.encode(residual)[0]
         else:
             y = self.autoencoder.encode(y)[0]   # returns mean ONLY!!!
-        
-        #Context encoding
-        coarse_pred= self.unet_regr(x)  #Conditioned on coarse prediction from Unet Regressor
+
+        # Use UNet mean prediction as context, processed by conditioner (AFNO)
+        coarse_pred = self.unet_regr(x)  # [B, 4, H, W]
         context_list = [(coarse_pred, ts)]
         context = self.context_encoder(context_list) if self.conditional else None
-        # context = x if self.conditional else None
         return self(y, context=context)
 
     def training_step(self, batch, batch_idx):
