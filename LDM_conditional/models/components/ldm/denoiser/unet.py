@@ -279,6 +279,14 @@ class UNetModel(nn.Module):
         assert num_heads != -1, 'num_heads must be set'
         assert dims == 2, 'Only 2D supported'
 
+
+        if isinstance(context_ch, int):
+            context_ch = [context_ch] * len(channel_mult)
+        assert len(context_ch) == len(channel_mult), (
+            f"context_ch must have {len(channel_mult)} elements, got {len(context_ch)}"
+        )
+        
+        self.context_ch = context_ch
         self.in_channels = in_channels
         self.model_channels = model_channels
         self.out_channels = out_channels
