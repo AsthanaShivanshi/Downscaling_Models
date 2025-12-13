@@ -165,6 +165,7 @@ class AFNOCrossAttentionBlock(nn.Module):
         return x
 
 
+
 class AFNOBlock2d(nn.Module):
     def __init__(
             self,
@@ -196,11 +197,10 @@ class AFNOBlock2d(nn.Module):
         self.channels_first = (data_format == "channels_first")
 
     def forward(self, x):
-        # Always permute to channels-last for LayerNorm, then back if needed
-        was_channels_first = False
-        if x.dim() == 4 and x.shape[1] not in (x.shape[-1], 1):  # [B, C, H, W]
-            x = x.permute(0, 2, 3, 1)  # [B, H, W, C]
-            was_channels_first = True
+        # Always permute to channels-last if channels_first is set
+        if self.channels_first:
+            # x: [B, C, H, W] -> [B, H, W, C]
+            x = x.permute(0, 2, 3, 1)
 
         residual = x
         x = self.norm1(x)
@@ -214,7 +214,9 @@ class AFNOBlock2d(nn.Module):
         x = self.mlp(x)
         x = x + residual
 
-        if was_channels_first:
-            x = x.permute(0, 3, 1, 2)  # [B, C, H, W]
+        if self.channels_first:
+            # x: [B, H, W, C] -> [B, C, H, W]
+            x = x.permute(0, 3, 1, 2)
 
         return x
+
