@@ -96,12 +96,12 @@ def main(cfg: DictConfig):
         loss_type=cfg.model.get("loss_type", "l2"),
         timesteps=cfg.model.get("timesteps", 1000)
     )
-    ldm.load_state_dict(ldm_ckpt["state_dict"])
+    ldm.load_state_dict(ldm_ckpt["state_dict"], strict=False)
     ldm = ldm.to(device)
     ldm.eval()
 
     sampler = DDIMSampler(
-        model=ldm.denoiser,
+        model=ldm,
         schedule=cfg.sampler.get("schedule", "linear"),
         device=device,
         ddim_num_steps=cfg.sampler.get("ddim_num_steps", 250), #inference 250 steps
@@ -111,19 +111,21 @@ def main(cfg: DictConfig):
     all_samples = []
 
     with torch.no_grad():
+
         for batch in tqdm(test_loader, desc="Frames"):
             x_in, _ = batch
             x_in = x_in.to(device)
             batch_samples = []
             # Coarse prediction and context are deterministic, so only sample z_start
             coarse_pred = unet_model(x_in)
-            context = conditioner(coarse_pred)
-            z_shape = (x_in.shape[0], ldm.denoiser.in_channels, coarse_pred.shape[-2], coarse_pred.shape[-1])
+            context = conditioner([(coarse_pred, None)])
+            z_shape = (ldm.denoiser.in_channels, coarse_pred.shape[-2], coarse_pred.shape[-1])  # 3D shape
 
             for s in range(n_samples):
-                z_start = torch.randn(z_shape, device=device)
+                z_start = torch.randn((x_in.shape[0],) + z_shape, device=device)
                 samples, _ = sampler.sample(
-                    ddim_num_steps=cfg.sampler.ddim_num_steps,
+                    cfg.sampler.ddim_num_steps,      # S (number of steps)
+                    x_in.shape[0],                   # batch_size
                     shape=z_shape,
                     conditioning=context,
                     x_T=z_start
@@ -133,7 +135,7 @@ def main(cfg: DictConfig):
                 # denormed each sample
                 decoded_np = np.stack([denorm_sample(d) for d in decoded_np])
                 batch_samples.append(decoded_np)
-            # batch_samples: [n_samples, batch, 4, H, W]
+            # Move these two lines OUTSIDE the inner loop:
             batch_samples = np.stack(batch_samples, axis=1)  # [batch, n_samples, 4, H, W]
             all_samples.append(batch_samples)
 

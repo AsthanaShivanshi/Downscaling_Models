@@ -49,7 +49,6 @@ def make_beta_schedule(schedule, n_timestep, linear_start=1e-4, linear_end=2e-2,
     return betas.numpy()
 
 
-# ...existing code...
 
 class LatentDiffusion(LightningModule):
     def __init__(self,
@@ -145,9 +144,17 @@ class LatentDiffusion(LightningModule):
 
     def apply_denoiser(self, x_noisy, t, cond=None, return_ids=False):
         if self.conditional:
+            # Ensure cond is a list of (tensor, t_relative) tuples
+            if isinstance(cond, torch.Tensor):
+                cond = [(cond, None)]
+            elif isinstance(cond, list):
+                # If it's a list of tensors, wrap each as (tensor, None)
+                if not (isinstance(cond[0], tuple) and len(cond[0]) == 2):
+                    cond = [(c, None) for c in cond]
             cond = self.context_encoder(cond)
-        with self.ema_scope():
-            return self.denoiser(x_noisy, t, context=cond)
+        else:
+            cond = None
+        return self.denoiser(x_noisy, t, context=cond)
 
     def q_sample(self, x_start, t, noise=None):
         # R! sqrt_alphas_cumprod goes from 1 to 0 with t from 0 to 1000
