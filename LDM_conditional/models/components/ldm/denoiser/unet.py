@@ -364,6 +364,7 @@ class UNetModel(nn.Module):
         self._feature_size += ch
 
         self.output_blocks = nn.ModuleList([])
+        self.output_block_levels = []  # Track the UNet level for each output block
         for level, mult in list(enumerate(channel_mult))[::-1]:
             for i in range(num_res_blocks + 1):
                 ich = input_block_chans.pop()
@@ -390,6 +391,7 @@ class UNetModel(nn.Module):
                     )
                     ds //= 2
                 self.output_blocks.append(TimestepEmbedSequential(*layers))
+                self.output_block_levels.append(level)  # Track the level for each output block
                 self._feature_size += ch
 
         self.out = nn.Sequential(
@@ -398,14 +400,9 @@ class UNetModel(nn.Module):
             zero_module(conv_nd(dims, model_channels, out_channels, 3, padding=1)),
         )
 
+
+
     def forward(self, x, timesteps, context=None):
-        """
-        Apply the model to an input batch.
-        :param x: an [N x C x ...] Tensor of inputs.
-        :param timesteps: a 1-D batch of timesteps.
-        :param context: conditioning plugged in via crossattn
-        :return: an [N x C x ...] Tensor of outputs.
-        """
         print(f"UNet forward called with x shape: {x.shape}, timesteps shape: {timesteps.shape}")
         if context is not None:
             if isinstance(context, (list, tuple)):
@@ -415,21 +412,59 @@ class UNetModel(nn.Module):
                 print(f"UNet forward context shape: {context.shape}")
         hs = []
         t_emb = timestep_embedding(timesteps, self.model_channels, repeat_only=False)
-
         emb = self.time_embed(t_emb)
-
         h = x.type(self.dtype)
+
+        context_idx = 0
         for module in self.input_blocks:
-            h = module(h, emb, context)
+            is_downsample = any(isinstance(layer, Downsample) for layer in module)
+            if is_downsample:
+                h = module(h, emb)
+                context_idx += 1  # <-- increment context_idx only after downsampling
+            else:
+                if isinstance(context, (list, tuple)):
+                    if any(isinstance(layer, AFNOCrossAttentionBlock) for layer in module):
+                        h = module(h, emb, context[context_idx])
+                    else:
+                        h = module(h, emb)
+                else:
+                    h = module(h, emb, context)
             hs.append(h)
 
-        h = self.middle_block(h, emb, context)
+        # Middle block (always uses last context)
+        if isinstance(context, (list, tuple)):
+            h = self.middle_block(h, emb, context[-1])
+        else:
+            h = self.middle_block(h, emb, context)
 
-        for module in self.output_blocks:
-            h = th.cat([h, hs.pop()], dim=1)
-            h = module(h, emb, context)
+        # Output blocks (reverse order: context_idx should decrease)
+        # context_idx was incremented to len(context) after input_blocks, so start from len(context)-1
+        if isinstance(context, (list, tuple)):
+            for i, module in enumerate(self.output_blocks):
+                skip = hs.pop()
+                if skip.shape[2:] != h.shape[2:]:
+                    min_h = min(skip.shape[2], h.shape[2])
+                    min_w = min(skip.shape[3], h.shape[3])
+                    skip = skip[:, :, :min_h, :min_w]
+                    h = h[:, :, :min_h, :min_w]
+                h = th.cat([h, skip], dim=1)
+                if any(isinstance(layer, AFNOCrossAttentionBlock) for layer in module):
+                    level = self.output_block_levels[i]  # Use the tracked level to select context
+                    ctx = context[level]
+                    h = module(h, emb, ctx)
+                else:
+                    h = module(h, emb)
+        else:
+            for module in self.output_blocks:
+                skip = hs.pop()
+                if skip.shape[2:] != h.shape[2:]:
+                    min_h = min(skip.shape[2], h.shape[2])
+                    min_w = min(skip.shape[3], h.shape[3])
+                    skip = skip[:, :, :min_h, :min_w]
+                    h = h[:, :, :min_h, :min_w]
+                h = th.cat([h, skip], dim=1)
+                h = module(h, emb, context)
 
         h = h.type(x.dtype)
         h = self.out(h)
         return h
-
