@@ -1,7 +1,7 @@
 import xarray as xr
 from torch.utils.data import DataLoader
 from lightning import LightningDataModule
-from Training_LDM.Downscaling_Dataset_Prep import DownscalingDataset
+from LDM_conditional.Downscaling_Dataset_Prep import DownscalingDataset
 import rasterio
 import numpy as np
 
