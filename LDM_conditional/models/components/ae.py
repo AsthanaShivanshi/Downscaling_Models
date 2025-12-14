@@ -4,13 +4,6 @@ import torch.nn as nn
 from .resnet import ResBlock2D
 
 
-def get_num_groups(channels, max_groups=8):
-    # Returns the largest divisor of channels not exceeding max_groups
-    for g in reversed(range(1, max_groups+1)):
-        if channels % g == 0:
-            return g
-    return 1
-
 class SimpleConvEncoder(nn.Module):
     def __init__(self, in_dim=1, levels=2, min_ch=16, ch_mult: int = 4):
         super().__init__()
@@ -25,11 +18,10 @@ class SimpleConvEncoder(nn.Module):
         for i in range(levels):
             in_channels = int(channels[i])
             out_channels = int(channels[i+1])
-            num_groups = get_num_groups(out_channels)
             res_block = ResBlock2D(
                 in_channels, out_channels,
                 kernel_size=(3,3),
-                norm_kwargs={"num_groups": num_groups}
+                norm_kwargs={"num_groups": 1}  # <--- revert to original
             )
             sequence.append(res_block)
             downsample = nn.Conv2d(out_channels, out_channels,
@@ -61,11 +53,10 @@ class SimpleConvDecoder(nn.Module):
             out_channels = int(decoder_channels[i+1])
             upsample = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=(2,2), stride=(2,2))
             sequence.append(upsample)
-            num_groups = get_num_groups(out_channels)
             res_block = ResBlock2D(
                 out_channels, out_channels,
                 kernel_size=(3,3),
-                norm_kwargs={"num_groups": num_groups}
+                norm_kwargs={"num_groups": 1}  # <--- revert to original
             )
             sequence.append(res_block)
         self.net = nn.Sequential(*sequence)

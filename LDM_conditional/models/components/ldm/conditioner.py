@@ -5,6 +5,12 @@ import collections
 
 from . import ResBlock2D, AFNOBlock2d
 
+# Add at the top of conditioner.py
+def get_num_groups(channels, max_groups=8):
+    for g in reversed(range(1, min(max_groups, channels)+1)):
+        if channels % g == 0:
+            return g
+    return 1
 
 class AFNOConditionerNetBase(nn.Module):
     def __init__(
@@ -87,9 +93,10 @@ class AFNOConditionerNetCascade(AFNOConditionerNetBase):
         for i in range(cascade_depth-1):
             ch_out = 2*ch
             self.cascade_dims.append(ch_out)
+            num_groups = get_num_groups(ch_out)
             self.resnet.append(
                 ResBlock2D(ch, ch_out, kernel_size=(3,3), 
-                           norm="group", norm_kwargs={"num_groups": 8})
+                        norm="group", norm_kwargs={"num_groups": num_groups})
             )
             ch = ch_out
 
