@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=inference_testset_LDM
-#SBATCH --output=logs/ckpts_LDM/LDM_testset_inference-job_output-%j.txt
-#SBATCH --error=logs/ckpts_LDM/LDM_testset_inference-job_error-%j.txt
+#SBATCH --job-name=0.4_inference_testset_LDM
+#SBATCH --output=logs/ckpts_LDM/0.4_LDM_testset_inference-job_output-%j.txt
+#SBATCH --error=logs/ckpts_LDM/0.4_LDM_testset_inference-job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-00:00:00
