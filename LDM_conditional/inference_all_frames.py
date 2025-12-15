@@ -237,7 +237,7 @@ with tqdm(total=len(dates), desc="Frame") as pbar:
                     batch_size=1,
                     shape=latent_shape[1:],
                     conditioning=conditioning,
-                    eta=0.4,
+                    eta=0.1,
                     verbose=False,
                     x_T=z,  # Pass sampled prior as initial latent
                 )
@@ -303,5 +303,5 @@ ds_ldm = xr.Dataset(
     }
 )
 encoding_ldm = {var: {"_FillValue": np.nan} for var in var_names}
-ds_ldm.to_netcdf(paths.LDM_DIR + "/outputs/test_LDM_samples_eta_0.4.nc", encoding=encoding_ldm)
+ds_ldm.to_netcdf(paths.LDM_DIR + "/outputs/test_LDM_samples_eta_0.1.nc", encoding=encoding_ldm)
 print(f"LDM samples saved with shape: {ldm_samples_np.shape}")
