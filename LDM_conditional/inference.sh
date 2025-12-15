@@ -6,8 +6,8 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-00:00:00
 #SBATCH --mem=256G
-#SBATCH --partition=cpu #Use GPU while LDM sampling  
-##SBATCH --gres=gpu:1
+#SBATCH --partition=gpu #Use GPU while LDM sampling  
+#SBATCH --gres=gpu:1
 
 source diffscaler.sh
 export PYTHONPATH="$PROJECT_DIR"
