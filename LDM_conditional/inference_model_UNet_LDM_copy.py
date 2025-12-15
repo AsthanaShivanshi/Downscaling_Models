@@ -3,7 +3,6 @@ sys.path.append("..")
 sys.path.append("../..")
 import torch
 import numpy as np
-import config
 import xarray as xr
 from tqdm import tqdm
 
@@ -17,9 +16,9 @@ qdm_input_paths = {
     'temp_min': 'BC_Model_Runs/dOTC/precip_temp_tmin_tmax_bicubic_r01.nc',
     'temp_max': 'BC_Model_Runs/dOTC/precip_temp_tmin_tmax_bicubic_r01.nc'
 }
-qdm_target_paths = qdm_input_paths.copy()  # dummy, not used: AsthanaSh
+qdm_target_paths = qdm_input_paths.copy()
 
-elevation_path = f'{config.BASE_DIR}/sasthana/Downscaling/Downscaling_Models/elevation.tif'
+elevation_path = "/work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/elevation.tif"
 
 # DataModule 
 dm = DownscalingDataModule(
@@ -83,7 +82,7 @@ unet_baseline = []
 
 with tqdm(total=len(dates), desc="Frame") as pbar:
     for batch in test_loader:
-        input_tensor, _ = batch  # ignore target
+        input_tensor, _ = batch 
         input_tensor = input_tensor.to(device)
         with torch.no_grad():
             unet_pred = model_UNet(input_tensor)

@@ -1,12 +1,10 @@
 import hydra
-from LDM_conditional.DownscalingDataModule import DownscalingDataModule
 from LDM_conditional.models.unet_module import DownscalingUnet
 from LDM_conditional.models.ae_module import AutoencoderKL
 from LDM_conditional.models.ldm_module import LatentDiffusion
 from LDM_conditional.models.components.ldm.denoiser import DDIMSampler
 from omegaconf import DictConfig
 
-import os
 
 @hydra.main(version_base="1.3", config_path="configs", config_name="LDM_config")
 def main(cfg: DictConfig):
@@ -20,6 +18,7 @@ def main(cfg: DictConfig):
 
     n_samples = cfg.get("n_samples", 10)
 
+    # Load normalization parameters
     with open("Dataset_Setup_I_Chronological_10km/RhiresD_scaling_params.json") as f:
         pr_params = json.load(f)
     with open("Dataset_Setup_I_Chronological_10km/TabsD_scaling_params.json") as f:
@@ -47,21 +46,10 @@ def main(cfg: DictConfig):
     datamodule.setup(stage="test")
     test_loader = datamodule.test_dataloader()
 
-    print("UNet checkpoint path:", cfg.model.unet_regr)
-    assert os.path.exists(cfg.model.unet_regr), f"UNet checkpoint not found: {cfg.model.unet_regr}"
     unet_ckpt = torch.load(cfg.model.unet_regr, map_location=device)
-    print("Loaded UNet checkpoint from:", cfg.model.unet_regr)
-
-    print("VAE checkpoint path:", cfg.model.ae_load_state_file)
-    assert os.path.exists(cfg.model.ae_load_state_file), f"VAE checkpoint not found: {cfg.model.ae_load_state_file}"
     vae_ckpt = torch.load(cfg.model.ae_load_state_file, map_location=device)
-    print("Loaded VAE checkpoint from:", cfg.model.ae_load_state_file)
-
     ldm_ckpt_path = cfg.callbacks.model_checkpoint.dirpath + "/" + cfg.callbacks.model_checkpoint.filename + ".ckpt"
-    print("LDM checkpoint path:", ldm_ckpt_path)
-    assert os.path.exists(ldm_ckpt_path), f"LDM checkpoint not found: {ldm_ckpt_path}"
     ldm_ckpt = torch.load(ldm_ckpt_path, map_location=device)
-    print("Loaded LDM checkpoint from:", ldm_ckpt_path)
 
     # Instantiate models
     unet_model = DownscalingUnet(
@@ -104,42 +92,44 @@ def main(cfg: DictConfig):
         model=ldm,
         schedule=cfg.sampler.get("schedule", "linear"),
         device=device,
-        ddim_num_steps=cfg.sampler.get("ddim_num_steps", 250), #inference 250 steps
+        ddim_num_steps=cfg.sampler.get("ddim_num_steps", 250),
         ddim_eta=cfg.sampler.get("ddim_eta", 0.0)
     )
 
     all_samples = []
 
     with torch.no_grad():
-
         for batch in tqdm(test_loader, desc="Frames"):
             x_in, _ = batch
             x_in = x_in.to(device)
             batch_samples = []
-            # Coarse prediction and context are deterministic, so only sample z_start
+            # UNet pred
             coarse_pred = unet_model(x_in)
-            context = conditioner([(coarse_pred, None)])
-            z_shape = (ldm.denoiser.in_channels, coarse_pred.shape[-2], coarse_pred.shape[-1])  # 3D shape
+            coarse_pred_encoded = vae.encode(coarse_pred)[0]
+            context = conditioner([(coarse_pred_encoded, None)])
+            # Latent 
+            z_shape = (ldm.denoiser.in_channels, coarse_pred.shape[-2], coarse_pred.shape[-1])
 
             for s in range(n_samples):
                 z_start = torch.randn((x_in.shape[0],) + z_shape, device=device)
                 samples, _ = sampler.sample(
-                    cfg.sampler.ddim_num_steps,      # S (number of steps)
-                    x_in.shape[0],                   # batch_size
+                    cfg.sampler.ddim_num_steps,
+                    x_in.shape[0],
                     shape=z_shape,
                     conditioning=context,
-                    x_T=z_start
                 )
+
                 decoded = vae.decode(samples)
                 decoded_np = decoded.cpu().numpy()
-                # denormed each sample
+
                 decoded_np = np.stack([denorm_sample(d) for d in decoded_np])
                 batch_samples.append(decoded_np)
-            # Move these two lines OUTSIDE the inner loop:
-            batch_samples = np.stack(batch_samples, axis=1)  # [batch, n_samples, 4, H, W]
+            # Stacking samples for this batch: [batch, n_samples, 4, H, W]
+            batch_samples = np.stack(batch_samples, axis=1)
             all_samples.append(batch_samples)
 
-    all_samples = np.concatenate(all_samples, axis=0)
+    all_samples = np.concatenate(all_samples, axis=0)  # [num_frames, n_samples, 4, H, W]
+
 
     ref_ds = xr.open_dataset("Dataset_Setup_I_Chronological_10km/RhiresD_target_test_scaled.nc")
     times = ref_ds["time"].values
@@ -147,7 +137,6 @@ def main(cfg: DictConfig):
     lon = ref_ds["lon"].values
     ref_ds.close()
 
-    # all_samples: (num_frames, n_samples, 4, H, W)
     var_names = ["precip", "temp", "temp_min", "temp_max"]
 
     ds = xr.DataArray(
@@ -165,11 +154,9 @@ def main(cfg: DictConfig):
         name="ldm_samples"
     )
 
-    ds.to_netcdf("ldm_conditional_testset_samples.nc", encoding={"ldm_samples": {"_FillValue": np.nan}})
+    ds.to_netcdf("ldm_conditional_testset_10_samples.nc", encoding={"ldm_samples": {"_FillValue": np.nan}})
     print("Saved NetCDF: ldm_conditional_testset_samples.nc")
-
     print("All samples shape (time, n_samples, 4, H, W):", all_samples.shape)
-
 
 if __name__ == "__main__":
     main()
