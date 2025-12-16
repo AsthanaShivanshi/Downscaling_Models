@@ -76,7 +76,7 @@ denoiser:
 sampler:
   _target_: LDM_conditional.models.components.ldm.denoiser.DDIMSampler
   model: ${denoiser}
-  schedule: "linear"
+  schedule: "cosine"
   device: "cuda"
   ddim_num_steps: 250
   ddim_eta: 0.0
@@ -113,7 +113,7 @@ callbacks:
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: LDM_conditional/trained_ckpts/10km/
-    filename: LDM_checkpoint_V1_linear_schedule_250_steps
+    filename: LDM_checkpoint_V1_cosine_schedule_250_steps
     save_top_k: 1
     monitor: val/loss
     mode: min
