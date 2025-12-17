@@ -19,7 +19,7 @@ from models.components.ldm.denoiser.ddim import DDIMSampler
 
 
 S = 250  # DDIM 
-N_SAMPLES = 10  # LDM
+N_SAMPLES = 1 # LDM
 
 
 train_input_paths = {
@@ -134,7 +134,6 @@ ref_ds.close()
 
 
 
-
 model_UNet = DownscalingUnetLightning(
     in_ch=5, out_ch=4, features=[64, 128, 256, 512],
     channel_names=["precip", "temp", "temp_min", "temp_max"]
@@ -149,6 +148,8 @@ model_UNet.eval()
 
 encoder = SimpleConvEncoder(in_dim=4, levels=2, min_ch=16, ch_mult=4)
 decoder = SimpleConvDecoder(in_dim=64, levels=2, min_ch=16, out_dim=4, ch_mult=4)
+
+
 unet_regr = DownscalingUnetLightning(
     in_ch=5, out_ch=4, features=[64, 128, 256, 512],
     channel_names=["precip", "temp", "temp_min", "temp_max"]
@@ -227,7 +228,7 @@ with tqdm(total=len(dates), desc="Frame") as pbar:
             # LDM
             ldm_samples_this_frame = []
             for _ in range(N_SAMPLES):
-                # --- PRIOR SAMPLING: sample z ~ N(0, I) ---
+                # PRIOR SAMPLING: sample z ~ N(0, I) ---
                 latent_shape = (1, 32, unet_pred.shape[2] // 4, unet_pred.shape[3] // 4)
                 z = torch.randn(latent_shape, device=device)
 
@@ -237,7 +238,7 @@ with tqdm(total=len(dates), desc="Frame") as pbar:
                     batch_size=1,
                     shape=latent_shape[1:],
                     conditioning=conditioning,
-                    eta=0.1,
+                    eta=0.0,
                     verbose=False,
                     x_T=z,  # Pass sampled prior as initial latent
                 )
@@ -303,5 +304,5 @@ ds_ldm = xr.Dataset(
     }
 )
 encoding_ldm = {var: {"_FillValue": np.nan} for var in var_names}
-ds_ldm.to_netcdf(paths.LDM_DIR + "/outputs/test_LDM_samples_eta_0.1.nc", encoding=encoding_ldm)
+ds_ldm.to_netcdf(paths.LDM_DIR + "/outputs/singlerun_test_LDM_samples.nc", encoding=encoding_ldm)
 print(f"LDM samples saved with shape: {ldm_samples_np.shape}")
