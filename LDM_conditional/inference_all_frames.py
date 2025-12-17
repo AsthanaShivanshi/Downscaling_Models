@@ -19,7 +19,7 @@ from models.components.ldm.denoiser.ddim import DDIMSampler
 
 
 S = 250  # DDIM 
-N_SAMPLES = 1 # LDM
+N_SAMPLES = 5 # LDM
 
 
 train_input_paths = {
@@ -304,5 +304,5 @@ ds_ldm = xr.Dataset(
     }
 )
 encoding_ldm = {var: {"_FillValue": np.nan} for var in var_names}
-ds_ldm.to_netcdf(paths.LDM_DIR + "/outputs/singlerun_test_LDM_samples.nc", encoding=encoding_ldm)
+ds_ldm.to_netcdf(paths.LDM_DIR + "/outputs/5samples_run_test_LDM_samples.nc", encoding=encoding_ldm)
 print(f"LDM samples saved with shape: {ldm_samples_np.shape}")
