@@ -21,7 +21,7 @@ from .components.unet import DownscalingUnet
 
 class DownscalingUnetLightning(LightningModule):
 
-    def __init__(self, in_ch=1, out_ch=1, features=[64,128,256,512], channel_names=None, unet_regr=None, precip_channel_idx=0):
+    def __init__(self, in_ch=1, out_ch=1, features=[64,128,256,512], channel_names=None, unet_regr=None, precip_channel_idx=0, lr=1e-3):
         super().__init__()
         self.save_hyperparameters()
         self.unet = DownscalingUnet(in_ch, out_ch, features)
