@@ -19,7 +19,7 @@ from models.components.ldm.denoiser.ddim import DDIMSampler
 
 
 S = 250  # DDIM 
-N_SAMPLES = 5 # LDM
+N_SAMPLES = 1 # LDM
 
 
 train_input_paths = {
