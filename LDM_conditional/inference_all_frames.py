@@ -297,6 +297,15 @@ crop_W = min(W, ldm_W)
 ldm_samples_np = ldm_samples_np[:, :, :crop_H, :crop_W, :]
 lat2d = lat2d[:crop_H, :crop_W]
 lon2d = lon2d[:crop_H, :crop_W]
+
+
+
+print("ldm_samples_np shape:", ldm_samples_np.shape)
+print("lat2d shape:", lat2d.shape)
+print("lon2d shape:", lon2d.shape)
+
+
+
 ds_ldm = xr.Dataset(
     {
         var: (("time", "sample", "N", "E"), ldm_samples_np[:, :, :, :, i])
@@ -311,6 +320,8 @@ ds_ldm = xr.Dataset(
         "lon": (("N", "E"), lon2d),
     }
 )
+
+
 encoding_ldm = {var: {"_FillValue": np.nan} for var in var_names}
 ds_ldm.to_netcdf(paths.LDM_DIR + "/outputs/5samples_run_test_LDM_samples.nc", encoding=encoding_ldm)
 print(f"LDM samples saved with shape: {ldm_samples_np.shape}")
