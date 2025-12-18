@@ -60,7 +60,7 @@ callbacks:
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: LDM_conditional/trained_ckpts_optimised/10km/
-    filename: ${model._target_}_bs${experiment.batch_size}_lr${model.lr}_run${hydra.job.num}_checkpoint
+    filename: ${model._target_}_bs${experiment.batch_size}_lr${model.lr}_factor${lr_scheduler.factor}_pat${lr_scheduler.patience}_run${hydra.job.num}_checkpoint
     save_top_k: 1
     monitor: val/loss
     mode: min
