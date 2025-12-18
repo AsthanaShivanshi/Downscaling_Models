@@ -28,14 +28,14 @@ python -c "import wandb; print(wandb.__version__)"
 #python LDM_conditional/train.py --config-name VAE_config.yaml   
 
 # Training the LDM
-#python LDM_conditional/train.py --config-name LDM_config.yaml
+python LDM_conditional/train.py --config-name LDM_config.yaml
 
 
 #hydra sweeps for multiruns
 
 # Training the Unet with a sweep
-python LDM_conditional/train.py --multirun --config-name UNet_config.yaml \
-  experiment.batch_size=16,32 \
-  lr_scheduler.factor=0.50,0.75 \
-  model.lr=0.001,0.01 \
-  lr_scheduler.patience=5,10
+#python LDM_conditional/train.py --multirun --config-name UNet_config.yaml \
+  #experiment.batch_size=16,32 \
+  #lr_scheduler.factor=0.50,0.75 \
+  #model.lr=0.001,0.01 \
+  #lr_scheduler.patience=5,10
