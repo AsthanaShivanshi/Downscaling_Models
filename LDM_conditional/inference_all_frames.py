@@ -289,6 +289,14 @@ ds_unet.to_netcdf(paths.LDM_DIR + "/outputs/test_UNet_baseline.nc", encoding=enc
 print(f"UNet baseline saved with shape: {unet_preds_np.shape}")
 
 ldm_samples_np = np.transpose(ldm_samples_np, (0, 1, 3, 4, 2))
+
+H, W = lat2d.shape
+ldm_H, ldm_W = ldm_samples_np.shape[2], ldm_samples_np.shape[3]
+crop_H = min(H, ldm_H)
+crop_W = min(W, ldm_W)
+ldm_samples_np = ldm_samples_np[:, :, :crop_H, :crop_W, :]
+lat2d = lat2d[:crop_H, :crop_W]
+lon2d = lon2d[:crop_H, :crop_W]
 ds_ldm = xr.Dataset(
     {
         var: (("time", "sample", "N", "E"), ldm_samples_np[:, :, :, :, i])

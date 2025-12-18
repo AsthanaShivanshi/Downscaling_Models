@@ -59,8 +59,8 @@ callbacks:
 
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
-    dirpath: LDM_conditional/trained_ckpts/10km/
-    filename: ${model._target_}_checkpoint
+    dirpath: LDM_conditional/trained_ckpts_optimised/10km/
+    filename: ${model._target_}_bs${experiment.batch_size}_lr${model.lr}_run${hydra.job.num}_checkpoint
     save_top_k: 1
     monitor: val/loss
     mode: min
@@ -71,3 +71,11 @@ model:
   out_ch: 4
   features: [64,128,256,512]
   channel_names: ["precip", "temp", "temp_min", "temp_max"]
+  lr: 1e-3
+
+lr_scheduler:
+  _target_: lightning.pytorch.lr_scheduler.ReduceLROnPlateau
+  mode: min
+  factor: 0.50
+  patience: 3
+  min_lr: 1e-6

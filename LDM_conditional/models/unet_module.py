@@ -23,6 +23,7 @@ class DownscalingUnetLightning(LightningModule):
 
     def __init__(self, in_ch=1, out_ch=1, features=[64,128,256,512], channel_names=None, unet_regr=None, precip_channel_idx=0):
         super().__init__()
+        self.save_hyperparameters()
         self.unet = DownscalingUnet(in_ch, out_ch, features)
 
         self.loss_fn = torch.nn.MSELoss()
@@ -76,14 +77,14 @@ class DownscalingUnetLightning(LightningModule):
         self.log("test/loss", total_loss, on_epoch=True, prog_bar=True)
         return total_loss
 
-
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer,
             mode='min',
-            factor=0.5,
-            patience=3,
+            factor=getattr(self.hparams, "lr_scheduler", {}).get("factor", 0.5),
+            patience=getattr(self.hparams, "lr_scheduler", {}).get("patience", 3),
+            min_lr=getattr(self.hparams, "lr_scheduler", {}).get("min_lr", 1e-6),
         )
         return {
             "optimizer": optimizer,

@@ -36,7 +36,7 @@ def train(cfg: DictConfig):
         print("Loaded UNet mean regression model from:", cfg.model.unet_regr)
 
     # Instantiate model: for UNet and VAE
-    #model: LightningModule = hydra.utils.instantiate(cfg.model, unet_regr=unet_model if cfg.model.get("unet_regr") else None)
+    model: LightningModule = hydra.utils.instantiate(cfg.model, unet_regr=unet_model if cfg.model.get("unet_regr") else None)
 
     #Checking that files exist /debugging prints cz val files were not being read: AsthanaSh
     print("DataModule val files", datamodule.val_input, datamodule.val_target)
@@ -50,16 +50,16 @@ def train(cfg: DictConfig):
                 raise FileNotFoundError(f"Val target file for {k} not found: {v}")
 #For LDM, pass
     
-    autoencoder_cfg = cfg.model.autoencoder
-    autoencoder = hydra.utils.instantiate(autoencoder_cfg, unet_regr=unet_model if cfg.model.get("unet_regr") else None)
-    context_encoder = None
-    if cfg.model.get("context_encoder"):
-        context_encoder = hydra.utils.instantiate(cfg.model.context_encoder, autoencoder=autoencoder)
-    model = hydra.utils.instantiate(cfg.model, autoencoder=autoencoder, context_encoder=context_encoder, unet_regr=unet_model if cfg.model.get("unet_regr") else None)
+    #autoencoder_cfg = cfg.model.autoencoder
+    #autoencoder = hydra.utils.instantiate(autoencoder_cfg, unet_regr=unet_model if cfg.model.get("unet_regr") else None)
+    #context_encoder = None
+    #if cfg.model.get("context_encoder"):
+    #    context_encoder = hydra.utils.instantiate(cfg.model.context_encoder, autoencoder=autoencoder)
+    #model = hydra.utils.instantiate(cfg.model, autoencoder=autoencoder, context_encoder=context_encoder, unet_regr=unet_model if cfg.model.get("unet_regr") else None)
     
     
     # WandB logger
-    logger = WandbLogger(project="LDM_res_conditional", log_model=True)
+    logger = WandbLogger(project="UNet_optim_run", log_model=True)
 
     # ckpt callback from config
     callbacks = []
@@ -88,7 +88,7 @@ def train(cfg: DictConfig):
     ckpt_path = trainer.checkpoint_callback.best_model_path if hasattr(trainer, "checkpoint_callback") else None
     trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
 
-@hydra.main(version_base="1.3", config_path="configs", config_name="LDM_config.yaml")
+@hydra.main(version_base="1.3", config_path="configs", config_name="UNet_config.yaml")
 def main(cfg: DictConfig):
     train(cfg)
 
