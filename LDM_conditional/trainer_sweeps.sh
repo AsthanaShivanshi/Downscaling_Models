@@ -24,8 +24,24 @@ python -c "import wandb; print(wandb.__version__)"
 #hydra sweeps for multiruns
 
 # Sweep for hyperparameter tuning
-python LDM_conditional/train.py --multirun --config-name UNet_config.yaml \
+
+#unet sweep
+"""python LDM_conditional/train.py --multirun --config-name UNet_config.yaml \
   experiment.batch_size=16,32 \
   lr_scheduler.factor=0.50,0.75 \
   model.lr=0.001,0.01 \
-  lr_scheduler.patience=5,10
+  lr_scheduler.patience=5,10"""
+
+
+
+#vae sweep
+
+python LDM_conditional/train.py --multirun --config-name VAE_config.yaml \
+  'encoder.levels=2,3,4' \
+  'encoder.min_ch=16,32,64' \
+  'encoder.ch_mult=4,8,16' \
+  'decoder.in_dim=64,128,256' \
+  'decoder.levels=2,3,4' \
+  'decoder.min_ch=16,32,64' \
+  model.kl_weight=0.001,0.01,0.005,0.1\
+  hydra.sweeper.params="zip(encoder.levels,encoder.min_ch,encoder.ch_mult,decoder.in_dim,decoder.levels,decoder.min_ch)"

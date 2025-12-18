@@ -37,16 +37,16 @@ data:
 
 encoder:
   _target_: LDM_conditional.models.components.ae.SimpleConvEncoder
-  in_dim: 4  #AsthanaSh: Output from Unet is four channels (minus static), fed into VAE for latent representaton of noise. 
-  levels: 2
-  min_ch: 16
-  ch_mult: 4
+  in_dim: 4
+  levels: ${encoder.levels}
+  min_ch: ${encoder.min_ch}
+  ch_mult: ${encoder.ch_mult}
 
 decoder:
   _target_: LDM_conditional.models.components.ae.SimpleConvDecoder
-  in_dim: 64 #Matching encoders OP
-  levels: 2
-  min_ch: 16
+  in_dim: ${decoder.in_dim}  
+  levels: ${decoder.levels}
+  min_ch: ${decoder.min_ch}
   out_dim: 4
 
 
@@ -73,8 +73,8 @@ callbacks:
     mode: min
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
-    dirpath: LDM_conditional/trained_ckpts/10km/
-    filename: ${model._target_}_checkpoint
+    dirpath: LDM_conditional/trained_ckpts_optimised/10km/
+    filename: VAE_levels${encoder.levels}_minch${encoder.min_ch}_chmult${encoder.ch_mult}_checkpoint
     save_top_k: 1
     monitor: val/loss
     mode: min
