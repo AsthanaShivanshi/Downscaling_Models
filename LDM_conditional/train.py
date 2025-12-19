@@ -62,7 +62,7 @@ def train(cfg: DictConfig):
     wandb.finish()  # Close any previous run
 
     run_name = f"run_{os.environ.get('HYDRA_JOB_NUM', '0')}_{os.getpid()}"
-    logger = WandbLogger(project="UNet_optim_run", log_model=True, name=run_name)
+    logger = WandbLogger(project="UNet_optim_run_48km_bivariate", log_model=True, name=run_name)
 
     # ckpt callback from config
     callbacks = []
