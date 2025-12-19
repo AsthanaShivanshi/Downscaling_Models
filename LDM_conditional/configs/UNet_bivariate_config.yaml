@@ -1,5 +1,5 @@
 defaults:
-  - paths: paths_12km.yaml
+  - paths: paths_12km_bivariate.yaml
   - _self_
 
 wandb:
@@ -72,7 +72,7 @@ model:
   in_ch: 3
   out_ch: 2
   features: [64,128,256,512]
-  channel_names: ["precip", "temp", "temp_min", "temp_max"]
+  channel_names: ["precip", "temp"]
   lr: 1e-3
 
 lr_scheduler:

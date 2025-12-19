@@ -23,8 +23,8 @@ def train(cfg: DictConfig):
     #AsthanaSh_: fixed state_dict names with "unet." prefix by removing it,,was giving an error while loading
     if cfg.model.get("unet_regr"):
         unet_model = DownscalingUnet(
-            in_ch=cfg.model.get("in_ch", 5),
-            out_ch=cfg.model.get("out_ch", 4),
+            in_ch=cfg.model.get("in_ch", 3),
+            out_ch=cfg.model.get("out_ch", 2),
             features=cfg.model.get("features", [64,128,256,512])
         )
 
