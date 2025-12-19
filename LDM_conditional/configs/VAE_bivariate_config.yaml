@@ -1,0 +1,100 @@
+defaults:
+  - paths: paths_12km.yaml
+  - _self_
+
+experiment:
+  batch_size: 32
+  num_workers: 4
+
+variables:
+  input:
+    precip: RhiresD
+    temp: TabsD
+  target:
+    precip: RhiresD
+    temp: TabsD
+preprocessing:
+  nan_to_num: true
+  nan_value : 0.0
+
+data:
+  train:
+    input: ${paths.data.train.input}
+    target: ${paths.data.train.target}
+  val:
+    input: ${paths.data.val.input}
+    target: ${paths.data.val.target}
+  test:
+    input: ${paths.data.test.input}
+    target: ${paths.data.test.target}
+  static:
+    elevation: ${paths.data.static.elevation}
+
+encoder:
+  _target_: LDM_conditional.models.components.ae.SimpleConvEncoder
+  in_dim: 4
+  levels: ${encoder.levels}
+  min_ch: ${encoder.min_ch}
+  ch_mult: ${encoder.ch_mult}
+
+decoder:
+  _target_: LDM_conditional.models.components.ae.SimpleConvDecoder
+  in_dim: ${decoder.in_dim}  
+  levels: ${decoder.levels}
+  min_ch: ${decoder.min_ch}
+  out_dim: 4
+
+
+datamodule:
+  _target_: LDM_conditional.DownscalingDataModule.DownscalingDataModule
+  train_input: ${data.train.input}
+  train_target: ${data.train.target}
+  val_input: ${data.val.input}
+  val_target: ${data.val.target}
+  test_input: ${data.test.input}
+  test_target: ${data.test.target}
+  elevation: ${data.static.elevation}
+  batch_size: ${experiment.batch_size}
+  num_workers: ${experiment.num_workers}
+  preprocessing:
+    variables: ${variables}
+    preprocessing: ${preprocessing}
+
+callbacks:
+  early_stopping:
+    _target_: lightning.pytorch.callbacks.EarlyStopping
+    monitor: val/loss
+    patience: 10
+    mode: min
+  model_checkpoint:
+    _target_: lightning.pytorch.callbacks.ModelCheckpoint
+    dirpath: LDM_conditional/trained_ckpts_optimised/10km/
+    filename: VAE_levels${encoder.levels}_minch${encoder.min_ch}_chmult${encoder.ch_mult}_checkpoint
+    save_top_k: 1
+    monitor: val/loss
+    mode: min
+
+unet_arch:
+  _target_: LDM_conditional.models.unet_module.DownscalingUnet
+  in_ch: 3  #2 vars + elevation
+  out_ch: 2
+  features: [64,128,256,512]
+
+
+model:
+  _target_: LDM_conditional.models.ae_module.AutoencoderKL
+  encoder: ${encoder}
+  decoder: ${decoder}
+
+
+  kl_weight: 0.01
+  ae_flag: "residual"
+
+  unet_regr: LDM_conditional/trained_ckpts/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_checkpoint.ckpt  # set only if using residuals
+
+lr_scheduler:
+  _target_: lightning.pytorch.lr_scheduler.ReduceLROnPlateau
+  mode: min
+  factor: 0.50
+  patience: 3
+  min_lr: 1e-6
