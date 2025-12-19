@@ -79,7 +79,7 @@ def train(cfg: DictConfig):
         #accelerator="cpu",  # Forcing CPU for debugging on interactive partition : AsthanaSh
         #devices=1,
 
-        #For submitting jobs to cluster, GPU , training, uncomment below
+        #For submitting jobs to cluster, GPU , training, uncomment
         accelerator=cfg.get("trainer", {}).get("accelerator", "cuda"),
         devices=cfg.get("trainer", {}).get("devices", 1),
     )

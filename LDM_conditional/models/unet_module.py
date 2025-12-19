@@ -30,7 +30,7 @@ class DownscalingUnetLightning(LightningModule):
         self.channel_names = channel_names if channel_names is not None else [f"channel_{i}" for i in range(out_ch)]
         self.unet_regr = unet_regr
         self.register_buffer("loss_weights", torch.ones(out_ch))
-        self.loss_weights[precip_channel_idx] = 10  #Customisable weight for precip channel depending on requirement. Gives more wt to loss of precip in that case 
+        self.loss_weights[precip_channel_idx] = 1  #Customisable weight for precip channel depending on requirement. Gives more wt to loss of precip in that case 
 
 
 

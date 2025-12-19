@@ -22,17 +22,12 @@ export HYDRA_FULL_ERROR=1
 which python
 python -c "import wandb; print(wandb.__version__)"
 
-#hydra sweeps for multiruns
-
-# Sweep for hyperparameter tuning
 
 #unet sweep
 python LDM_conditional/train.py --multirun --config-name UNet_config.yaml \
   experiment.batch_size=16,32 \
   lr_scheduler.factor=0.50,0.75 \
-  model.lr=0.001,0.01 \
-  lr_scheduler.patience=5,10
-
+  model.lr=0.001,0.01 
 
 
 #vae sweep
