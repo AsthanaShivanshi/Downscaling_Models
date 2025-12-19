@@ -16,6 +16,7 @@ mkdir -p logs/ckpts_LDM_optimised/10km
 
 cd "$PROJECT_DIR"
 export WANDB_MODE=online
+export WANDB_START_METHOD=thread
 export PYTHONUNBUFFERED=1
 export HYDRA_FULL_ERROR=1
 which python

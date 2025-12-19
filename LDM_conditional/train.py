@@ -8,6 +8,8 @@ from omegaconf import DictConfig
 from lightning import Trainer, LightningModule, LightningDataModule, Callback
 from lightning.pytorch.loggers import WandbLogger
 from models.components.unet import DownscalingUnet
+import wandb
+
 
 def train(cfg: DictConfig):
     # Set seed if specified
@@ -57,9 +59,10 @@ def train(cfg: DictConfig):
     #    context_encoder = hydra.utils.instantiate(cfg.model.context_encoder, autoencoder=autoencoder)
     #model = hydra.utils.instantiate(cfg.model, autoencoder=autoencoder, context_encoder=context_encoder, unet_regr=unet_model if cfg.model.get("unet_regr") else None)
     
-    
-    # WandB logger
-    logger = WandbLogger(project="UNet_optim_run", log_model=True)
+    wandb.finish()  # Close any previous run
+
+    run_name = f"run_{os.environ.get('HYDRA_JOB_NUM', '0')}_{os.getpid()}"
+    logger = WandbLogger(project="UNet_optim_run", log_model=True, name=run_name)
 
     # ckpt callback from config
     callbacks = []

@@ -2,6 +2,11 @@ defaults:
   - paths: paths_10km.yaml
   - _self_
 
+wandb:
+  project: UNet_optim_run
+  name: ${hydra.job.override_dirname}
+
+
 experiment:
   batch_size: 32
   num_workers: 4
