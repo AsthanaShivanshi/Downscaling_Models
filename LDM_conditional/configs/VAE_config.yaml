@@ -1,5 +1,5 @@
 defaults:
-  - paths: paths_10km.yaml
+  - paths: paths_12km.yaml
   - _self_
 
 experiment:
