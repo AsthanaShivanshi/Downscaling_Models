@@ -23,6 +23,7 @@ class AutoencoderKL(LightningModule):
     def __init__(
         self, 
         encoder, decoder, 
+        latent_dim=8, 
         kl_weight=0.01,     
         ae_flag=None,
         unet_regr=None,
@@ -32,20 +33,22 @@ class AutoencoderKL(LightningModule):
         super().__init__(**kwargs)
         self.encoder = encoder
         self.decoder = decoder
+        self.latent_dim = latent_dim
         self.kl_weight = kl_weight
         self.beta_anneal_steps = beta_anneal_steps
-        self.register_buffer("current_step", torch.tensor(0, dtype=torch.long))
 
-        self.encoded_channels = self.encoder.net[-1].out_channels
-        self.to_moments = nn.Conv2d(self.encoded_channels, self.encoded_channels,
-            kernel_size=1)
-        self.to_decoder = nn.Conv2d(self.encoded_channels//2, self.encoded_channels,
-            kernel_size=1)
+        # Get encoder output channels (assuming last conv layer)
+        encoder_out_ch = self.encoder.net[-1].out_channels
+
+        # Project encoder output to mean/logvar of latent_dim
+        self.to_moments = nn.Conv2d(encoder_out_ch, 2 * latent_dim, kernel_size=1)
+        # Project latent_dim to decoder input channels
+        self.to_decoder = nn.Conv2d(latent_dim, self.decoder.in_dim, kernel_size=1)
         # self.log_var = nn.Parameter(torch.zeros(size=()))
         self.kl_weight = kl_weight
 
         #For correcting systemic bias : AsthanaSh
-        self.bias = nn.Parameter(torch.zeros(size=(1,4,1,1)))  #4 output channels
+        self.bias = nn.Parameter(torch.zeros(size=(1, self.decoder.out_dim, 1, 1)))
         self.ae_flag = ae_flag
         assert self.ae_flag in [None, 'residual', 'hres'], f'ae_flag {self.ae_flag} not recognized!!'
         

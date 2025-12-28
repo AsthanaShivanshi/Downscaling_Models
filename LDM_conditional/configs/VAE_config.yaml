@@ -44,7 +44,7 @@ encoder:
 
 decoder:
   _target_: LDM_conditional.models.components.ae.SimpleConvDecoder
-  in_dim: ${decoder.in_dim}  
+  in_dim: ${model.latent_dim}
   levels: ${decoder.levels}
   min_ch: ${decoder.min_ch}
   out_dim: 4
@@ -90,12 +90,11 @@ model:
   _target_: LDM_conditional.models.ae_module.AutoencoderKL
   encoder: ${encoder}
   decoder: ${decoder}
-
-
+  latent_dim: 8
   kl_weight: 0.01
   ae_flag: "residual"
 
-  unet_regr: LDM_conditional/trained_ckpts/10km/LDM_conditional.models.unet_module.DownscalingUnetLightning_checkpoint.ckpt  # set only if using residuals
+  unet_regr: LDM_conditional/trained_ckpts/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_checkpoint.ckpt  # set only if using residuals
 
 lr_scheduler:
   _target_: lightning.pytorch.lr_scheduler.ReduceLROnPlateau

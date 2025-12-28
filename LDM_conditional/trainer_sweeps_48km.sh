@@ -30,14 +30,9 @@ python LDM_conditional/train.py --multirun --config-name UNet_bivariate_config.y
 
 
 #vae sweep
+#python LDM_conditional/train.py --multirun --config-name VAE_bivariate_config.yaml \
+  #model.latent_dim=8,16,32,64,128\
+  #model.kl_weight=0.0001,0.001,0.01
 
-#vae sweep
-# python LDM_conditional/train.py --multirun --config-name VAE_config.yaml \
-#   'encoder.levels=2,3,4' \
-#   'encoder.min_ch=16,32,64' \
-#   'encoder.ch_mult=4,8,16' \
-#   'decoder.in_dim=32,64,128' \
-#   'decoder.levels=2,3,4' \
-#   'decoder.min_ch=16,32,64' \
-#   model.kl_weight=0.001,0.01,0.005,0.1
-#   hydra.sweeper.params="zip(encoder.levels,encoder.min_ch,encoder.ch_mult,decoder.in_dim,decoder.levels,decoder.min_ch)"
+
+#ldm sweep
