@@ -11,7 +11,7 @@
 
 source diffscaler.sh
 export PYTHONPATH="$PROJECT_DIR"
-mkdir -p logs/ckpts_LDM_optimised/12km
+mkdir -p logs/12km
 
 cd "$PROJECT_DIR"
 export WANDB_MODE=online
