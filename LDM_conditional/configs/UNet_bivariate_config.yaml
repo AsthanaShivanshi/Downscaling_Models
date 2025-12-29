@@ -74,6 +74,7 @@ model:
   features: [64,128,256,512]
   channel_names: ["precip", "temp"]
   lr: 1e-3
+  huber_delta: 1.0  #used only for precip channel. 
 
 lr_scheduler:
   _target_: lightning.pytorch.lr_scheduler.ReduceLROnPlateau
