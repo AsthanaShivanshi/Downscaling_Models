@@ -62,6 +62,14 @@ def train(cfg: DictConfig):
 
     run_name = f"run_{os.environ.get('HYDRA_JOB_NUM', '0')}_{os.getpid()}"
     logger = WandbLogger(project="UNet_optim_run_12km_bivariate", log_model=True, name=run_name)
+    logger.experiment.config.update({
+    "huber_delta": cfg.model.get("huber_delta"),
+    "learning_rate": cfg.model.get("lr"),
+    "batch_size": cfg.experiment.get("batch_size"),
+
+})
+    print("Wandb run name:", run_name)
+    print("Wandb run id:", logger.experiment.id)
 
     # ckpt callback from config
     callbacks = []
