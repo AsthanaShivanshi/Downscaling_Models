@@ -1,6 +1,10 @@
 defaults:
-  - paths: paths_12km.yaml
+  - paths: paths_12km_bivariate.yaml
   - _self_
+
+wandb:
+  project: UNet_optim_run_12km_bivariate
+  name: ${hydra.job.override_dirname}
 
 experiment:
   batch_size: 32
@@ -10,13 +14,11 @@ variables:
   input:
     precip: RhiresD
     temp: TabsD
-    temp_min: TminD
-    temp_max: TmaxD
+
   target:
     precip: RhiresD
     temp: TabsD
-    temp_min: TminD
-    temp_max: TmaxD
+
 
 preprocessing:
   nan_to_num: true
@@ -34,21 +36,6 @@ data:
     target: ${paths.data.test.target}
   static:
     elevation: ${paths.data.static.elevation}
-
-encoder:
-  _target_: LDM_conditional.models.components.ae.SimpleConvEncoder
-  in_dim: 4
-  levels: ${encoder.levels}
-  min_ch: ${encoder.min_ch}
-  ch_mult: ${encoder.ch_mult}
-
-decoder:
-  _target_: LDM_conditional.models.components.ae.SimpleConvDecoder
-  in_dim: ${model.latent_dim}
-  levels: ${decoder.levels}
-  min_ch: ${decoder.min_ch}
-  out_dim: 4
-
 
 datamodule:
   _target_: LDM_conditional.DownscalingDataModule.DownscalingDataModule
@@ -71,30 +58,28 @@ callbacks:
     monitor: val/loss
     patience: 10
     mode: min
+
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
-    dirpath: LDM_conditional/trained_ckpts_optimised/10km/
-    filename: VAE_levels${encoder.levels}_minch${encoder.min_ch}_chmult${encoder.ch_mult}_checkpoint
+    dirpath: LDM_conditional/trained_ckpts_optimised/12km/
+
+    #For sweep without CRPS
+    filename: ${model._target_}_bs${experiment.batch_size}_lr${model.lr}_delta${model.huber_delta}_factor${lr_scheduler.factor}_pat${lr_scheduler.patience}.ckpt
+    #For sweep with CRPS
+    #filename: ${model._target_}_bs${experiment.batch_size}_lr${model.lr}_delta${model.huber_delta}_crps${model.use_crps_channels}_factor${lr_scheduler.factor}_pat${lr_scheduler.patience}.ckpt
     save_top_k: 1
     monitor: val/loss
     mode: min
 
-unet_arch:
-  _target_: LDM_conditional.models.unet_module.DownscalingUnet
-  in_ch: 5  #4 vars + elevation
-  out_ch: 4
-  features: [64,128,256,512]
-
-
 model:
-  _target_: LDM_conditional.models.ae_module.AutoencoderKL
-  encoder: ${encoder}
-  decoder: ${decoder}
-  latent_dim: 8
-  kl_weight: 0.01
-  ae_flag: "residual"
-
-  unet_regr: LDM_conditional/trained_ckpts/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_checkpoint.ckpt  # set only if using residuals
+  _target_: LDM_conditional.models.unet_module.DownscalingUnetLightning
+  in_ch: 3
+  out_ch: 2
+  features: [64,128,256,512]
+  channel_names: ["precip", "temp"]
+  lr: 1e-3
+  huber_delta: 1.0  #used only for precip channel. 
+  use_crps_channels: [] #Not used when left empty. 
 
 lr_scheduler:
   _target_: lightning.pytorch.lr_scheduler.ReduceLROnPlateau
