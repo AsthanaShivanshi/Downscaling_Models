@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=12km_UNet_Sweep
-#SBATCH --output=logs/ckpts_LDM_optimised/12km/job_output-%j.txt
-#SBATCH --error=logs/ckpts_LDM_optimised/12km/job_error-%j.txt
+#SBATCH --output=logs/ckpts_LDM_optimised/12km/UnetSweep_job_output-%j.txt
+#SBATCH --error=logs/ckpts_LDM_optimised/12km/UnetSweep_job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-00:00:00
@@ -11,7 +11,7 @@
 
 source diffscaler.sh
 export PYTHONPATH="$PROJECT_DIR"
-mkdir -p logs/12km
+mkdir -p logs/ckpts_LDM_optimised/12km
 
 cd "$PROJECT_DIR"
 export WANDB_MODE=online
