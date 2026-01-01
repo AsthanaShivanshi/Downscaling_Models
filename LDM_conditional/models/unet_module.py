@@ -17,7 +17,16 @@ from lightning import LightningModule
         https://lightning.ai/docs/pytorch/latest/common/lightning_module.html
     """
 
+
+
 from .components.unet import DownscalingUnet
+
+
+def crps_loss(pred, target):
+    # MAE: CRPS det
+    return torch.mean(torch.abs(pred - target))
+
+
 
 class DownscalingUnetLightning(LightningModule):
 
@@ -30,32 +39,36 @@ class DownscalingUnetLightning(LightningModule):
         unet_regr=None, 
         precip_channel_idx=0, 
         lr=1e-3,
-        huber_delta=1.0  #only for precip,,, smaller delta might be better for low precip values. 
+        huber_delta=1.0,
+        use_crps_channels=None  # list of channels using crps.- 
     ):
         super().__init__()
         self.save_hyperparameters()
         self.unet = DownscalingUnet(in_ch, out_ch, features)
 
-        # Loss: Huber, MSE : precip, temp
         self.precip_channel_idx = precip_channel_idx
-        self.loss_fn_precip = torch.nn.HuberLoss(delta=self.hparams.huber_delta, reduction='mean') #precipitation
-
-
-
-        self.loss_fn_temp = torch.nn.MSELoss(reduction='mean') #temp
+        self.loss_fn_precip = torch.nn.HuberLoss(delta=self.hparams.huber_delta, reduction='mean')
+        self.loss_fn_temp = torch.nn.MSELoss(reduction='mean')
         self.channel_names = channel_names if channel_names is not None else [f"channel_{i}" for i in range(out_ch)]
         self.unet_regr = unet_regr
         self.register_buffer("loss_weights", torch.ones(out_ch))
         self.loss_weights[precip_channel_idx] = 1
 
 
+
+        self.use_crps_channels = use_crps_channels if use_crps_channels is not None else []
+
     def forward(self, x):
         return self.unet(x)
+
+
 
     def weighted_loss(self, y_hat, y):
         per_channel_losses = []
         for i in range(y_hat.shape[1]):
-            if i == self.precip_channel_idx:
+            if i in self.use_crps_channels:
+                loss = crps_loss(y_hat[:, i, ...], y[:, i, ...])
+            elif i == self.precip_channel_idx:
                 loss = self.loss_fn_precip(y_hat[:, i, ...], y[:, i, ...])
             else:
                 loss = self.loss_fn_temp(y_hat[:, i, ...], y[:, i, ...])
@@ -65,32 +78,42 @@ class DownscalingUnetLightning(LightningModule):
         return total_loss
 
 
+
+
     def training_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
         loss = self.weighted_loss(y_hat, y)
         self.log("train_loss", loss, on_epoch=True, prog_bar=True)
 
-        # Per-channel metrics (add this block)
         for i, name in enumerate(self.channel_names):
-            if i == self.precip_channel_idx:
+            if i in self.use_crps_channels:
+                crps = crps_loss(y_hat[:, i, ...], y[:, i, ...])
+                self.log(f"train/{name}_crps", crps, on_epoch=True)
+            elif i == self.precip_channel_idx:
                 huber = self.loss_fn_precip(y_hat[:, i, ...], y[:, i, ...])
                 self.log(f"train/{name}_huber", huber, on_epoch=True)
             else:
                 mse = self.loss_fn_temp(y_hat[:, i, ...], y[:, i, ...])
                 self.log(f"train/{name}_mse", mse, on_epoch=True)
         return loss
-    
-    
+
+
+
+
     def validation_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
         loss = self.weighted_loss(y_hat, y)
         self.log("val/loss", loss, on_epoch=True, prog_bar=True)
 
-        # Per-channel metrics
+
+
         for i, name in enumerate(self.channel_names):
-            if i == self.precip_channel_idx:
+            if i in self.use_crps_channels:
+                crps = crps_loss(y_hat[:, i, ...], y[:, i, ...])
+                self.log(f"val/{name}_crps", crps, on_epoch=True)
+            elif i == self.precip_channel_idx:
                 huber = self.loss_fn_precip(y_hat[:, i, ...], y[:, i, ...])
                 self.log(f"val/{name}_huber", huber, on_epoch=True)
             else:

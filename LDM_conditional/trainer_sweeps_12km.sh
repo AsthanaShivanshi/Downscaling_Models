@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=12km_UNet_Sweep
-#SBATCH --output=logs/ckpts_LDM_optimised/12km/UnetSweep_job_output-%j.txt
-#SBATCH --error=logs/ckpts_LDM_optimised/12km/UnetSweep_job_error-%j.txt
+#SBATCH --job-name=CRPS_12km_UNet_Sweep
+#SBATCH --output=logs/ckpts_LDM_optimised/12km/CRPS_UnetSweep_job_output-%j.txt
+#SBATCH --error=logs/ckpts_LDM_optimised/12km/CRPS_UnetSweep_job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-00:00:00
@@ -23,11 +23,21 @@ which python
 python -c "import wandb; print(wandb.__version__)"
 
 
-#unet sweep
+#unet sweep :mse and huber losses 
+#python LDM_conditional/train.py --multirun --config-name UNet_bivariate_config.yaml \
+  #lr_scheduler.factor=0.50,0.75 \
+  #model.lr=0.001,0.01\
+  #model.huber_delta=0.2,0.6,0.8,1.0
+
+
+#unet sweep :CRPS (MAE for UNet)
 python LDM_conditional/train.py --multirun --config-name UNet_bivariate_config.yaml \
+  model.use_crps_channels="[0,1]" \
   lr_scheduler.factor=0.50,0.75 \
-  model.lr=0.001,0.01\
-  model.huber_delta=0.2,0.6,0.8,1.0
+  model.lr=0.001,0.01
+
+
+
 
 
 #vae sweep
