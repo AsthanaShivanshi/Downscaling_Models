@@ -8,55 +8,51 @@ import xarray as xr
 from tqdm import tqdm
 import paths
 
+#Code foer Unet retained for the first step
+
 from LDM_conditional.DownscalingDataModule import DownscalingDataModule
 from models.unet_module import DownscalingUnetLightning
-from models.ae_module import AutoencoderKL
-from models.components.ae import SimpleConvEncoder, SimpleConvDecoder
-from models.components.ldm.conditioner import AFNOConditionerNetCascade
-from models.components.ldm.denoiser.unet import UNetModel
-from models.ldm_module import LatentDiffusion
-from models.components.ldm.denoiser.ddim import DDIMSampler
+#from models.ae_module import AutoencoderKL
+#from models.components.ae import SimpleConvEncoder, SimpleConvDecoder
+#from models.components.ldm.conditioner import AFNOConditionerNetCascade
+#from models.components.ldm.denoiser.unet import UNetModel
+#from models.ldm_module import LatentDiffusion
+#from models.components.ldm.denoiser.ddim import DDIMSampler
 
 
-S = 250  # DDIM 
-N_SAMPLES = 1 # LDM
+#S = 250  # DDIM 
+#N_SAMPLES = 1 # LDM
 
 
 train_input_paths = {
     'precip': paths.DATASETS_TRAINING_DIR+"/RhiresD_input_train_scaled.nc",
     'temp': paths.DATASETS_TRAINING_DIR+"/TabsD_input_train_scaled.nc",
-    'temp_min': paths.DATASETS_TRAINING_DIR+"/TminD_input_train_scaled.nc",
-    'temp_max': paths.DATASETS_TRAINING_DIR+"/TmaxD_input_train_scaled.nc"
+    
 }
 train_target_paths = {
     'precip': paths.DATASETS_TRAINING_DIR+"/RhiresD_target_train_scaled.nc",
     'temp': paths.DATASETS_TRAINING_DIR+"/TabsD_target_train_scaled.nc",
-    'temp_min': paths.DATASETS_TRAINING_DIR+"/TminD_target_train_scaled.nc",
-    'temp_max': paths.DATASETS_TRAINING_DIR+"/TmaxD_target_train_scaled.nc"
+    
 }
 val_input_paths = {
     'precip': paths.DATASETS_TRAINING_DIR+"/RhiresD_input_val_scaled.nc",
     'temp': paths.DATASETS_TRAINING_DIR+"/TabsD_input_val_scaled.nc",
-    'temp_min': paths.DATASETS_TRAINING_DIR+"/TminD_input_val_scaled.nc",
-    'temp_max': paths.DATASETS_TRAINING_DIR+"/TmaxD_input_val_scaled.nc"
+    
 }
 val_target_paths = {
     'precip': paths.DATASETS_TRAINING_DIR+"/RhiresD_target_val_scaled.nc",
     'temp': paths.DATASETS_TRAINING_DIR+"/TabsD_target_val_scaled.nc",
-    'temp_min': paths.DATASETS_TRAINING_DIR+"/TminD_target_val_scaled.nc",
-    'temp_max': paths.DATASETS_TRAINING_DIR+"/TmaxD_target_val_scaled.nc"
+    
 }
 test_input_paths = {
     'precip': paths.DATASETS_TRAINING_DIR+"/RhiresD_input_test_scaled.nc",
     'temp': paths.DATASETS_TRAINING_DIR+"/TabsD_input_test_scaled.nc",
-    'temp_min': paths.DATASETS_TRAINING_DIR+"/TminD_input_test_scaled.nc",
-    'temp_max': paths.DATASETS_TRAINING_DIR+"/TmaxD_input_test_scaled.nc"
+    
 }
 test_target_paths = {
     'precip': paths.DATASETS_TRAINING_DIR+"/RhiresD_target_test_scaled.nc",
     'temp': paths.DATASETS_TRAINING_DIR+"/TabsD_target_test_scaled.nc",
-    'temp_min': paths.DATASETS_TRAINING_DIR+"/TminD_target_test_scaled.nc",
-    'temp_max': paths.DATASETS_TRAINING_DIR+"/TmaxD_target_test_scaled.nc"
+    
 }
 elevation_path = paths.BASE_DIR+"/sasthana/Downscaling/Downscaling_Models/elevation.tif"
 
@@ -75,14 +71,12 @@ dm = DownscalingDataModule(
             'input': {
                 'precip': 'RhiresD',
                 'temp': 'TabsD',
-                'temp_min': 'TminD',
-                'temp_max': 'TmaxD'
+
             },
             'target': {
                 'precip': 'RhiresD',
                 'temp': 'TabsD',
-                'temp_min': 'TminD',
-                'temp_max': 'TmaxD'
+ 
             }
         },
         'preprocessing': {
@@ -94,14 +88,15 @@ dm = DownscalingDataModule(
 dm.setup()
 test_loader = dm.test_dataloader()
 
+
+
 with open(paths.DATASETS_TRAINING_DIR+"/RhiresD_scaling_params.json", 'r') as f:
     pr_params = json.load(f)
 with open(paths.DATASETS_TRAINING_DIR+"/TabsD_scaling_params.json", 'r') as f:
     temp_params = json.load(f)
-with open(paths.DATASETS_TRAINING_DIR+"/TminD_scaling_params.json", 'r') as f:
-    temp_min_params = json.load(f)
-with open(paths.DATASETS_TRAINING_DIR+"/TmaxD_scaling_params.json", 'r') as f:
-    temp_max_params = json.load(f)
+
+
+
 
 def denorm_pr(x):
     return np.exp(x * pr_params['std'] + pr_params['mean']) - pr_params['epsilon']
@@ -115,14 +110,15 @@ def denorm_all(x):
     for i, (var, params) in enumerate([
         ("precip", pr_params),
         ("temp", temp_params),
-        ("temp_min", temp_min_params),
-        ("temp_max", temp_max_params)
+
     ]):
         if var == "precip":
             out[i] = denorm_pr(arr[i])
         else:
             out[i] = denorm_temp(arr[i], params)
     return out
+
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -135,63 +131,63 @@ ref_ds.close()
 
 
 model_UNet = DownscalingUnetLightning(
-    in_ch=5, out_ch=4, features=[64, 128, 256, 512],
-    channel_names=["precip", "temp", "temp_min", "temp_max"]
+    in_ch=3, out_ch=2, features=[64, 128, 256, 512],
+    channel_names=["precip", "temp"]
 )
-unet_state_dict = torch.load(paths.LDM_DIR+"/trained_ckpts/10km/LDM_conditional.models.unet_module.DownscalingUnetLightning_checkpoint.ckpt", map_location="cpu")["state_dict"]
+unet_state_dict = torch.load(paths.LDM_DIR+"/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_bs32_lr0.001_delta0.2_factor0.5_pat3.ckpt.ckpt", map_location="cpu",
+                             weights_only=False)["state_dict"]
 model_UNet.load_state_dict(unet_state_dict, strict=False)
 model_UNet = model_UNet.to(device)
 model_UNet.eval()
 
 
 
-
-encoder = SimpleConvEncoder(in_dim=4, levels=2, min_ch=16, ch_mult=4)
-decoder = SimpleConvDecoder(in_dim=64, levels=2, min_ch=16, out_dim=4, ch_mult=4)
-
-
-unet_regr = DownscalingUnetLightning(
-    in_ch=5, out_ch=4, features=[64, 128, 256, 512],
-    channel_names=["precip", "temp", "temp_min", "temp_max"]
-)
-unet_regr_ckpt = torch.load(paths.LDM_DIR+"/trained_ckpts/10km/LDM_conditional.models.unet_module.DownscalingUnetLightning_checkpoint.ckpt", map_location="cpu")["state_dict"]
-unet_regr.load_state_dict(unet_regr_ckpt, strict=False)
-unet_regr.eval()
-vae_model = AutoencoderKL(encoder=encoder, decoder=decoder, kl_weight=0.01, ae_flag="residual", unet_regr=unet_regr)
-vae_ckpt = torch.load(
-    paths.LDM_DIR+"/trained_ckpts/10km/LDM_conditional.models.ae_module.AutoencoderKL_checkpoint.ckpt",
-    map_location="cpu"
-)["state_dict"]
-vae_model.load_state_dict(vae_ckpt, strict=False)
-vae_model = vae_model.to(device)
-vae_model.eval()
+#encoder = SimpleConvEncoder(in_dim=4, levels=2, min_ch=16, ch_mult=4)
+#decoder = SimpleConvDecoder(in_dim=64, levels=2, min_ch=16, out_dim=4, ch_mult=4)
 
 
-conditioner = AFNOConditionerNetCascade(
-    autoencoder=vae_model,
-    embed_dim=[64, 128, 256, 256],
-    analysis_depth=4,
-    cascade_depth=4,
-    context_ch=[64, 128, 256, 256]
-)
+#unet_regr = DownscalingUnetLightning(
+    #in_ch=3, out_ch=2, features=[64, 128, 256, 512],
+    #channel_names=["precip", "temp"]
+#)
+#unet_regr_ckpt = torch.load(paths.LDM_DIR+"/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_bs32_lr0.001_delta1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt", map_location="cpu")["state_dict"]
+#unet_regr.load_state_dict(unet_regr_ckpt, strict=False)
+#unet_regr.eval()
+#vae_model = AutoencoderKL(encoder=encoder, decoder=decoder, kl_weight=0.01, ae_flag="residual", unet_regr=unet_regr)
+#vae_ckpt = torch.load(
+#    paths.LDM_DIR+"/trained_ckpts/10km/LDM_conditional.models.ae_module.AutoencoderKL_checkpoint.ckpt",
+#    map_location="cpu"
+#)["state_dict"]
+#vae_model.load_state_dict(vae_ckpt, strict=False)
+#vae_model = vae_model.to(device)
+#vae_model.eval()
 
 
-denoiser = UNetModel(
-    model_channels=64,
-    in_channels=32,
-    out_channels=32,
-    num_res_blocks=2,
-    attention_resolutions=[1, 2, 4],
-    context_ch=[64, 128, 256, 256],
-    channel_mult=[1, 2, 4, 4],
-    conv_resample=True,
-    dims=2,
-    use_fp16=False,
-    num_heads=4
-)
+#conditioner = AFNOConditionerNetCascade(
+#    autoencoder=vae_model,
+#    embed_dim=[64, 128, 256, 256],
+#    analysis_depth=4,
+#    cascade_depth=4,
+#    context_ch=[64, 128, 256, 256]
+##)
 
 
-ldm = LatentDiffusion(
+#denoiser = UNetModel(
+    #model_channels=64,
+    #in_channels=32,
+    #out_channels=32,
+    #num_res_blocks=2,
+    #attention_resolutions=[1, 2, 4],
+    #context_ch=[64, 128, 256, 256],
+    #channel_mult=[1, 2, 4, 4],
+    #conv_resample=True,
+    #dims=2,
+    #use_fp16=False,
+    #num_heads=4
+#)
+
+
+"""ldm = LatentDiffusion(
     denoiser=denoiser,
     autoencoder=vae_model,
     context_encoder=conditioner,
@@ -207,13 +203,13 @@ ldm.load_state_dict(ldm_ckpt["state_dict"], strict=False)
 ldm = ldm.to(device)
 ldm.eval()
 
-sampler = DDIMSampler(ldm, device=device)
+sampler = DDIMSampler(ldm, device=device)"""
 
 
-var_names = ["precip", "temp", "temp_min", "temp_max"]
+var_names = ["precip", "temp"]
 
 unet_preds_list = []
-ldm_samples_list = []
+#ldm_samples_list = []
 
 
 with tqdm(total=len(dates), desc="Frame") as pbar:
@@ -226,7 +222,7 @@ with tqdm(total=len(dates), desc="Frame") as pbar:
             unet_preds_list.append(unet_pred_denorm)
 
             # LDM
-            ldm_samples_this_frame = []
+            """ldm_samples_this_frame = []
             for _ in range(N_SAMPLES):
                 # PRIOR SAMPLING: sample z ~ N(0, I) ---
                 latent_shape = (1, 32, unet_pred.shape[2] // 4, unet_pred.shape[3] // 4)
@@ -263,11 +259,11 @@ with tqdm(total=len(dates), desc="Frame") as pbar:
                 final_pred = unet_pred_crop + generated_residual
                 final_pred_denorm = denorm_all(final_pred[0].cpu())
                 ldm_samples_this_frame.append(final_pred_denorm)
-            ldm_samples_list.append(np.stack(ldm_samples_this_frame))
+            ldm_samples_list.append(np.stack(ldm_samples_this_frame))"""
         pbar.update(1)
 
 unet_preds_np = np.stack(unet_preds_list)  
-ldm_samples_np = np.stack(ldm_samples_list)  
+#ldm_samples_np = np.stack(ldm_samples_list)  
 
 
 unet_preds_np = np.transpose(unet_preds_np, (0, 2, 3, 1))
@@ -285,28 +281,28 @@ ds_unet = xr.Dataset(
     }
 )
 encoding = {var: {"_FillValue": np.nan} for var in var_names}
-ds_unet.to_netcdf(paths.LDM_DIR + "/outputs/test_UNet_baseline.nc", encoding=encoding)
+ds_unet.to_netcdf(paths.LDM_DIR + "/outputs/test_UNet_baseline_Huber.nc", encoding=encoding)
 print(f"UNet baseline saved with shape: {unet_preds_np.shape}")
 
-ldm_samples_np = np.transpose(ldm_samples_np, (0, 1, 3, 4, 2))
+#ldm_samples_np = np.transpose(ldm_samples_np, (0, 1, 3, 4, 2))
 
-H, W = lat2d.shape
-ldm_H, ldm_W = ldm_samples_np.shape[2], ldm_samples_np.shape[3]
-crop_H = min(H, ldm_H)
-crop_W = min(W, ldm_W)
-ldm_samples_np = ldm_samples_np[:, :, :crop_H, :crop_W, :]
-lat2d = lat2d[:crop_H, :crop_W]
-lon2d = lon2d[:crop_H, :crop_W]
-
-
-
-print("ldm_samples_np shape:", ldm_samples_np.shape)
-print("lat2d shape:", lat2d.shape)
-print("lon2d shape:", lon2d.shape)
+#H, W = lat2d.shape
+#ldm_H, ldm_W = ldm_samples_np.shape[2], ldm_samples_np.shape[3]
+#crop_H = min(H, ldm_H)
+#crop_W = min(W, ldm_W)
+#ldm_samples_np = ldm_samples_np[:, :, :crop_H, :crop_W, :]
+#lat2d = lat2d[:crop_H, :crop_W]
+#lon2d = lon2d[:crop_H, :crop_W]
 
 
 
-ds_ldm = xr.Dataset(
+#print("ldm_samples_np shape:", ldm_samples_np.shape)
+#print("lat2d shape:", lat2d.shape)
+#print("lon2d shape:", lon2d.shape)
+
+
+
+"""ds_ldm = xr.Dataset(
     {
         var: (("time", "sample", "N", "E"), ldm_samples_np[:, :, :, :, i])
         for i, var in enumerate(var_names)
@@ -324,4 +320,4 @@ ds_ldm = xr.Dataset(
 
 encoding_ldm = {var: {"_FillValue": np.nan} for var in var_names}
 ds_ldm.to_netcdf(paths.LDM_DIR + "/outputs/single_run_test_LDM_samples.nc", encoding=encoding_ldm)
-print(f"LDM samples saved with shape: {ldm_samples_np.shape}")
+print(f"LDM samples saved with shape: {ldm_samples_np.shape}")"""
