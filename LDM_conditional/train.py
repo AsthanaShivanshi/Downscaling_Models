@@ -27,7 +27,7 @@ def train(cfg: DictConfig):
             features=cfg.model.get("features", [64,128,256,512])
         )
 
-        checkpoint = torch.load(cfg.model.unet_regr, map_location="cpu")
+        checkpoint = torch.load(cfg.model.unet_regr, map_location="cpu",weights_only=False)
         state_dict = checkpoint["state_dict"]
         new_state_dict = {}
         for k, v in state_dict.items():
@@ -50,7 +50,6 @@ def train(cfg: DictConfig):
             if not os.path.exists(v):
                 raise FileNotFoundError(f"Val target file for {k} not found: {v}")
 #For LDM, pass
-    
     #autoencoder_cfg = cfg.model.autoencoder
     #autoencoder = hydra.utils.instantiate(autoencoder_cfg, unet_regr=unet_model if cfg.model.get("unet_regr") else None)
     #context_encoder = None

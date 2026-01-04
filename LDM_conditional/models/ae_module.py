@@ -36,6 +36,7 @@ class AutoencoderKL(LightningModule):
         self.latent_dim = latent_dim
         self.kl_weight = kl_weight
         self.beta_anneal_steps = beta_anneal_steps
+        self.current_step = torch.tensor(0,dtype=torch.long)
 
         # Get encoder output channels (assuming last conv layer)
         encoder_out_ch = self.encoder.net[-1].out_channels
@@ -108,6 +109,7 @@ class AutoencoderKL(LightningModule):
         return (total_loss, rec_loss, kl_loss, beta)
 
     def training_step(self, batch, batch_idx):
+        self.current_step = self.current_step.to(self.device)
         self.current_step += 1
         total_loss, rec_loss, kl_loss, beta = self._loss(batch)
         self.log("train/train_loss", total_loss, sync_dist=True)
@@ -199,5 +201,5 @@ class EncoderLRES(LightningModule):
         return (h,)
     
     def forward(self, x):
-        h = self.encode()
+        h = self.encode(x)
         return (h,)

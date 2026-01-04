@@ -39,6 +39,7 @@ class SimpleConvDecoder(nn.Module):
         super().__init__()
         self.in_dim = in_dim
         self.levels = levels
+        self.out_dim = out_dim  # <-- ADD THIS LINE
         encoder_channels = np.hstack([
             in_dim, 
             (in_dim*ch_mult**np.arange(1,levels+1)).clip(min=min_ch)
@@ -56,7 +57,7 @@ class SimpleConvDecoder(nn.Module):
             res_block = ResBlock2D(
                 out_channels, out_channels,
                 kernel_size=(3,3),
-                norm_kwargs={"num_groups": 1}  # <--- revert to original
+                norm_kwargs={"num_groups": 1}
             )
             sequence.append(res_block)
         self.net = nn.Sequential(*sequence)

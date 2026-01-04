@@ -2,9 +2,24 @@ defaults:
   - paths: paths_12km_bivariate.yaml
   - _self_
 
-experiment:
+vae:
+  latent_dim: 8
+  kl_weight: 0.01
+  ae_flag: "residual"
+  encoder_levels: 2
+  encoder_min_ch: 16
+  encoder_ch_mult: 4
+  decoder_levels: 2
+  decoder_min_ch: 16
+  lr: 0.001
   batch_size: 32
   num_workers: 4
+  scheduler_factor: 0.5
+  scheduler_patience: 3
+
+experiment:
+  batch_size: ${vae.batch_size}
+  num_workers: ${vae.num_workers}
 
 variables:
   input:
@@ -33,15 +48,15 @@ data:
 encoder:
   _target_: LDM_conditional.models.components.ae.SimpleConvEncoder
   in_dim: 2
-  levels: ${encoder.levels}
-  min_ch: ${encoder.min_ch}
-  ch_mult: ${encoder.ch_mult}
+  levels: ${vae.encoder_levels}
+  min_ch: ${vae.encoder_min_ch}
+  ch_mult: ${vae.encoder_ch_mult}
 
 decoder:
   _target_: LDM_conditional.models.components.ae.SimpleConvDecoder
-  in_dim: ${model.latent_dim}
-  levels: ${decoder.levels}
-  min_ch: ${decoder.min_ch}
+  in_dim: ${vae.latent_dim}
+  levels: ${vae.decoder_levels}
+  min_ch: ${vae.decoder_min_ch}
   out_dim: 2
 
 
@@ -66,10 +81,11 @@ callbacks:
     monitor: val/loss
     patience: 10
     mode: min
+    
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: LDM_conditional/trained_ckpts_optimised/12km/VAE_ckpts/
-    filename: VAE_levels${latent_dim}_minch_${kl_weight}_checkpoint
+    filename: VAE_levels${vae.latent_dim}_${vae.kl_weight}_checkpoint
     save_top_k: 1
     monitor: val/loss
     mode: min
@@ -85,9 +101,9 @@ model:
   _target_: LDM_conditional.models.ae_module.AutoencoderKL
   encoder: ${encoder}
   decoder: ${decoder}
-  latent_dim: 8
-  kl_weight: 0.01
-  ae_flag: "residual"
+  latent_dim: ${vae.latent_dim}
+  kl_weight: ${vae.kl_weight}
+  ae_flag: ${vae.ae_flag}
 
   unet_regr: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_bs32_lr0.001_delta1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt
 
