@@ -1,0 +1,270 @@
+hydra:
+  run:
+    dir: outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  sweep:
+    dir: multirun/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    subdir: ${hydra.job.num}
+  launcher:
+    _target_: hydra._internal.core_plugins.basic_launcher.BasicLauncher
+  sweeper:
+    _target_: hydra._internal.core_plugins.basic_sweeper.BasicSweeper
+    max_batch_size: null
+    params: null
+  help:
+    app_name: ${hydra.job.name}
+    header: '${hydra.help.app_name} is powered by Hydra.
+
+      '
+    footer: 'Powered by Hydra (https://hydra.cc)
+
+      Use --hydra-help to view Hydra specific help
+
+      '
+    template: '${hydra.help.header}
+
+      == Configuration groups ==
+
+      Compose your configuration from those groups (group=option)
+
+
+      $APP_CONFIG_GROUPS
+
+
+      == Config ==
+
+      Override anything in the config (foo.bar=value)
+
+
+      $CONFIG
+
+
+      ${hydra.help.footer}
+
+      '
+  hydra_help:
+    template: 'Hydra (${hydra.runtime.version})
+
+      See https://hydra.cc for more info.
+
+
+      == Flags ==
+
+      $FLAGS_HELP
+
+
+      == Configuration groups ==
+
+      Compose your configuration from those groups (For example, append hydra/job_logging=disabled
+      to command line)
+
+
+      $HYDRA_CONFIG_GROUPS
+
+
+      Use ''--cfg hydra'' to Show the Hydra config.
+
+      '
+    hydra_help: ???
+  hydra_logging:
+    version: 1
+    formatters:
+      simple:
+        format: '[%(asctime)s][HYDRA] %(message)s'
+    handlers:
+      console:
+        class: logging.StreamHandler
+        formatter: simple
+        stream: ext://sys.stdout
+    root:
+      level: INFO
+      handlers:
+      - console
+    loggers:
+      logging_example:
+        level: DEBUG
+    disable_existing_loggers: false
+  job_logging:
+    version: 1
+    formatters:
+      simple:
+        format: '[%(asctime)s][%(name)s][%(levelname)s] - %(message)s'
+    handlers:
+      console:
+        class: logging.StreamHandler
+        formatter: simple
+        stream: ext://sys.stdout
+      file:
+        class: logging.FileHandler
+        formatter: simple
+        filename: ${hydra.runtime.output_dir}/${hydra.job.name}.log
+    root:
+      level: INFO
+      handlers:
+      - console
+      - file
+    disable_existing_loggers: false
+  env: {}
+  mode: MULTIRUN
+  searchpath: []
+  callbacks: {}
+  output_subdir: .hydra
+  overrides:
+    hydra:
+    - hydra.mode=MULTIRUN
+    task:
+    - model.latent_dim=8,16,32,64,128
+    - model.kl_weight=0.0001,0.001,0.01
+  job:
+    name: train
+    chdir: null
+    override_dirname: model.kl_weight=0.0001,0.001,0.01,model.latent_dim=8,16,32,64,128
+    id: ???
+    num: ???
+    config_name: VAE_bivariate_config.yaml
+    env_set: {}
+    env_copy: []
+    config:
+      override_dirname:
+        kv_sep: '='
+        item_sep: ','
+        exclude_keys: []
+  runtime:
+    version: 1.3.2
+    version_base: '1.3'
+    cwd: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models
+    config_sources:
+    - path: hydra.conf
+      schema: pkg
+      provider: hydra
+    - path: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/configs
+      schema: file
+      provider: main
+    - path: ''
+      schema: structured
+      provider: schema
+    output_dir: ???
+    choices:
+      paths: paths_12km_bivariate.yaml
+      hydra/env: default
+      hydra/callbacks: null
+      hydra/job_logging: default
+      hydra/hydra_logging: default
+      hydra/hydra_help: default
+      hydra/help: default
+      hydra/sweeper: basic
+      hydra/launcher: basic
+      hydra/output: default
+  verbose: false
+paths:
+  data:
+    train:
+      input:
+        precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/RhiresD_input_train_scaled.nc
+        temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/TabsD_input_train_scaled.nc
+      target:
+        precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/RhiresD_target_train_scaled.nc
+        temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/TabsD_target_train_scaled.nc
+    val:
+      input:
+        precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/RhiresD_input_val_scaled.nc
+        temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/TabsD_input_val_scaled.nc
+      target:
+        precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/RhiresD_target_val_scaled.nc
+        temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/TabsD_target_val_scaled.nc
+    test:
+      input:
+        precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/RhiresD_input_test_scaled.nc
+        temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/TabsD_input_test_scaled.nc
+      target:
+        precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/RhiresD_target_test_scaled.nc
+        temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/TabsD_target_test_scaled.nc
+    static:
+      elevation: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/elevation.tif
+experiment:
+  batch_size: 32
+  num_workers: 4
+variables:
+  input:
+    precip: RhiresD
+    temp: TabsD
+  target:
+    precip: RhiresD
+    temp: TabsD
+preprocessing:
+  nan_to_num: true
+  nan_value: 0.0
+data:
+  train:
+    input: ${paths.data.train.input}
+    target: ${paths.data.train.target}
+  val:
+    input: ${paths.data.val.input}
+    target: ${paths.data.val.target}
+  test:
+    input: ${paths.data.test.input}
+    target: ${paths.data.test.target}
+  static:
+    elevation: ${paths.data.static.elevation}
+encoder:
+  _target_: LDM_conditional.models.components.ae.SimpleConvEncoder
+  in_dim: 2
+  levels: ${encoder.levels}
+  min_ch: ${encoder.min_ch}
+  ch_mult: ${encoder.ch_mult}
+decoder:
+  _target_: LDM_conditional.models.components.ae.SimpleConvDecoder
+  in_dim: ${model.latent_dim}
+  levels: ${decoder.levels}
+  min_ch: ${decoder.min_ch}
+  out_dim: 2
+datamodule:
+  _target_: LDM_conditional.DownscalingDataModule.DownscalingDataModule
+  train_input: ${data.train.input}
+  train_target: ${data.train.target}
+  val_input: ${data.val.input}
+  val_target: ${data.val.target}
+  test_input: ${data.test.input}
+  test_target: ${data.test.target}
+  elevation: ${data.static.elevation}
+  batch_size: ${experiment.batch_size}
+  num_workers: ${experiment.num_workers}
+  preprocessing:
+    variables: ${variables}
+    preprocessing: ${preprocessing}
+callbacks:
+  early_stopping:
+    _target_: lightning.pytorch.callbacks.EarlyStopping
+    monitor: val/loss
+    patience: 10
+    mode: min
+  model_checkpoint:
+    _target_: lightning.pytorch.callbacks.ModelCheckpoint
+    dirpath: LDM_conditional/trained_ckpts_optimised/12km/VAE_ckpts/
+    filename: VAE_levels${latent_dim}_minch_${kl_weight}_checkpoint
+    save_top_k: 1
+    monitor: val/loss
+    mode: min
+unet_arch:
+  _target_: LDM_conditional.models.unet_module.DownscalingUnet
+  in_ch: 3
+  out_ch: 2
+  features:
+  - 64
+  - 128
+  - 256
+  - 512
+model:
+  _target_: LDM_conditional.models.ae_module.AutoencoderKL
+  encoder: ${encoder}
+  decoder: ${decoder}
+  latent_dim: 8
+  kl_weight: 0.01
+  ae_flag: residual
+  unet_regr: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_bs32_lr0.001_delta1.0_crps[0,
+    1]_factor0.5_pat3.ckpt.ckpt
+lr_scheduler:
+  _target_: lightning.pytorch.lr_scheduler.ReduceLROnPlateau
+  mode: min
+  factor: 0.5
+  patience: 3
+  min_lr: 1.0e-06

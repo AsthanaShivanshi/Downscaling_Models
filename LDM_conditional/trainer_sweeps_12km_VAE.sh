@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=CRPS_12km_UNet_Sweep
-#SBATCH --output=logs/ckpts_LDM_optimised/12km/CRPS_UnetSweep_job_output-%j.txt
-#SBATCH --error=logs/ckpts_LDM_optimised/12km/CRPS_UnetSweep_job_error-%j.txt
+#SBATCH --job-name=12km_VAE_Sweep
+#SBATCH --output=logs/ckpts_LDM/VAE/CRPS_VAESweep_job_output-%j.txt
+#SBATCH --error=logs/ckpts_LDM/VAE/CRPS_VAESweep_job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-00:00:00
@@ -11,7 +11,7 @@
 
 source diffscaler.sh
 export PYTHONPATH="$PROJECT_DIR"
-mkdir -p logs/ckpts_LDM_optimised/12km
+mkdir -p logs/ckpts_LDM/VAE/
 
 cd "$PROJECT_DIR"
 export WANDB_MODE=online
@@ -31,19 +31,15 @@ python -c "import wandb; print(wandb.__version__)"
 
 
 #unet sweep :CRPS (MAE for UNet)
-python LDM_conditional/train.py --multirun --config-name UNet_bivariate_config.yaml \
-  model.use_crps_channels="[0,1]" \
-  lr_scheduler.factor=0.50,0.75 \
-  model.lr=0.001,0.01
+#python LDM_conditional/train.py --multirun --config-name UNet_bivariate_config.yaml \
+  #model.use_crps_channels="[0,1]" \
+  #lr_scheduler.factor=0.50,0.75 \
+  #model.lr=0.001,0.01
 
 
 
 
+python LDM_conditional/train.py --multirun --config-name VAE_bivariate_config.yaml \
+  model.latent_dim=8,16,32,64,128 \
+  model.kl_weight=0.0001,0.001,0.01\
 
-#vae sweep
-#python LDM_conditional/train.py --multirun --config-name VAE_bivariate_config.yaml \
-  #model.latent_dim=8,16,32,64,128\
-  #model.kl_weight=0.0001,0.001,0.01
-
-
-#ldm sweep

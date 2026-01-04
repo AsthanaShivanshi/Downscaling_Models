@@ -134,7 +134,7 @@ model_UNet = DownscalingUnetLightning(
     in_ch=3, out_ch=2, features=[64, 128, 256, 512],
     channel_names=["precip", "temp"]
 )
-unet_state_dict = torch.load(paths.LDM_DIR+"/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_bs32_lr0.001_delta0.2_factor0.5_pat3.ckpt.ckpt", map_location="cpu",
+unet_state_dict = torch.load(paths.LDM_DIR+"/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_bs32_lr0.01_delta1.0_factor0.5_pat3.ckpt.ckpt", map_location="cpu",
                              weights_only=False)["state_dict"]
 model_UNet.load_state_dict(unet_state_dict, strict=False)
 model_UNet = model_UNet.to(device)
@@ -281,7 +281,7 @@ ds_unet = xr.Dataset(
     }
 )
 encoding = {var: {"_FillValue": np.nan} for var in var_names}
-ds_unet.to_netcdf(paths.LDM_DIR + "/outputs/test_UNet_baseline_Huber.nc", encoding=encoding)
+ds_unet.to_netcdf(paths.LDM_DIR + "/outputs/test_UNet_baseline_Huber_lowest_precip_val_loss.nc", encoding=encoding)
 print(f"UNet baseline saved with shape: {unet_preds_np.shape}")
 
 #ldm_samples_np = np.transpose(ldm_samples_np, (0, 1, 3, 4, 2))

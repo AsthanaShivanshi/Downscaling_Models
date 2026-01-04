@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=optimised_UNet_LDM_inference
-#SBATCH --output=logs/ckpts_LDM/optimised_UNet_LDM_inference-job_output-%j.txt
-#SBATCH --error=logs/ckpts_LDM/optimised_UNet_LDM_inference-job_error-%j.txt
+#SBATCH --job-name=optimised++_UNet_LDM_inference
+#SBATCH --output=logs/ckpts_LDM/optimised++_UNet_LDM_inference-job_output-%j.txt
+#SBATCH --error=logs/ckpts_LDM/optimised++_UNet_LDM_inference-job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=20:00:00
@@ -21,5 +21,5 @@ export HYDRA_FULL_ERROR=1
 which python
 python -c "import wandb; print(wandb.__version__)"
 
-python LDM_conditional/inference_all_frames_CRPS.py
+#python LDM_conditional/inference_all_frames_CRPS.py
 python LDM_conditional/inference_all_frames_Huber.py

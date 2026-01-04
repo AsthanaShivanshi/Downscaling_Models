@@ -1,5 +1,5 @@
 defaults:
-  - paths: paths_12km.yaml
+  - paths: paths_12km_bivariate.yaml
   - _self_
 
 experiment:
@@ -68,8 +68,8 @@ callbacks:
     mode: min
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
-    dirpath: LDM_conditional/trained_ckpts_optimised/10km/
-    filename: VAE_levels${encoder.levels}_minch${encoder.min_ch}_chmult${encoder.ch_mult}_checkpoint
+    dirpath: LDM_conditional/trained_ckpts_optimised/12km/VAE_ckpts/
+    filename: VAE_levels${latent_dim}_minch_${kl_weight}_checkpoint
     save_top_k: 1
     monitor: val/loss
     mode: min
@@ -89,7 +89,7 @@ model:
   kl_weight: 0.01
   ae_flag: "residual"
 
-  unet_regr: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/10km/LDM_conditional.models.unet_module.DownscalingUnetLightning_bs16_lr0.001_factor0.5_pat3_checkpoint.ckpt 
+  unet_regr: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_bs32_lr0.001_delta1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt
 
 lr_scheduler:
   _target_: lightning.pytorch.lr_scheduler.ReduceLROnPlateau
