@@ -14,7 +14,7 @@ import numpy as np
 from lightning import LightningModule
 from contextlib import contextmanager
 from functools import partial
-from DDPM_conditional_derived.models.ema import LitEma
+from DDIM_conditional_derived.models.components.diff.denoiser.ema import LitEma
 
 def extract_into_tensor(a, t, x_shape):
     b, *_ = t.shape
