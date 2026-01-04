@@ -30,16 +30,6 @@ python LDM_conditional/train.py --multirun --config-name UNet_bivariate_Huber_MS
   model.huber_delta=0.2,0.6,0.8,1.0
 
 
-#unet sweep :CRPS (MAE for UNet)
-#python LDM_conditional/train.py --multirun --config-name UNet_bivariate_config.yaml \
-  #model.use_crps_channels="[0,1]" \
-  #lr_scheduler.factor=0.50,0.75 \
-  #model.lr=0.001,0.01
-
-
-
-
-
 #vae sweep
 #python LDM_conditional/train.py --multirun --config-name VAE_bivariate_config.yaml \
   #model.latent_dim=8,16,32,64,128\
