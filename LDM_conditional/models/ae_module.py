@@ -12,7 +12,6 @@ def sample_from_standard_normal(mean, log_var, num=None):
     std = (0.5 * log_var).exp()
     shape = mean.shape
     if num is not None:
-        # expand channel 1 to create several samples
         shape = shape[:1] + (num,) + shape[1:]
         mean = mean[:,None,...]
         std = std[:,None,...]
@@ -27,7 +26,7 @@ class AutoencoderKL(LightningModule):
         kl_weight=0.01,     
         ae_flag=None,
         unet_regr=None,
-        beta_anneal_steps=10000,
+        beta_anneal_steps=2000,
         **kwargs
     ):
         super().__init__(**kwargs)
