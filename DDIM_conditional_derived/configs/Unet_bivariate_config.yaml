@@ -76,6 +76,8 @@ model:
   context_encoder:
     _target_: DDIM_conditional_derived.models.components.diff.conditioner.AFNOConditionerNetBase
     # add context encoder params as needed
+
+    
   unet_regr:
     _target_: LDM_conditional.models.unet_module.DownscalingUnetLightning
     checkpoint: /path/to/pretrained/unet_regression.ckpt

@@ -32,87 +32,83 @@ data:
   static:
     elevation: ${paths.data.static.elevation}
 
-
 conditioner:
-  _target_: DDIM_conditional_derived.models.components.ldm.conditioner.AFNOConditionerNetCascade
-  autoencoder: ${model.autoencoder}
-  embed_dim: [64,128,256,256]  #Must match the denoiser context_ch : AsthanaSh
+  _target_: DDIM_conditional_derived.models.components.diff.conditioner.AFNOConditionerNetCascade
+  embed_dim: [64,128,256,256]
   analysis_depth: 4
   cascade_depth: 4
-  context_ch: [64,128,256,256]  #Must match the denoiser context_ch : AsthanaSh
-
-denoiser:
-  _target_: DDIM_conditional_derived.models.components.diff.denoiser.unet
-  in_channels: 3 #Must match the VAE latent channels : AsthanaSh
-  out_channels: 2
-  model_channels: 64
-  num_res_blocks: 2
-  attention_resolutions: [1,2,4]
-  context_ch: [64,128,256,256]  #Must match the conditioner embed_dim : AsthanaSh
-  channel_mult: [1,2,4,4]
-  conv_resample: true
-  dims: 2
-  use_fp16: false
-  num_heads: 4
+  context_ch: [64,128,256,256]
 
 sampler:
   _target_: DDIM_conditional_derived.models.components.diff.denoiser.DDIMSampler
-  model: ${denoiser}
+  model: ${model.denoiser}
   schedule: "cosine"
   device: "cuda"
   ddim_num_steps: 250
   ddim_eta: 0.0
 
-
 ema:
   _target_: DDIM_conditional_derived.models.components.diff.denoiser.LitEma
-  model: ${denoiser}
+  model: ${model.denoiser}
   decay: 0.9999
   use_num_updates: true
 
 datamodule:
-  _target_: DDIM_conditional_derived.DownscalingDataModule.DownscalingDataModule #Path to the exact class, not the module file : AsthanaSh
+  _target_: DDIM_conditional_derived.DownscalingDataModule.DownscalingDataModule
   train_input: ${data.train.input}
   train_target: ${data.train.target}
   val_input: ${data.val.input}
   val_target: ${data.val.target}
   test_input: ${data.test.input}
   test_target: ${data.test.target}
-  elevation: ${data.static.elevation} #Added elevation to datamodule for context conditioning : AsthanaSh
+  elevation: ${data.static.elevation}
   batch_size: ${experiment.batch_size}
   num_workers: ${experiment.num_workers}
   preprocessing:
     variables: ${variables}
     preprocessing: ${preprocessing}
 
-  
 callbacks:
   early_stopping:
     _target_: lightning.pytorch.callbacks.EarlyStopping
     monitor: val/loss
     patience: 10
     mode: min
+
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
-    dirpath: DDIM_conditional_derived/trained_ckpts/10km/
+    dirpath: DDIM_conditional_derived/trained_ckpts/12km/
     filename: DDIM_checkpoint_V1_cosine_schedule_250_steps
     save_top_k: 1
     monitor: val/loss
     mode: min
 
 model:
-  _target_: DDIM_conditional_derived.models.ldm_module.LatentDiffusion
-  denoiser: ${denoiser}
-  autoencoder:
-    _target_: DDIM_conditional_derived.models.ae_module.AutoencoderKL
-    encoder: ${encoder}
-    decoder: ${decoder}
-    latent_dim: ${latent_dim}
-  unet_regr: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/DDIM_conditional_derived/trained_ckpts/12km/DDIM_conditional_derived.models.unet_module.DownscalingUnetLightning_checkpoint.ckpt
-  
-  context_encoder: ${conditioner}  #Conditions the denoiser with coarse UNet predictors: AsthanaSh
+  _target_: DDIM_conditional_derived.models.diff_module.DDIMResidualContextual
+  denoiser:
+    _target_: DDIM_conditional_derived.models.components.diff.denoiser.unet.UNetModel
+    in_channels: 2         # residual channels (e.g., precip, temp)
+    out_channels: 2
+    model_channels: 64
+    num_res_blocks: 2
+    attention_resolutions: [1,2,4]
+    context_ch: [64,128,256,256]
+    channel_mult: [1,2,4,4]
+    conv_resample: true
+    dims: 2
+    use_fp16: false
+    num_heads: 4
+  context_encoder: ${conditioner}
+  unet_regr:
+    _target_: DDIM_conditional_derived.models.unet_module.DownscalingUnetLightning
+    checkpoint: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_bs32_lr0.01_delta1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt
+  timesteps: 1000
+  beta_schedule: "cosine"
+  linear_start: 1e-4
+  linear_end: 2e-2
+  lr: 1e-4
+  use_ema: True
+  parameterization: "eps"
+  loss_type: "l2"
   sampler: ${sampler}
   ema: ${ema}
-  parameterization: "v"
-  loss_type: "l2"
-  timesteps: 1000
