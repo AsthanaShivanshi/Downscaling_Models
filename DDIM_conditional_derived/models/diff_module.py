@@ -60,28 +60,32 @@ class DDIMResidualContextual(LightningModule):
         cosine_s=8e-3,
         parameterization="eps",  # all assuming fixed variance schedules
         sampler_cfg=None,
+        ema_decay=0.9999,
     ):
         super().__init__()
+        self.num_timesteps = timesteps
         self.denoiser = denoiser
         self.unet_regr = unet_regr
         self.conditional = (context_encoder is not None)
         self.context_encoder = context_encoder
         self.lr = lr
         self.lr_warmup = lr_warmup
-        self.sampler_cfg = DDIMSampler(model=self, **sampler_cfg) if sampler_cfg is not None else None
 
         assert parameterization in ["eps", "x0", "v"], 'currently only supporting "eps" and "x0" and "v"'
         self.parameterization = parameterization
-        
+
         self.use_ema = use_ema
         if self.use_ema:
-            self.denoiser_ema = LitEma(self.denoiser)
+            self.denoiser_ema = LitEma(self.denoiser, decay=ema_decay)
 
+        # AsthanaSh : debugging : Registering schedule and buffers BEFORE creating the sampler
         self.register_schedule(
             beta_schedule=beta_schedule, timesteps=timesteps,
             linear_start=linear_start, linear_end=linear_end, 
             cosine_s=cosine_s
         )
+
+        self.sampler_cfg = DDIMSampler(model=self, **sampler_cfg) if sampler_cfg is not None else None
 
         self.loss_type = loss_type
 

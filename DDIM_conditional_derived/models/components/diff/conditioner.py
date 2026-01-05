@@ -23,6 +23,7 @@ class AFNOConditionerNetBase(nn.Module):
         input_size_ratios=(1,),
         train_autoenc=False,
         afno_fusion=False,
+        input_channels=None,
     ):
         super().__init__()
         
@@ -44,6 +45,11 @@ class AFNOConditionerNetBase(nn.Module):
         self.proj = nn.ModuleList()
         self.analysis = nn.ModuleList()
 
+
+        if input_channels is None:
+            input_channels = [embed_dim[i] for i in range(num_inputs)] 
+
+
         for i in range(num_inputs):
             ae = autoencoder[i]
             self.autoencoder.append(ae)
@@ -52,7 +58,7 @@ class AFNOConditionerNetBase(nn.Module):
                 in_channels = ae.encoded_channels // 2
             else:
                 # You may want to make this configurable or infer from input
-                in_channels = embed_dim[i]  # or set to your coarse UNet output channels
+                in_channels = input_channels[i]  # or set to your coarse UNet output channels
             self.proj.append(nn.Conv2d(in_channels, embed_dim[i], kernel_size=1))
             self.analysis.append(
                 nn.Sequential(*(AFNOBlock2d(embed_dim[i]) for _ in range(analysis_depth[i])))

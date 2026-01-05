@@ -33,17 +33,13 @@ data:
 
 conditioner:
   _target_: DDIM_conditional_derived.models.components.diff.conditioner.AFNOConditionerNetCascade
-  autoencoder: null #No autoencoder, pixel space coarse Unet mean pred as context
+  autoencoder: null #AsthanaSh : No autoencoder, pixel space coarse Unet mean pred as context
+  input_channels: 2   # AsthanaSh : Extra params added, change from LDM conditioner,,, Number of channels in the input context (precip, temp)m residual channels
   embed_dim: [64,128,256,256]
   analysis_depth: 4
   cascade_depth: 4
   context_ch: [64,128,256,256]
 
-
-ema:
-  _target_: DDIM_conditional_derived.models.components.diff.denoiser.LitEma
-  decay: 0.9999
-  use_num_updates: true
 
 datamodule:
   _target_: DDIM_conditional_derived.DownscalingDataModule.DownscalingDataModule
@@ -108,7 +104,7 @@ model:
   linear_start: 1e-4
   linear_end: 2e-2
   lr: 1e-4
-  use_ema: True
+  use_ema: true
+  ema_decay: 0.9999
   parameterization: "x0"
   loss_type: "l2"
-  ema: ${ema}
