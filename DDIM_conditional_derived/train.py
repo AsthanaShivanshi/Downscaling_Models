@@ -20,11 +20,11 @@ def train(cfg: DictConfig):
     unet_model = None
     if cfg.model.get("unet_regr"):
         unet_model = DownscalingUnet(
-            in_ch=cfg.model.denoiser.get("in_channels", 2),
-            out_ch=cfg.model.denoiser.get("out_channels", 2),
-            features=cfg.model.denoiser.get("features", [64,128,256,512])
+            in_ch=cfg.model.unet_regr.get("in_ch", 3),
+            out_ch=cfg.model.unet_regr.get("out_ch", 2),
+            features=cfg.model.unet_regr.get("features", [64,128,256,512])
         )
-        checkpoint = torch.load(cfg.model.unet_regr.checkpoint, map_location="cpu")
+        checkpoint = torch.load(cfg.model.unet_regr.checkpoint, map_location="cpu", weights_only=False)
         state_dict = checkpoint["state_dict"]
         new_state_dict = {}
         for k, v in state_dict.items():
@@ -32,7 +32,7 @@ def train(cfg: DictConfig):
                 new_state_dict[k[len("unet."):]] = v
             else:
                 new_state_dict[k] = v
-        unet_model.load_state_dict(new_state_dict)
+        unet_model.load_state_dict(new_state_dict, strict=False)
         print("Loaded UNet mean regression model from:", cfg.model.unet_regr.checkpoint)
 
     # Instantiate DDIM 

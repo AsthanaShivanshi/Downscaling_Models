@@ -69,7 +69,7 @@ model:
   _target_: DDIM_conditional_derived.models.diff_module.DDIMResidualContextual
   denoiser:
     _target_: DDIM_conditional_derived.models.components.diff.denoiser.unet.DDIMDenoiserUNet
-    in_ch: 2
+    in_ch: 3
     out_ch: 2
     features: [64,128,256,512]
     channel_names: ["precip", "temp"]

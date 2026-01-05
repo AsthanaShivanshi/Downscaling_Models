@@ -10,7 +10,6 @@ variables:
   input:
     precip: RhiresD
     temp: TabsD
-
   target:
     precip: RhiresD
     temp: TabsD
@@ -34,6 +33,7 @@ data:
 
 conditioner:
   _target_: DDIM_conditional_derived.models.components.diff.conditioner.AFNOConditionerNetCascade
+  autoencoder: null #No autoencoder, pixel space coarse Unet mean pred as context
   embed_dim: [64,128,256,256]
   analysis_depth: 4
   cascade_depth: 4
@@ -41,7 +41,6 @@ conditioner:
 
 sampler:
   _target_: DDIM_conditional_derived.models.components.diff.denoiser.DDIMSampler
-  model: ${model.denoiser}
   schedule: "cosine"
   device: "cuda"
   ddim_num_steps: 250
@@ -49,7 +48,6 @@ sampler:
 
 ema:
   _target_: DDIM_conditional_derived.models.components.diff.denoiser.LitEma
-  model: ${model.denoiser}
   decay: 0.9999
   use_num_updates: true
 

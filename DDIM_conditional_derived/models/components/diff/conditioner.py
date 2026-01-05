@@ -45,28 +45,31 @@ class AFNOConditionerNetBase(nn.Module):
         self.analysis = nn.ModuleList()
 
         for i in range(num_inputs):
-            ae = autoencoder[i].requires_grad_(train_autoenc)
+            ae = autoencoder[i]
             self.autoencoder.append(ae)
-
-            proj = nn.Conv2d(ae.encoded_channels//2, embed_dim[i], kernel_size=1)
-            self.proj.append(proj)
-
-            analysis = nn.Sequential(
-                *(AFNOBlock2d(embed_dim[i]) for _ in range(analysis_depth[i]))
+            # If autoencoder is None, expect input to already have correct channels
+            if ae is not None:
+                in_channels = ae.encoded_channels // 2
+            else:
+                # You may want to make this configurable or infer from input
+                in_channels = embed_dim[i]  # or set to your coarse UNet output channels
+            self.proj.append(nn.Conv2d(in_channels, embed_dim[i], kernel_size=1))
+            self.analysis.append(
+                nn.Sequential(*(AFNOBlock2d(embed_dim[i]) for _ in range(analysis_depth[i])))
             )
-            self.analysis.append(analysis)
 
         # data fusion
         self.fusion = FusionBlock2d(embed_dim, input_size_ratios,
             afno_fusion=afno_fusion, dim_out=embed_dim_out)
 
-
     def forward(self, x):
         (x, t_relative) = list(zip(*x))
 
-        # encoding + analysis for each input
         def process_input(i):
-            z = self.autoencoder[i].encode(x[i])[0]
+            if self.autoencoder[i] is not None:
+                z = self.autoencoder[i].encode(x[i])[0]
+            else:
+                z = x[i]
             z = self.proj[i](z)
             z = z.permute(0,2,3,1)
             z = self.analysis[i](z)
@@ -75,7 +78,6 @@ class AFNOConditionerNetBase(nn.Module):
         x = [process_input(i) for i in range(len(x))]
         
         if len(x) > 1:
-            # merge inputs
             x = self.fusion(x)
         else:
             x = x[0]
