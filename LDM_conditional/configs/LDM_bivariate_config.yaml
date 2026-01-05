@@ -127,11 +127,11 @@ model:
     encoder: ${encoder}
     decoder: ${decoder}
     latent_dim: ${latent_dim}
-  unet_regr: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_checkpoint.ckpt
+  unet_regr: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_bs32_lr0.001_delta1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt
   
   context_encoder: ${conditioner}  #Conditions the denoiser with coarse UNet predictors: AsthanaSh
   #VAE ckpt loaded from the ae_load_state_file 
-  ae_load_state_file: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/VAE_ckpts/VAE_levels8_0.01_checkpoint-v9.ckpt
+  ae_load_state_file: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/VAE_ckpts/VAE_levels8_0.01_checkpoint-v6.ckpt
 #Above VAE ckpt:Corr to optimum VAE latent dim 64 and kl weight : 0.001 : AsthanaSh
 
   #Note : Output from LDM : [batch_size, 4, height, width] (AsthanaSh)

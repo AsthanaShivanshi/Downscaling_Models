@@ -23,6 +23,7 @@ class AFNOConditionerNetBase(nn.Module):
         input_size_ratios=(1,),
         train_autoenc=False,
         afno_fusion=False,
+        
     ):
         super().__init__()
         
@@ -48,7 +49,7 @@ class AFNOConditionerNetBase(nn.Module):
             ae = autoencoder[i].requires_grad_(train_autoenc)
             self.autoencoder.append(ae)
 
-            proj = nn.Conv2d(ae.encoded_channels//2, embed_dim[i], kernel_size=1)
+            proj = nn.Conv2d(ae.latent_dim, embed_dim[i], kernel_size=1)
             self.proj.append(proj)
 
             analysis = nn.Sequential(

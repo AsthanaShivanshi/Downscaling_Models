@@ -39,6 +39,5 @@ python -c "import wandb; print(wandb.__version__)"
 #ldm sweep
 
 python LDM_conditional/train_LDM.py -m --config-name LDM_bivariate_config.yaml \
-  model.lr=0.01,0.1 \
   model.parameterization=eps,v,x0 \
-  model.noise_schedule=linear,cosine
+  sampler.schedule=linear,cosine
