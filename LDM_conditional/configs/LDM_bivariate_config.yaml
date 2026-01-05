@@ -2,6 +2,10 @@ defaults:
   - paths: paths_12km_bivariate.yaml
   - _self_
 
+
+latent_dim: 64 #Corr to optimum VAE latent dim : AsthanaSh
+
+
 experiment:
   batch_size: 32
   num_workers: 4
@@ -41,7 +45,7 @@ encoder:
 
 decoder:
   _target_: LDM_conditional.models.components.ae.SimpleConvDecoder
-  in_dim: 32 
+  in_dim: 64
   levels: 2
   min_ch: 16
   out_dim: 2
@@ -58,8 +62,8 @@ conditioner:
 #Denoising Unet should expect the dims of the VAE output (latent): AsthanaSh
 denoiser:
   _target_: LDM_conditional.models.components.ldm.denoiser.UNetModel
-  in_channels: 32 #Must match the VAE latent channels : AsthanaSh
-  out_channels: 32
+  in_channels: 64 #Must match the VAE latent channels : AsthanaSh
+  out_channels: 64
   model_channels: 64
   num_res_blocks: 2
   attention_resolutions: [1,2,4]
@@ -128,7 +132,9 @@ model:
   context_encoder: ${conditioner}  #Conditions the denoiser with coarse UNet predictors: AsthanaSh
   #VAE ckpt loaded from the ae_load_state_file 
   ae_load_state_file: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/VAE_ckpts/VAE_levels8_0.01_checkpoint-v9.ckpt
+#Above VAE ckpt:Corr to optimum VAE latent dim 64 and kl weight : 0.001 : AsthanaSh
+
   #Note : Output from LDM : [batch_size, 4, height, width] (AsthanaSh)
   parameterization: "v"
   loss_type: "l2"
-  timesteps: 500
+  timesteps: 1000
