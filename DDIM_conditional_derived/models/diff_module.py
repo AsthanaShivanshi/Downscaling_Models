@@ -15,6 +15,7 @@ from lightning import LightningModule
 from contextlib import contextmanager
 from functools import partial
 from DDIM_conditional_derived.models.components.diff.denoiser.ema import LitEma
+from DDIM_conditional_derived.models.components.diff.denoiser.ddim import DDIMSampler
 
 def extract_into_tensor(a, t, x_shape):
     b, *_ = t.shape
@@ -58,6 +59,7 @@ class DDIMResidualContextual(LightningModule):
         linear_end=2e-2,
         cosine_s=8e-3,
         parameterization="eps",  # all assuming fixed variance schedules
+        sampler_cfg=None,
     ):
         super().__init__()
         self.denoiser = denoiser
@@ -66,6 +68,7 @@ class DDIMResidualContextual(LightningModule):
         self.context_encoder = context_encoder
         self.lr = lr
         self.lr_warmup = lr_warmup
+        self.sampler_cfg = DDIMSampler(model=self, **sampler_cfg) if sampler_cfg is not None else None
 
         assert parameterization in ["eps", "x0", "v"], 'currently only supporting "eps" and "x0" and "v"'
         self.parameterization = parameterization

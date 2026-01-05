@@ -39,12 +39,6 @@ conditioner:
   cascade_depth: 4
   context_ch: [64,128,256,256]
 
-sampler:
-  _target_: DDIM_conditional_derived.models.components.diff.denoiser.DDIMSampler
-  schedule: "cosine"
-  device: "cuda"
-  ddim_num_steps: 250
-  ddim_eta: 0.0
 
 ema:
   _target_: DDIM_conditional_derived.models.components.diff.denoiser.LitEma
@@ -83,9 +77,10 @@ callbacks:
 
 model:
   _target_: DDIM_conditional_derived.models.diff_module.DDIMResidualContextual
+
   denoiser:
     _target_: DDIM_conditional_derived.models.components.diff.denoiser.unet.UNetModel
-    in_channels: 2         # residual channels (e.g., precip, temp)
+    in_channels: 2         # residual channels (precip, temp)
     out_channels: 2
     model_channels: 64
     num_res_blocks: 2
@@ -96,6 +91,14 @@ model:
     dims: 2
     use_fp16: false
     num_heads: 4
+
+  sampler_cfg:
+    schedule: "cosine"
+    device: "cuda"
+    ddim_num_steps: 250
+    ddim_eta: 0.0
+
+
   context_encoder: ${conditioner}
   unet_regr:
     _target_: DDIM_conditional_derived.models.unet_module.DownscalingUnetLightning
@@ -106,7 +109,6 @@ model:
   linear_end: 2e-2
   lr: 1e-4
   use_ema: True
-  parameterization: "eps"
+  parameterization: "x0"
   loss_type: "l2"
-  sampler: ${sampler}
   ema: ${ema}
