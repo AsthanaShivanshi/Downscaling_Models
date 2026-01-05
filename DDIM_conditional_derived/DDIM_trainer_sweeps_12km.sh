@@ -19,6 +19,8 @@ export WANDB_START_METHOD=thread
 export PYTHONUNBUFFERED=1
 export HYDRA_FULL_ERROR=1
 
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
 which python
 python -c "import wandb; print(wandb.__version__)"
 

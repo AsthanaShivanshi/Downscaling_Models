@@ -3,8 +3,8 @@ defaults:
   - _self_
 
 experiment:
-  batch_size: 32
-  num_workers: 4
+  batch_size: 8
+  num_workers: 2
 
 variables:
   input:
@@ -34,11 +34,11 @@ data:
 conditioner:
   _target_: DDIM_conditional_derived.models.components.diff.conditioner.AFNOConditionerNetCascade
   autoencoder: null #AsthanaSh : No autoencoder, pixel space coarse Unet mean pred as context
-  input_channels: 2   # AsthanaSh : Extra params added, change from LDM conditioner,,, Number of channels in the input context (precip, temp)m residual channels
-  embed_dim: [64,128,256,256]
-  analysis_depth: 4
-  cascade_depth: 4
-  context_ch: [64,128,256,256]
+  input_channels: [2]   # AsthanaSh : Extra params added, change from LDM conditioner,,, Number of channels in the input context (precip, temp)m residual channels
+  embed_dim: [32,64,128]
+  analysis_depth: 3
+  cascade_depth: 3
+  context_ch: [32,64,128]  #Must match the denoiser context_ch : AsthanaSh
 
 
 datamodule:
@@ -78,15 +78,15 @@ model:
     _target_: DDIM_conditional_derived.models.components.diff.denoiser.unet.UNetModel
     in_channels: 2         # residual channels (precip, temp)
     out_channels: 2
-    model_channels: 64
+    model_channels: 32
     num_res_blocks: 2
     attention_resolutions: [1,2,4]
-    context_ch: [64,128,256,256]
-    channel_mult: [1,2,4,4]
+    context_ch: [32,64,128]  #Must match the conditioner embed_dim : AsthanaSh
+    channel_mult: [1,2,4]
     conv_resample: true
     dims: 2
     use_fp16: false
-    num_heads: 4
+    num_heads: 2
 
   sampler_cfg:
     schedule: "cosine"
