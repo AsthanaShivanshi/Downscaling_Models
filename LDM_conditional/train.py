@@ -60,13 +60,13 @@ def train(cfg: DictConfig):
     wandb.finish()  # Close any previous run
 
     run_name = f"run_{os.environ.get('HYDRA_JOB_NUM', '0')}_{os.getpid()}"
-    logger = WandbLogger(project="VAE_optim_run_12km_bivariate", log_model=True, name=run_name)
+    logger = WandbLogger(project="UNet_optim_run_12km_bivariate", log_model=True, name=run_name)
     logger.experiment.config.update({
-        "kl_weight": cfg.model.get("kl_weight"),
-        "latent_dim": cfg.model.get("latent_dim"),
-    #"huber_delta": cfg.model.get("huber_delta"),
+        #"kl_weight": cfg.model.get("kl_weight"),
+        #"latent_dim": cfg.model.get("latent_dim"),
+    "huber_delta": cfg.model.get("huber_delta"),
     "learning_rate": cfg.model.get("lr"),
-    #"batch_size": cfg.experiment.get("batch_size"),
+    "batch_size": cfg.experiment.get("batch_size"),
 
 })
     print("Wandb run name:", run_name)
@@ -99,7 +99,7 @@ def train(cfg: DictConfig):
     ckpt_path = trainer.checkpoint_callback.best_model_path if hasattr(trainer, "checkpoint_callback") else None
     trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
 
-@hydra.main(version_base="1.3", config_path="configs", config_name="VAE_bivariate_config.yaml")
+@hydra.main(version_base="1.3", config_path="configs", config_name="UNet_bivariate_Huber_MSE.yaml")
 def main(cfg: DictConfig):
     train(cfg)
 

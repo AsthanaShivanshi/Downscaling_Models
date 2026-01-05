@@ -50,6 +50,17 @@ def make_beta_schedule(schedule, n_timestep, linear_start=1e-4, linear_end=2e-2,
 
 
 
+#CRPS
+def empirical_crps(samples, target):
+    # samples: [n_samples, batch, channels, ...]
+    # target: [batch, channels, ...]
+    n = samples.shape[0]
+    term1 = torch.mean(torch.abs(samples - target.unsqueeze(0)), dim=0)
+    term2 = 0.5 * torch.mean(torch.abs(samples.unsqueeze(0) - samples.unsqueeze(1)), dim=(0,1))
+    return torch.mean(term1 - term2)
+
+
+
 class LatentDiffusion(LightningModule):
     def __init__(self,
         denoiser,
@@ -193,7 +204,11 @@ class LatentDiffusion(LightningModule):
         )
 
     def get_loss(self, pred, target, mean=True):
-        if self.loss_type == 'l1':
+        if self.loss_type == 'crps':
+            # pred: [n_samples, batch, channels, ...]
+            # target: [batch, channels, ...]
+            return empirical_crps(pred, target)
+        elif self.loss_type == 'l1':
             loss = (target - pred).abs()
             if mean:
                 loss = loss.mean()
@@ -204,25 +219,45 @@ class LatentDiffusion(LightningModule):
                 loss = torch.nn.functional.mse_loss(target, pred, reduction='none')
         else:
             raise NotImplementedError("unknown loss type '{loss_type}'")
-
         return loss
 
     def p_losses(self, x_start, t, noise=None, context=None):
-        if noise is None:
-            noise = torch.randn_like(x_start)
-        x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
-        denoiser_out = self.denoiser(x_noisy, t, context=context)
+        if self.loss_type == 'crps':
+            n_samples = 10  
+            samples = []
+            for _ in range(n_samples):
+                noise = torch.randn_like(x_start)
+                x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
+                denoiser_out = self.denoiser(x_noisy, t, context=context)
+                samples.append(denoiser_out)
+            samples = torch.stack(samples)  # [n_samples, batch, channels, ...]
 
-        if self.parameterization == "eps":
-            target = noise
-        elif self.parameterization == "x0":
-            target = x_start
-        elif self.parameterization == "v":
-            target = self.get_v(x_start, noise, t)
+
+            if self.parameterization == "eps":
+                target = noise
+            elif self.parameterization == "x0":
+                target = x_start
+            elif self.parameterization == "v":
+                target = self.get_v(x_start, noise, t)
+            else:
+                raise NotImplementedError(f"Parameterization {self.parameterization} not yet supported")
+            return self.get_loss(samples, target, mean=True)
         else:
-            raise NotImplementedError(f"Parameterization {self.parameterization} not yet supported")
+            if noise is None:
+                noise = torch.randn_like(x_start)
+            x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
+            denoiser_out = self.denoiser(x_noisy, t, context=context)
+            if self.parameterization == "eps":
+                target = noise
+            elif self.parameterization == "x0":
+                target = x_start
+            elif self.parameterization == "v":
+                target = self.get_v(x_start, noise, t)
+            else:
+                raise NotImplementedError(f"Parameterization {self.parameterization} not yet supported")
+            return self.get_loss(denoiser_out, target, mean=False).mean()
 
-        return self.get_loss(denoiser_out, target, mean=False).mean()
+
 
     def forward(self, x, *args, **kwargs):
         t = torch.randint(0, self.num_timesteps, (x.shape[0],), device=self.device).long()
