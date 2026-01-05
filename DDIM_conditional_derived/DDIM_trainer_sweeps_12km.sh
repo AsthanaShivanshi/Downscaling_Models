@@ -28,5 +28,4 @@ python -c "import wandb; print(wandb.__version__)"
 python DDIM_conditional_derived/train.py  --config-name DDIM_bivariate_config.yaml \
   model.lr=1e-3 \
   model.timesteps=1000\
-  model.beta_schedule="linear" \
-  sampler.ddim_eta=0.0
+  model.beta_schedule="linear" 
