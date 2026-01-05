@@ -109,8 +109,8 @@ callbacks:
     mode: min
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
-    dirpath: LDM_conditional/trained_ckpts/10km/
-    filename: LDM_checkpoint_V1_cosine_schedule_250_steps
+    dirpath: LDM_conditional/trained_ckpts/12km/
+    filename: LDM_checkpoint_{model.parameterization}_{model.timesteps}_{model.noise_schedule}
     save_top_k: 1
     monitor: val/loss
     mode: min
@@ -127,8 +127,8 @@ model:
   
   context_encoder: ${conditioner}  #Conditions the denoiser with coarse UNet predictors: AsthanaSh
   #VAE ckpt loaded from the ae_load_state_file 
-  ae_load_state_file: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts/12km/LDM_conditional.models.ae_module.AutoencoderKL_checkpoint.ckpt
+  ae_load_state_file: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/VAE_ckpts/VAE_levels8_0.01_checkpoint-v9.ckpt
   #Note : Output from LDM : [batch_size, 4, height, width] (AsthanaSh)
   parameterization: "v"
   loss_type: "l2"
-  timesteps: 1000
+  timesteps: 500
