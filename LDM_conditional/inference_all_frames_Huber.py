@@ -134,7 +134,7 @@ model_UNet = DownscalingUnetLightning(
     in_ch=3, out_ch=2, features=[64, 128, 256, 512],
     channel_names=["precip", "temp"]
 )
-unet_state_dict = torch.load(paths.LDM_DIR+"/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_bs32_lr0.001_delta0.4_factor0.5_pat3.ckpt.ckpt", map_location="cpu",
+unet_state_dict = torch.load(paths.LDM_DIR+"/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_bs32_lr0.001_delta0.8_factor0.5_pat3.ckpt.ckpt", map_location="cpu",
                              weights_only=False)["state_dict"]
 model_UNet.load_state_dict(unet_state_dict, strict=False)
 model_UNet = model_UNet.to(device)
