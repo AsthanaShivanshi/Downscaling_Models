@@ -40,6 +40,7 @@ class DownscalingUnetLightning(LightningModule):
         precip_channel_idx=0, 
         lr=1e-3,
         huber_delta=1.0,
+        precip_loss_weight=1.0, #Making it a tunable hyperparameter
         use_crps_channels=None  # list of channels using crps.- 
     ):
         super().__init__()
@@ -54,6 +55,7 @@ class DownscalingUnetLightning(LightningModule):
         self.register_buffer("loss_weights", torch.ones(out_ch))
         self.loss_weights[precip_channel_idx] = 1
 
+        self.loss_weights[precip_channel_idx] = precip_loss_weight
 
 
         self.use_crps_channels = use_crps_channels if use_crps_channels is not None else []

@@ -27,8 +27,8 @@ python -c "import wandb; print(wandb.__version__)"
 #unet sweep :mae sweep
 
 python LDM_conditional/train.py --multirun --config-name UNet_bivariate_config_yeo_johnson.yaml \
-  model.use_crps_channels="[0,1]" \
-  lr_scheduler.factor=0.50,0.75 \
+  model.precip_loss_weight=3.0,5.0,8.0,10.0 \
+  model.use_crps_channels="[0,1]"\
   model.lr=0.001,0.01
 
 
