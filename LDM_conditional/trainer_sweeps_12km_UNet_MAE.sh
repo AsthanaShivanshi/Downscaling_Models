@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=12km_UNet_MAE_Sweep
+#SBATCH --job-name=Yeo_Johnson_12km_UNet_MAE_Sweep
 #SBATCH --output=logs/ckpts_LDM/UNet/UNetMAESweep_job_output-%j.txt
 #SBATCH --error=logs/ckpts_LDM/UNet/UNetMAESweep_job_error-%j.txt
 #SBATCH --ntasks=1
@@ -26,7 +26,7 @@ python -c "import wandb; print(wandb.__version__)"
 
 #unet sweep :mae sweep
 
-python LDM_conditional/train.py --multirun --config-name UNet_bivariate_config.yaml \
+python LDM_conditional/train.py --multirun --config-name UNet_bivariate_config_yeo_johnson.yaml \
   model.use_crps_channels="[0,1]" \
   lr_scheduler.factor=0.50,0.75 \
   model.lr=0.001,0.01
