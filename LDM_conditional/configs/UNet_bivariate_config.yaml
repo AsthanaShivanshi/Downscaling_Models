@@ -80,6 +80,7 @@ model:
   lr: 1e-3
   huber_delta: 1.0  #used only for precip channel. 
   use_crps_channels: [] #Not used when left empty. 
+  precip_loss_weight: 1.0 #Customisable impotance in sweep. 
 
 lr_scheduler:
   _target_: lightning.pytorch.lr_scheduler.ReduceLROnPlateau
