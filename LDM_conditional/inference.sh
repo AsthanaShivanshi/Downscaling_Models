@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=optimised++_UNet_LDM_inference
-#SBATCH --output=logs/ckpts_LDM/optimised++_UNet_LDM_inference-job_output-%j.txt
-#SBATCH --error=logs/ckpts_LDM/optimised++_UNet_LDM_inference-job_error-%j.txt
+#SBATCH --job-name=UNet_LDM_inference
+#SBATCH --output=logs/ckpts_LDM/_UNet_LDM_inference-job_output-%j.txt
+#SBATCH --error=logs/ckpts_LDM/_UNet_LDM_inference-job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=20:00:00
