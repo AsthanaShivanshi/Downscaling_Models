@@ -9,8 +9,9 @@ import xarray as xr
 from tqdm import tqdm
 import paths
 import numpy as np
+from sklearn.preprocessing import PowerTransformer
 
-#Code foer Unet retained for the first step
+#Code for Unet retained for the first step
 
 from LDM_conditional.DownscalingDataModule import DownscalingDataModule
 from models.unet_module import DownscalingUnetLightning
@@ -104,22 +105,24 @@ def denorm_temp(x, params):
 
 
 def inverse_yeojohnson(x, lmbda):
-
-
     x = np.asarray(x)
-    out = np.zeros_like(x)
+    out = np.empty_like(x)
     pos = x >= 0
     neg = ~pos
+
     # For x >= 0
     if lmbda != 0:
-        out[pos] = np.power(x[pos] * lmbda + 1, 1 / lmbda) - 1
+        out[pos] = ((x[pos] * lmbda + 1) ** (1 / lmbda) - 1) / lmbda
     else:
         out[pos] = np.expm1(x[pos])
+
     # For x < 0
     if lmbda != 2:
-        out[neg] = 1 - np.power(-(2 - lmbda) * x[neg] + 1, 1 / (2 - lmbda))
+        out[neg] = 1 - ((1 - x[neg]) * (2 - lmbda)) ** (1 / (2 - lmbda))
+        out[neg] /= (2 - lmbda)
     else:
         out[neg] = 1 - np.exp(-x[neg])
+
     return out
 
 
@@ -129,12 +132,12 @@ def denorm_pr(x):
     stats = pr_params
     arr_out = np.empty_like(arr)
     mask = ~np.isnan(arr)
-
     arr_out[mask] = inverse_yeojohnson(arr[mask], stats['lambda'])
     arr_out[~mask] = np.nan
     return arr_out
 
-
+def denorm_temp(x, params):
+    return x * params['std'] + params['mean']
 
 def denorm_all(x):
     arr = x.cpu().numpy() if torch.is_tensor(x) else x
@@ -142,15 +145,12 @@ def denorm_all(x):
     for i, (var, params) in enumerate([
         ("precip", pr_params),
         ("temp", temp_params),
-
     ]):
         if var == "precip":
             out[i] = denorm_pr(arr[i])
         else:
             out[i] = denorm_temp(arr[i], params)
     return out
-
-
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -313,7 +313,7 @@ ds_unet = xr.Dataset(
     }
 )
 encoding = {var: {"_FillValue": np.nan} for var in var_names}
-ds_unet.to_netcdf(paths.LDM_DIR + "/outputs/test_UNet_baseline_CRPS.nc", encoding=encoding)
+ds_unet.to_netcdf(paths.LDM_DIR + "/outputs/test_UNet_baseline_CRPS_YJ.nc", encoding=encoding)
 print(f"UNet baseline saved with shape: {unet_preds_np.shape}")
 
 #ldm_samples_np = np.transpose(ldm_samples_np, (0, 1, 3, 4, 2))

@@ -22,4 +22,5 @@ which python
 python -c "import wandb; print(wandb.__version__)"
 
 #python LDM_conditional/inference_all_frames_CRPS.py
-python LDM_conditional/inference_all_frames_Huber.py
+python LDM_conditional/inference_all_frames_YeoJohnson.py
+
