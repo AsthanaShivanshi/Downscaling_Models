@@ -1,14 +1,14 @@
 import sys
 sys.path.append("..")
 sys.path.append("../..")
+from scipy import stats
 import torch
 import numpy as np
 import json
 import xarray as xr
 from tqdm import tqdm
 import paths
-
-from scipy.special import inv_boxcox
+import numpy as np
 
 #Code foer Unet retained for the first step
 
@@ -102,11 +102,39 @@ def denorm_temp(x, params):
     return x * params['std'] + params['mean']
 
 
+
+def inverse_yeojohnson(x, lmbda):
+
+
+    x = np.asarray(x)
+    out = np.zeros_like(x)
+    pos = x >= 0
+    neg = ~pos
+    # For x >= 0
+    if lmbda != 0:
+        out[pos] = np.power(x[pos] * lmbda + 1, 1 / lmbda) - 1
+    else:
+        out[pos] = np.expm1(x[pos])
+    # For x < 0
+    if lmbda != 2:
+        out[neg] = 1 - np.power(-(2 - lmbda) * x[neg] + 1, 1 / (2 - lmbda))
+    else:
+        out[neg] = 1 - np.exp(-x[neg])
+    return out
+
+
+
 def denorm_pr(x):
-    lmbda = pr_params['lambda']
-    x_denorm = inv_boxcox(x, lmbda)
-    x_denorm = x_denorm * pr_params['std'] + pr_params['mean']
-    return x_denorm
+    arr = x.copy()
+    stats = pr_params
+    arr_out = np.empty_like(arr)
+    mask = ~np.isnan(arr)
+
+    arr_out[mask] = inverse_yeojohnson(arr[mask], stats['lambda'])
+    arr_out[~mask] = np.nan
+    return arr_out
+
+
 
 def denorm_all(x):
     arr = x.cpu().numpy() if torch.is_tensor(x) else x
