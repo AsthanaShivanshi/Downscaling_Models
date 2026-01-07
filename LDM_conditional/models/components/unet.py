@@ -67,7 +67,11 @@ class DownscalingUnet(nn.Module):
         self.d1 = DecoderBlock(features[3]*2, features[3])
         self.d2 = DecoderBlock(features[3], features[2])
         self.d3 = DecoderBlock(features[2], features[1])
-        self.d4 = DecoderBlock(features[1], features[0])         
+        self.d4 = DecoderBlock(features[1], features[0])  
+
+
+        
+               
         """ Classifier """
         self.outputs = nn.Conv2d(features[0], out_ch, kernel_size=1, padding=0)
     
