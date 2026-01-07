@@ -132,7 +132,8 @@ ref_ds.close()
 
 model_UNet = DownscalingUnetLightning(
     in_ch=3, out_ch=2, features=[64, 128, 256, 512],
-    channel_names=["precip", "temp"]
+    channel_names=["precip", "temp"],
+    precip_scaling_json=paths.DATASETS_TRAINING_DIR+"/RhiresD_scaling_params.json"
 )
 unet_state_dict = torch.load(paths.LDM_DIR+"/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_logtransform_lr0.001_precip_loss_weight1.0_1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt", map_location="cpu",
                              weights_only=False)["state_dict"]
@@ -281,7 +282,7 @@ ds_unet = xr.Dataset(
     }
 )
 encoding = {var: {"_FillValue": np.nan} for var in var_names}
-ds_unet.to_netcdf(paths.LDM_DIR + "/outputs/test_UNet_baseline_CRPS__withoutReLU.nc", encoding=encoding)
+ds_unet.to_netcdf(paths.LDM_DIR + "/outputs/test_UNet_baseline_CRPS__UNet_constrained_withoutReLU.nc", encoding=encoding)
 print(f"UNet baseline saved with shape: {unet_preds_np.shape}")
 
 #ldm_samples_np = np.transpose(ldm_samples_np, (0, 1, 3, 4, 2))

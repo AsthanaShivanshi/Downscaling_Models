@@ -75,16 +75,22 @@ class DownscalingUnetLightning(LightningModule):
 
     def forward(self, x):
             out = self.unet(x)
-            # enforcing precip constraint in real space ... 
+            # 
+            # log(eps) = mean + std * z ------> z = (log(eps) - mu) / std 
             precip_idx = self.precip_channel_idx
             epsilon = self.precip_epsilon
             mean = self.precip_mean
             std = self.precip_std
+
             min_log = torch.log(torch.tensor(epsilon, device=out.device, dtype=out.dtype))
             min_z = (min_log - mean) / std
+
             out_precip = out[:, precip_idx:precip_idx+1, ...]
+
             out_precip = torch.maximum(out_precip, min_z)
             out = out.clone()
+
+
             out[:, precip_idx:precip_idx+1, ...] = out_precip
             return out
 
