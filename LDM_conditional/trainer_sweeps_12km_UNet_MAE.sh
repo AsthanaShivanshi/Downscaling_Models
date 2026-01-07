@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=QT_MAE_12km_UNet_MAE_Sweep
-#SBATCH --output=logs/ckpts_LDM/UNet/QT_UNetMAESweep_job_output-%j.txt
-#SBATCH --error=logs/ckpts_LDM/UNet/QT_UNetMAESweep_job_error-%j.txt
+#SBATCH --job-name=Log_MAE_12km_UNet_MAE_Sweep
+#SBATCH --output=logs/ckpts_LDM/UNet/Log_UNetMAESweep_job_output-%j.txt
+#SBATCH --error=logs/ckpts_LDM/UNet/Log_UNetMAESweep_job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-00:00:00
@@ -26,7 +26,7 @@ python -c "import wandb; print(wandb.__version__)"
 
 #unet sweep :mae sweep
 
-python LDM_conditional/train.py --multirun --config-name UNet_bivariate_config_quantile.yaml \
+python LDM_conditional/train.py --multirun --config-name UNet_bivariate_config.yaml \
   model.precip_loss_weight=1.0,3.0,5.0,7.0,10.0 \
   model.use_crps_channels="[0,1]"\
   model.lr=0.001,0.01

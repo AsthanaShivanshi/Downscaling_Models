@@ -112,7 +112,6 @@ class DownscalingUnet(nn.Module):
         out_cropped = out[:, :, :original_height, :original_width]
         x_cropped = x[:, :, :original_height, :original_width]
         final_out = out_cropped + x_cropped[:, :out_cropped.shape[1], :, :]
-        final_out[:, 0:1, :, :] = F.relu(final_out[:, 0:1, :, :]) # Only for precip channel
         return final_out
     
     def last_layer(self):
