@@ -3,6 +3,7 @@ from typing import Any
 import torch
 from lightning import LightningModule
 import json
+import os
 
 """LightningModule for the downscaling setup use case.
 

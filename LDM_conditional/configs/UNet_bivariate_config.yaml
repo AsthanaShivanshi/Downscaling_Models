@@ -81,6 +81,7 @@ model:
   huber_delta: 1.0  #used only for precip channel. 
   use_crps_channels: [] #Not used when left empty. 
   precip_loss_weight: 1.0 #Customisable impotance in sweep. 
+  precip_scaling_json: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/RhiresD_scaling_params.json
 
 lr_scheduler:
   _target_: lightning.pytorch.lr_scheduler.ReduceLROnPlateau
