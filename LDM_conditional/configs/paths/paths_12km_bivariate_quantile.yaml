@@ -1,0 +1,32 @@
+data:
+  
+  train:
+    input: 
+      precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/RhiresD_input_train_scaled_quantile.nc
+      temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/TabsD_input_train_scaled.nc
+    target:
+      precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/RhiresD_target_train_scaled_quantile.nc
+      temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/TabsD_target_train_scaled.nc
+
+
+
+  val:
+    input:
+      precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/RhiresD_input_val_scaled_quantile.nc
+      temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/TabsD_input_val_scaled.nc
+    target:
+      precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/RhiresD_target_val_scaled_quantile.nc
+      temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/TabsD_target_val_scaled.nc
+  
+  
+  test:
+    input:
+      precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/RhiresD_input_test_scaled_quantile.nc
+      temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/TabsD_input_test_scaled.nc
+      
+    target:
+      precip: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/RhiresD_target_test_scaled_quantile.nc
+      temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/TabsD_target_test_scaled.nc
+
+  static:
+    elevation: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/elevation.tif
