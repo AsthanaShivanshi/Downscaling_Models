@@ -70,10 +70,15 @@ class DownscalingUnet(nn.Module):
         self.d4 = DecoderBlock(features[1], features[0])  
 
 
-        
-               
+
+
         """ Classifier """
-        self.outputs = nn.Conv2d(features[0], out_ch, kernel_size=1, padding=0)
+        self.outputs = nn.Conv2d(features[0], out_ch, kernel_size=1, padding=0) ########output channel....source of bias????????? CLARIFY! AsthanaSh
+    
+
+    #class torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros', device=None, dtype=None)[source]
+    
+    
     
     def forward(self, x):
 
