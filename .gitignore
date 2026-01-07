@@ -65,3 +65,6 @@ Training_Dataset_50km_SR_1971_2020/
 LDM_conditional/paths.py
 DDIM_conditional_derived/paths.py
 *.log
+*.pth
+*.pt
+*.joblib
