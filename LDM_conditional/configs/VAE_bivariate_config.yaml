@@ -3,7 +3,7 @@ defaults:
   - _self_
 
 vae:
-  latent_dim: 8
+  latent_dim: 32
   kl_weight: 0.01
   ae_flag: "residual"
   beta_anneal_steps: 1000
