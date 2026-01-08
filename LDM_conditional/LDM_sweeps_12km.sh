@@ -22,20 +22,6 @@ export HYDRA_FULL_ERROR=1
 which python
 python -c "import wandb; print(wandb.__version__)"
 
-
-#unet sweep :mse and huber losses 
-#python LDM_conditional/train.py --multirun --config-name UNet_bivariate_Huber_MSE.yaml \
-  #lr_scheduler.factor=0.50,0.75 \
-  #model.lr=0.001,0.01\
-  #model.huber_delta=0.2,0.6,0.8,1.0
-
-
-#vae sweep
-#python LDM_conditional/train.py --multirun --config-name VAE_bivariate_config.yaml \
-  #model.latent_dim=8,16,32,64,128\
-  #model.kl_weight=0.0001,0.001,0.01
-
-
 #ldm sweep
 
 python LDM_conditional/train_LDM.py -m --config-name LDM_bivariate_config.yaml \
