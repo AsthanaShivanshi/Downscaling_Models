@@ -2,6 +2,8 @@ from typing import Any
 
 import torch
 from lightning import LightningModule
+import json
+import os
 
 """LightningModule for the downscaling setup use case.
 
@@ -40,7 +42,9 @@ class DownscalingUnetLightning(LightningModule):
         precip_channel_idx=0, 
         lr=1e-3,
         huber_delta=1.0,
-        use_crps_channels=None  # list of channels using crps.- 
+        precip_loss_weight=1.0, #Making it a tunable hyperparameter
+        use_crps_channels=None, # list of channels using crps.- 
+        precip_scaling_json=None, #File needs to be loaded at initialisation time in train.py.:; AsthanaSh
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -54,13 +58,41 @@ class DownscalingUnetLightning(LightningModule):
         self.register_buffer("loss_weights", torch.ones(out_ch))
         self.loss_weights[precip_channel_idx] = 1
 
+        self.loss_weights[precip_channel_idx] = precip_loss_weight
 
 
         self.use_crps_channels = use_crps_channels if use_crps_channels is not None else []
 
-    def forward(self, x):
-        return self.unet(x)
 
+
+        #Note: these json parameters have to be saved in a file during preprocessing :::: RhiresD 
+        if precip_scaling_json is not None and os.path.isfile(precip_scaling_json):
+            with open(precip_scaling_json, 'r') as f:
+                scaling=json.load(f)
+                self.precip_epsilon= scaling["epsilon"]
+                self.precip_mean= scaling["mean"]
+                self.precip_std= scaling["std"]
+
+    def forward(self, x):
+            out = self.unet(x)
+            # 
+            # log(eps) = mean + std * z ------> z = (log(eps) - mu) / std 
+            precip_idx = self.precip_channel_idx
+            epsilon = self.precip_epsilon
+            mean = self.precip_mean
+            std = self.precip_std
+
+            min_log = torch.log(torch.tensor(epsilon, device=out.device, dtype=out.dtype))
+            min_z = (min_log - mean) / std
+
+            out_precip = out[:, precip_idx:precip_idx+1, ...]
+
+            out_precip = torch.maximum(out_precip, min_z)
+            out = out.clone()
+
+
+            out[:, precip_idx:precip_idx+1, ...] = out_precip
+            return out
 
 
     def weighted_loss(self, y_hat, y):
