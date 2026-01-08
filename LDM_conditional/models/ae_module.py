@@ -94,6 +94,7 @@ class AutoencoderKL(LightningModule):
         y_pred, mean, log_var = self.forward(x)
 
         # Crop y_pred to match y's spatial size
+        
         if y_pred.shape[-2:] != y.shape[-2:]:
             min_h = min(y_pred.shape[-2], y.shape[-2])
             min_w = min(y_pred.shape[-1], y.shape[-1])
@@ -101,29 +102,34 @@ class AutoencoderKL(LightningModule):
             y = y[..., :min_h, :min_w]
 
         rec_loss = (y - y_pred).abs().mean()
+        precip_loss = (y[:,0] - y_pred[:,0]).abs().mean()
+        temp_loss = (y[:,1] - y_pred[:,1]).abs().mean()
         kl_loss = kl_from_standard_normal(mean, log_var)
         beta = self._get_annealed_kl_weight()
         total_loss = rec_loss + beta * kl_loss
 
-        return (total_loss, rec_loss, kl_loss, beta)
+        return (total_loss, rec_loss, kl_loss, beta, precip_loss, temp_loss)
+
 
     def training_step(self, batch, batch_idx):
         self.current_step = self.current_step.to(self.device)
         self.current_step += 1
-        total_loss, rec_loss, kl_loss, beta = self._loss(batch)
+        total_loss, rec_loss, kl_loss, beta, precip_loss, temp_loss = self._loss(batch)
         self.log("train/train_loss", total_loss, sync_dist=True)
         self.log("train/kl_beta", beta, sync_dist=True)
+        self.log("train/precip_loss", precip_loss, sync_dist=True)
+        self.log("train/temp_loss", temp_loss, sync_dist=True)
         return total_loss
 
-    @torch.no_grad()
-    
     def val_test_step(self, batch, batch_idx, split="val"):
-        (total_loss, rec_loss, kl_loss, beta) = self._loss(batch)
+        (total_loss, rec_loss, kl_loss, beta, precip_loss, temp_loss) = self._loss(batch)
         log_params = {"on_step": False, "on_epoch": True, "prog_bar": True}
         self.log(f"{split}/loss", total_loss, **log_params, sync_dist=True)
         self.log(f"{split}/rec_loss", rec_loss.mean(), **log_params, sync_dist=True)
         self.log(f"{split}/kl_loss", kl_loss, **log_params, sync_dist=True)
         self.log(f"{split}/kl_beta", beta, **log_params, sync_dist=True)
+        self.log(f"{split}/precip_loss", precip_loss, **log_params, sync_dist=True)
+        self.log(f"{split}/temp_loss", temp_loss, **log_params, sync_dist=True)
 
     def validation_step(self, batch, batch_idx):
         self.val_test_step(batch, batch_idx, split="val")

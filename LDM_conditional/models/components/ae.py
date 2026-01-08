@@ -39,7 +39,7 @@ class SimpleConvDecoder(nn.Module):
         super().__init__()
         self.in_dim = in_dim
         self.levels = levels
-        self.out_dim = out_dim  # <-- ADD THIS LINE
+        self.out_dim = out_dim 
         encoder_channels = np.hstack([
             in_dim, 
             (in_dim*ch_mult**np.arange(1,levels+1)).clip(min=min_ch)

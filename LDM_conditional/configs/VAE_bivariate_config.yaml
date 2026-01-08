@@ -6,6 +6,7 @@ vae:
   latent_dim: 8
   kl_weight: 0.01
   ae_flag: "residual"
+  beta_anneal_steps: 1000
   encoder_levels: 2
   encoder_min_ch: 16
   encoder_ch_mult: 4
@@ -104,8 +105,9 @@ model:
   latent_dim: ${vae.latent_dim}
   kl_weight: ${vae.kl_weight}
   ae_flag: ${vae.ae_flag}
+  beta_anneal_steps: ${vae.beta_anneal_steps}
 
-  unet_regr: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_bs32_lr0.001_delta1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt
+  unet_regr: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_logtransform_lr0.01_precip_loss_weight5.0_1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt
 
 lr_scheduler:
   _target_: lightning.pytorch.lr_scheduler.ReduceLROnPlateau
