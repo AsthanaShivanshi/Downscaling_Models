@@ -22,7 +22,7 @@ class AutoencoderKL(LightningModule):
     def __init__(
         self, 
         encoder, decoder, 
-        latent_dim=8, 
+        latent_dim=32,  #default added, to be changed via config: AsthanaSh
         kl_weight=0.01,     
         ae_flag=None,
         unet_regr=None,
