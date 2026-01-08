@@ -113,13 +113,11 @@ hydra:
     - hydra.mode=MULTIRUN
     task:
     - model.parameterization=eps,x0,v
-    - model.loss_type=l2
-    - model.timesteps=500,1000
     - model.beta_schedule=linear,cosine
   job:
     name: train
     chdir: null
-    override_dirname: model.beta_schedule=linear,cosine,model.loss_type=l2,model.parameterization=eps,x0,v,model.timesteps=500,1000
+    override_dirname: model.beta_schedule=linear,cosine,model.parameterization=eps,x0,v
     id: ???
     num: ???
     config_name: DDIM_bivariate_config.yaml
@@ -183,7 +181,7 @@ paths:
     static:
       elevation: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/elevation.tif
 experiment:
-  batch_size: 16
+  batch_size: 8
   num_workers: 2
 variables:
   input:
