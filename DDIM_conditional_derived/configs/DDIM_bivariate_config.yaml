@@ -3,7 +3,7 @@ defaults:
   - _self_
 
 experiment:
-  batch_size: 8
+  batch_size: 16
   num_workers: 2
 
 variables:
@@ -67,7 +67,7 @@ callbacks:
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: DDIM_conditional_derived/trained_ckpts/12km/
-    filename: DDIM_checkpoint_{model.parameterization}_{model.timesteps}_{model.beta_schedule}_V1
+    filename: DDIM_checkpoint_{model.parameterization}_{model.timesteps}_{model.beta_schedule}
     save_top_k: 1
     monitor: val/loss
     mode: min
