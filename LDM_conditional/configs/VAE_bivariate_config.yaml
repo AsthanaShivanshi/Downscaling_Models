@@ -86,7 +86,7 @@ callbacks:
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: LDM_conditional/trained_ckpts_optimised/12km/VAE_ckpts/
-    filename: VAE_levels${vae.latent_dim}_${vae.kl_weight}_checkpoint
+    filename: VAE_levels_latentdim_${vae.latent_dim}_klweight_${vae.kl_weight}_checkpoint
     save_top_k: 1
     monitor: val/loss
     mode: min

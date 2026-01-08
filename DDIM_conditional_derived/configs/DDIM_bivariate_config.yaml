@@ -99,7 +99,7 @@ model:
   context_encoder: ${conditioner}
   unet_regr:
     _target_: DDIM_conditional_derived.models.unet_module.DownscalingUnetLightning
-    checkpoint: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_bs32_lr0.01_delta1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt
+    checkpoint: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_logtransform_lr0.01_precip_loss_weight5.0_1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt
   timesteps: 1000
   beta_schedule: "cosine"
   linear_start: 1e-4
