@@ -45,7 +45,7 @@ encoder:
 
 decoder:
   _target_: LDM_conditional.models.components.ae.SimpleConvDecoder
-  in_dim: 16
+  in_dim: 32
   levels: 2
   min_ch: 16
   out_dim: 2
