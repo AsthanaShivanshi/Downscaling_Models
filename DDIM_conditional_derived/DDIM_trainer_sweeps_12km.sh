@@ -26,5 +26,5 @@ python -c "import wandb; print(wandb.__version__)"
 
 
 python DDIM_conditional_derived/train.py --multirun --config-name DDIM_bivariate_config.yaml \
-  model.parameterization=eps,x0,v \
-  model.beta_schedule=linear,cosine \
+  model.parameterization=v \
+  model.beta_schedule=quadratic \

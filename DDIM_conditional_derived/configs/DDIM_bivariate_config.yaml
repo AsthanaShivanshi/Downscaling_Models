@@ -107,5 +107,5 @@ model:
   lr: 1e-4
   use_ema: true
   ema_decay: 0.9999
-  parameterization: "x0"
-  loss_type: "l2" # "l2" or "crps"
+  parameterization: "v"
+  loss_type: "l1" # "l2" or "L1"
