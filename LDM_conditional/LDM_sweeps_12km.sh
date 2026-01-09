@@ -25,5 +25,5 @@ python -c "import wandb; print(wandb.__version__)"
 #ldm sweep
 
 python LDM_conditional/train_LDM.py -m --config-name LDM_bivariate_config.yaml \
-  model.parameterization=eps,v,x0 \
-  sampler.schedule=linear,cosine
+  model.parameterization=eps,v \
+  sampler.schedule=linear,cosine,quadratic
