@@ -3,7 +3,7 @@ defaults:
   - _self_
 
 
-latent_dim: 16  #Corr to optimum VAE latent dim : AsthanaSh
+latent_dim: 32  #Corr to optimum VAE latent dim : AsthanaSh
 
 
 experiment:
@@ -113,7 +113,7 @@ callbacks:
     mode: min
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
-    dirpath: LDM_conditional/trained_ckpts/12km/LDM/
+    dirpath: LDM_conditional/trained_ckpts_optimised/12km/LDM_ckpts/
     filename: LDM_checkpoint_{model.parameterization}_{model.timesteps}_{model.noise_schedule}
     save_top_k: 1
     monitor: val/loss
@@ -131,10 +131,11 @@ model:
   
   context_encoder: ${conditioner}  #Conditions the denoiser with coarse UNet predictors: AsthanaSh
   #VAE ckpt loaded from the ae_load_state_file 
-  ae_load_state_file: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/VAE_ckpts/VAE_levels_latentdim_16_klweight_0.001_checkpoint.ckpt
+  ae_load_state_file: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/VAE_ckpts/VAE_levels_latentdim_32_klweight_0.01_checkpoint.ckpt
 #Above VAE ckpt:Corr to optimum VAE latent dim 64 and kl weight : 0.001 : AsthanaSh
 
   #Note : Output from LDM : [batch_size, 4, height, width] (AsthanaSh)
+
   parameterization: "v"
-  loss_type: "l2" #Could be "l1" or "l2 or crps,,,,check diffmodule
+  loss_type: "l1" #Could be "l1" or "l2 or crps,,,,check diffmodule
   timesteps: 500
