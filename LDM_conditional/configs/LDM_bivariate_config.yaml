@@ -74,6 +74,7 @@ denoiser:
   use_fp16: false
   num_heads: 4
 
+
 sampler:
   _target_: LDM_conditional.models.components.ldm.denoiser.DDIMSampler
   model: ${denoiser}
