@@ -113,7 +113,7 @@ callbacks:
     mode: min
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
-    dirpath: LDM_conditional/trained_ckpts/12km/
+    dirpath: LDM_conditional/trained_ckpts/12km/LDM/
     filename: LDM_checkpoint_{model.parameterization}_{model.timesteps}_{model.noise_schedule}
     save_top_k: 1
     monitor: val/loss
