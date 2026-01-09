@@ -112,12 +112,12 @@ hydra:
     hydra:
     - hydra.mode=MULTIRUN
     task:
-    - model.parameterization=eps,v,x0
-    - sampler.schedule=linear,cosine
+    - model.parameterization=eps,v
+    - sampler.schedule=linear,cosine,quandratic
   job:
     name: train_LDM
     chdir: null
-    override_dirname: model.parameterization=eps,v,x0,sampler.schedule=linear,cosine
+    override_dirname: model.parameterization=eps,v,sampler.schedule=linear,cosine,quandratic
     id: ???
     num: ???
     config_name: LDM_bivariate_config.yaml
@@ -180,7 +180,7 @@ paths:
         temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/TabsD_target_test_scaled.nc
     static:
       elevation: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/elevation.tif
-latent_dim: 16
+latent_dim: 64
 experiment:
   batch_size: 32
   num_workers: 4
@@ -214,7 +214,7 @@ encoder:
   ch_mult: 4
 decoder:
   _target_: LDM_conditional.models.components.ae.SimpleConvDecoder
-  in_dim: 16
+  in_dim: 64
   levels: 2
   min_ch: 16
   out_dim: 2
@@ -235,8 +235,8 @@ conditioner:
   - 256
 denoiser:
   _target_: LDM_conditional.models.components.ldm.denoiser.UNetModel
-  in_channels: 64
-  out_channels: 64
+  in_channels: ${latent_dim}
+  out_channels: ${latent_dim}
   model_channels: 64
   num_res_blocks: 2
   attention_resolutions:
@@ -260,9 +260,9 @@ denoiser:
 sampler:
   _target_: LDM_conditional.models.components.ldm.denoiser.DDIMSampler
   model: ${denoiser}
-  schedule: cosine
+  schedule: quadratic
   device: cuda
-  ddim_num_steps: 250
+  ddim_num_steps: 500
   ddim_eta: 0.0
 ema:
   _target_: LDM_conditional.models.components.ldm.denoiser.LitEma
@@ -291,8 +291,8 @@ callbacks:
     mode: min
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
-    dirpath: LDM_conditional/trained_ckpts/12km/
-    filename: LDM_checkpoint_{model.parameterization}_{model.timesteps}_{model.noise_schedule}
+    dirpath: LDM_conditional/trained_ckpts_optimised/12km/LDM_ckpts/
+    filename: LDM_ckpt_{model.parameterization}_{model.timesteps}_{model.noise_schedule}_lr${model.lr}_latent_dim${latent_dim}_checkpoint
     save_top_k: 1
     monitor: val/loss
     mode: min
@@ -307,7 +307,8 @@ model:
   unet_regr: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_logtransform_lr0.01_precip_loss_weight5.0_1.0_crps[0,
     1]_factor0.5_pat3.ckpt.ckpt
   context_encoder: ${conditioner}
-  ae_load_state_file: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/VAE_ckpts/VAE_levels_latentdim_16_klweight_0.001_checkpoint.ckpt
+  ae_load_state_file: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/VAE_ckpts/VAE_levels_latentdim_64_klweight_0.01_checkpoint.ckpt
+  lr: 0.001
   parameterization: v
-  loss_type: l2
-  timesteps: 500
+  loss_type: l1
+  timesteps: 1000

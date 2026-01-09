@@ -62,16 +62,34 @@ def train(cfg: DictConfig):
 
     run_name = f"run_{os.environ.get('HYDRA_JOB_NUM', '0')}_{os.getpid()}"
     logger = WandbLogger(project="LDM_optim_run_12km_bivariate", log_model=True, name=run_name)
-    logger.experiment.config.update({
-        #"kl_weight": cfg.model.get("kl_weight"),
-        #"latent_dim": cfg.model.get("latent_dim"),
-    #"huber_delta": cfg.model.get("huber_delta"),
-    "learning_rate": cfg.model.get("lr"),
-    "noise_schedule": cfg.model.get("noise_schedule"),
-    "parameterization": cfg.model.get("parameterization"),
-    #"batch_size": cfg.experiment.get("batch_size"),
 
-})
+    logger.experiment.config.update({
+        "learning_rate": cfg.model.get("lr"),
+        "noise_schedule": cfg.sampler.get("schedule"),
+        "parameterization": cfg.model.get("parameterization"),
+        "loss_type": cfg.model.get("loss_type"),
+        "timesteps": cfg.model.get("timesteps"),
+        "latent_dim": cfg.get("latent_dim"),
+        "vae_kl_weight": cfg.model.get("kl_weight"),
+        "vae_beta_anneal_steps": cfg.model.get("beta_anneal_steps"),
+        "batch_size": cfg.experiment.get("batch_size"),
+        "num_workers": cfg.experiment.get("num_workers"),
+        "denoiser_channels": cfg.denoiser.get("model_channels"),
+        "denoiser_num_heads": cfg.denoiser.get("num_heads"),
+        "denoiser_attention_resolutions": cfg.denoiser.get("attention_resolutions"),
+        "denoiser_channel_mult": cfg.denoiser.get("channel_mult"),
+        "conditioner_context_ch": cfg.conditioner.get("context_ch"),
+        "conditioner_embed_dim": cfg.conditioner.get("embed_dim"),
+        "ae_ckpt": cfg.model.get("ae_load_state_file"),
+        "unet_regr_ckpt": cfg.model.get("unet_regr"),
+        "train_input_paths": cfg.data.train.get("input"),
+        "train_target_paths": cfg.data.train.get("target"),
+        "val_input_paths": cfg.data.val.get("input") if cfg.data.get("val") else None,
+        "val_target_paths": cfg.data.val.get("target") if cfg.data.get("val") else None,
+        "test_input_paths": cfg.data.test.get("input") if cfg.data.get("test") else None,
+        "test_target_paths": cfg.data.test.get("target") if cfg.data.get("test") else None,
+    })
+
     print("Wandb run name:", run_name)
     print("Wandb run id:", logger.experiment.id)
 

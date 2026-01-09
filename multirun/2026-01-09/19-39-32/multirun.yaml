@@ -112,15 +112,15 @@ hydra:
     hydra:
     - hydra.mode=MULTIRUN
     task:
-    - model.parameterization=eps,x0,v
-    - model.beta_schedule=linear,cosine
+    - model.parameterization=eps,v
+    - sampler.schedule=cosine,linear,quadratic
   job:
-    name: train
+    name: train_LDM
     chdir: null
-    override_dirname: model.beta_schedule=linear,cosine,model.parameterization=eps,x0,v
+    override_dirname: model.parameterization=eps,v,sampler.schedule=cosine,linear,quadratic
     id: ???
     num: ???
-    config_name: DDIM_bivariate_config.yaml
+    config_name: LDM_bivariate_config.yaml
     env_set: {}
     env_copy: []
     config:
@@ -136,7 +136,7 @@ hydra:
     - path: hydra.conf
       schema: pkg
       provider: hydra
-    - path: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/DDIM_conditional_derived/configs
+    - path: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/configs
       schema: file
       provider: main
     - path: ''
@@ -180,9 +180,10 @@ paths:
         temp: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/TabsD_target_test_scaled.nc
     static:
       elevation: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/elevation.tif
+latent_dim: 64
 experiment:
-  batch_size: 8
-  num_workers: 2
+  batch_size: 32
+  num_workers: 4
 variables:
   input:
     precip: RhiresD
@@ -205,23 +206,71 @@ data:
     target: ${paths.data.test.target}
   static:
     elevation: ${paths.data.static.elevation}
+encoder:
+  _target_: LDM_conditional.models.components.ae.SimpleConvEncoder
+  in_dim: 2
+  levels: 2
+  min_ch: 16
+  ch_mult: 4
+decoder:
+  _target_: LDM_conditional.models.components.ae.SimpleConvDecoder
+  in_dim: 64
+  levels: 2
+  min_ch: 16
+  out_dim: 2
 conditioner:
-  _target_: DDIM_conditional_derived.models.components.diff.conditioner.AFNOConditionerNetCascade
-  autoencoder: null
-  input_channels:
-  - 2
+  _target_: LDM_conditional.models.components.ldm.conditioner.AFNOConditionerNetCascade
+  autoencoder: ${model.autoencoder}
   embed_dim:
-  - 32
   - 64
   - 128
-  analysis_depth: 3
-  cascade_depth: 3
+  - 256
+  - 256
+  analysis_depth: 4
+  cascade_depth: 4
   context_ch:
-  - 32
   - 64
   - 128
+  - 256
+  - 256
+denoiser:
+  _target_: LDM_conditional.models.components.ldm.denoiser.UNetModel
+  in_channels: ${latent_dim}
+  out_channels: ${latent_dim}
+  model_channels: 64
+  num_res_blocks: 2
+  attention_resolutions:
+  - 1
+  - 2
+  - 4
+  context_ch:
+  - 64
+  - 128
+  - 256
+  - 256
+  channel_mult:
+  - 1
+  - 2
+  - 4
+  - 4
+  conv_resample: true
+  dims: 2
+  use_fp16: false
+  num_heads: 4
+sampler:
+  _target_: LDM_conditional.models.components.ldm.denoiser.DDIMSampler
+  model: ${denoiser}
+  schedule: quadratic
+  device: cuda
+  ddim_num_steps: 500
+  ddim_eta: 0.0
+ema:
+  _target_: LDM_conditional.models.components.ldm.denoiser.LitEma
+  model: ${denoiser}
+  decay: 0.9999
+  use_num_updates: true
 datamodule:
-  _target_: DDIM_conditional_derived.DownscalingDataModule.DownscalingDataModule
+  _target_: LDM_conditional.DownscalingDataModule.DownscalingDataModule
   train_input: ${data.train.input}
   train_target: ${data.train.target}
   val_input: ${data.val.input}
@@ -242,51 +291,24 @@ callbacks:
     mode: min
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
-    dirpath: DDIM_conditional_derived/trained_ckpts/12km/
-    filename: DDIM_checkpoint_{model.parameterization}_{model.timesteps}_{model.beta_schedule}
+    dirpath: LDM_conditional/trained_ckpts_optimised/12km/LDM_ckpts/
+    filename: LDM_ckpt_{model.parameterization}_{model.timesteps}_{model.noise_schedule}_lr${model.lr}_latent_dim${latent_dim}_checkpoint
     save_top_k: 1
     monitor: val/loss
     mode: min
 model:
-  _target_: DDIM_conditional_derived.models.diff_module.DDIMResidualContextual
-  denoiser:
-    _target_: DDIM_conditional_derived.models.components.diff.denoiser.unet.UNetModel
-    in_channels: 2
-    out_channels: 2
-    model_channels: 32
-    num_res_blocks: 2
-    attention_resolutions:
-    - 1
-    - 2
-    - 4
-    context_ch:
-    - 32
-    - 64
-    - 128
-    channel_mult:
-    - 1
-    - 2
-    - 4
-    conv_resample: true
-    dims: 2
-    use_fp16: false
-    num_heads: 2
-  sampler_cfg:
-    schedule: cosine
-    device: cuda
-    ddim_num_steps: 250
-    ddim_eta: 0.0
+  _target_: LDM_conditional.models.ldm_module.LatentDiffusion
+  denoiser: ${denoiser}
+  autoencoder:
+    _target_: LDM_conditional.models.ae_module.AutoencoderKL
+    encoder: ${encoder}
+    decoder: ${decoder}
+    latent_dim: ${latent_dim}
+  unet_regr: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_logtransform_lr0.01_precip_loss_weight5.0_1.0_crps[0,
+    1]_factor0.5_pat3.ckpt.ckpt
   context_encoder: ${conditioner}
-  unet_regr:
-    _target_: DDIM_conditional_derived.models.unet_module.DownscalingUnetLightning
-    checkpoint: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_logtransform_lr0.01_precip_loss_weight5.0_1.0_crps[0,
-      1]_factor0.5_pat3.ckpt.ckpt
+  ae_load_state_file: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/VAE_ckpts/VAE_levels_latentdim_64_klweight_0.01_checkpoint.ckpt
+  lr: 0.001
+  parameterization: v
+  loss_type: l1
   timesteps: 1000
-  beta_schedule: cosine
-  linear_start: 0.0001
-  linear_end: 0.02
-  lr: 0.0001
-  use_ema: true
-  ema_decay: 0.9999
-  parameterization: x0
-  loss_type: l2

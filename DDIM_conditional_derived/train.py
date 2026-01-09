@@ -54,11 +54,51 @@ def train(cfg: DictConfig):
     run_name = f"run_{os.environ.get('HYDRA_JOB_NUM', '0')}_{os.getpid()}"
     logger = WandbLogger(project="DDIM_residual_run_12km_bivariate", log_model=True, name=run_name)
     logger.experiment.config.update({
-        "timesteps": cfg.model.get("timesteps"),
-        "beta_schedule": cfg.model.get("beta_schedule"),
-        "learning_rate": cfg.model.get("lr"),
-        "batch_size": cfg.experiment.get("batch_size"),
-    })
+    # Model
+    "timesteps": cfg.model.get("timesteps"),
+    "beta_schedule": cfg.model.get("beta_schedule"),
+    "linear_start": cfg.model.get("linear_start"),
+    "linear_end": cfg.model.get("linear_end"),
+    "learning_rate": cfg.model.get("lr"),
+    "loss_type": cfg.model.get("loss_type"),
+    "parameterization": cfg.model.get("parameterization"),
+    "use_ema": cfg.model.get("use_ema"),
+    "ema_decay": cfg.model.get("ema_decay"),
+    # Denoiser
+    "denoiser_in_channels": cfg.model.denoiser.get("in_channels"),
+    "denoiser_out_channels": cfg.model.denoiser.get("out_channels"),
+    "denoiser_model_channels": cfg.model.denoiser.get("model_channels"),
+    "denoiser_num_res_blocks": cfg.model.denoiser.get("num_res_blocks"),
+    "denoiser_attention_resolutions": cfg.model.denoiser.get("attention_resolutions"),
+    "denoiser_context_ch": cfg.model.denoiser.get("context_ch"),
+    "denoiser_channel_mult": cfg.model.denoiser.get("channel_mult"),
+    "denoiser_num_heads": cfg.model.denoiser.get("num_heads"),
+    "denoiser_dims": cfg.model.denoiser.get("dims"),
+    "denoiser_use_fp16": cfg.model.denoiser.get("use_fp16"),
+    # UNet regression
+    "unet_regr_ckpt": cfg.model.unet_regr.get("checkpoint") if cfg.model.get("unet_regr") else None,
+    # Sampler
+    "sampler_schedule": cfg.model.sampler_cfg.get("schedule"),
+    "sampler_device": cfg.model.sampler_cfg.get("device"),
+    "sampler_ddim_num_steps": cfg.model.sampler_cfg.get("ddim_num_steps"),
+    "sampler_ddim_eta": cfg.model.sampler_cfg.get("ddim_eta"),
+    
+    # Experiment
+    "batch_size": cfg.experiment.get("batch_size"),
+    "num_workers": cfg.experiment.get("num_workers"),
+    
+    # Callbacks
+    "early_stopping_patience": cfg.callbacks.early_stopping.get("patience"),
+    "early_stopping_monitor": cfg.callbacks.early_stopping.get("monitor"),
+    "model_checkpoint_monitor": cfg.callbacks.model_checkpoint.get("monitor"),
+    "model_checkpoint_dir": cfg.callbacks.model_checkpoint.get("dirpath"),
+    "model_checkpoint_filename": cfg.callbacks.model_checkpoint.get("filename"),
+    # Trainer
+    "trainer_accelerator": cfg.get("trainer", {}).get("accelerator", "cuda"),
+    "trainer_devices": cfg.get("trainer", {}).get("devices", 1),
+    # Seed
+    "seed": cfg.get("seed"),
+})
     print("Wandb run name:", run_name)
     print("Wandb run id:", logger.experiment.id)
 
