@@ -7,7 +7,7 @@ latent_dim: 64  #Corr to optimum VAE latent dim : AsthanaSh
 
 
 experiment:
-  batch_size: 32
+  batch_size: 16
   num_workers: 4
 
 variables:
