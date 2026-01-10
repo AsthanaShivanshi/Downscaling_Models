@@ -9,7 +9,7 @@
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
 
-source diffscaler.sh
+source ../diffscaler.sh
 export PYTHONPATH="$PROJECT_DIR"
 mkdir -p logs/ckpts_LDM/LDM/
 
