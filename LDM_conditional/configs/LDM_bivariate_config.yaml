@@ -139,5 +139,5 @@ model:
   #Note : Output from LDM : [batch_size, 4, height, width] (AsthanaSh)
   lr: 1e-3
   parameterization: "v"
-  loss_type: "l1" #Could be "l1" or "l2 or crps,,,,check diffmodule
+  loss_type: "l2" #Could be "l1" or "l2 or crps,,,,check diffmodule
   timesteps: 1000
