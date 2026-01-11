@@ -134,9 +134,13 @@ model:
   context_encoder: ${conditioner}  #Conditions the denoiser with coarse UNet predictors: AsthanaSh
   #VAE ckpt loaded from the ae_load_state_file 
   ae_load_state_file: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/VAE_ckpts/VAE_levels_latentdim_16_klweight_0.01_checkpoint.ckpt
-
+  linear_start: 1e-4   
+  linear_end: 0.01
   #Note : Output from LDM : [batch_size, 4, height, width] (AsthanaSh)
-  lr: 1e-3
+  lr: 1e-4
+  lar_patience: 3
+  lr_factor: 0.5
   parameterization: "v"
+  beta_schedule: "cosine"  #Could be "linear" or "cosine" or "quadratic"
   loss_type: "l2" #Could be "l1" or "l2 or crps,,,,check diffmodule
   timesteps: 1000

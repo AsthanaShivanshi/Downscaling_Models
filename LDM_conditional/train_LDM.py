@@ -72,8 +72,6 @@ def train(cfg: DictConfig):
         "latent_dim": cfg.get("latent_dim"),
         "vae_kl_weight": cfg.model.get("kl_weight"),
         "vae_beta_anneal_steps": cfg.model.get("beta_anneal_steps"),
-        "batch_size": cfg.experiment.get("batch_size"),
-        "num_workers": cfg.experiment.get("num_workers"),
         "denoiser_channels": cfg.denoiser.get("model_channels"),
         "denoiser_num_heads": cfg.denoiser.get("num_heads"),
         "denoiser_attention_resolutions": cfg.denoiser.get("attention_resolutions"),
@@ -82,12 +80,8 @@ def train(cfg: DictConfig):
         "conditioner_embed_dim": cfg.conditioner.get("embed_dim"),
         "ae_ckpt": cfg.model.get("ae_load_state_file"),
         "unet_regr_ckpt": cfg.model.get("unet_regr"),
-        "train_input_paths": cfg.data.train.get("input"),
-        "train_target_paths": cfg.data.train.get("target"),
-        "val_input_paths": cfg.data.val.get("input") if cfg.data.get("val") else None,
-        "val_target_paths": cfg.data.val.get("target") if cfg.data.get("val") else None,
-        "test_input_paths": cfg.data.test.get("input") if cfg.data.get("test") else None,
-        "test_target_paths": cfg.data.test.get("target") if cfg.data.get("test") else None,
+        "beta_schedule": cfg.model.get("beta_schedule"),
+        
     })
 
     print("Wandb run name:", run_name)
@@ -116,8 +110,12 @@ def train(cfg: DictConfig):
     # Train
     trainer.fit(model=model, datamodule=datamodule, ckpt_path=cfg.get("ckpt_path"))
 
-    # Testing ckpt
     ckpt_path = trainer.checkpoint_callback.best_model_path if hasattr(trainer, "checkpoint_callback") else None
+
+    if ckpt_path:
+        logger.experiment.config.update({"best_checkpoint": ckpt_path})
+        logger.experiment.log({"best_checkpoint": ckpt_path})
+
     trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
 
 @hydra.main(version_base="1.3", config_path="configs", config_name="LDM_bivariate_config.yaml")

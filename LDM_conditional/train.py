@@ -95,8 +95,12 @@ def train(cfg: DictConfig):
     # Train
     trainer.fit(model=model, datamodule=datamodule, ckpt_path=cfg.get("ckpt_path"))
 
-    # Testing ckpt
     ckpt_path = trainer.checkpoint_callback.best_model_path if hasattr(trainer, "checkpoint_callback") else None
+
+    if ckpt_path:
+        logger.experiment.config.update({"best_checkpoint": ckpt_path})
+        logger.experiment.log({"best_checkpoint": ckpt_path})
+
     trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
 
 @hydra.main(version_base="1.3", config_path="configs", config_name="VAE_bivariate_config.yaml")
