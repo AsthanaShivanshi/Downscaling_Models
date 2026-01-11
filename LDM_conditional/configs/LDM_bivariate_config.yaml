@@ -3,7 +3,7 @@ defaults:
   - _self_
 
 
-latent_dim: 64  #Corr to optimum VAE latent dim : AsthanaSh
+latent_dim: 16  #Corr to optimum VAE latent dim : AsthanaSh
 
 
 experiment:
@@ -45,7 +45,7 @@ encoder:
 
 decoder:
   _target_: LDM_conditional.models.components.ae.SimpleConvDecoder
-  in_dim: 64
+  in_dim: 16
   levels: 2
   min_ch: 16
   out_dim: 2
@@ -133,8 +133,7 @@ model:
   
   context_encoder: ${conditioner}  #Conditions the denoiser with coarse UNet predictors: AsthanaSh
   #VAE ckpt loaded from the ae_load_state_file 
-  ae_load_state_file: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/VAE_ckpts/VAE_levels_latentdim_64_klweight_0.01_checkpoint.ckpt
-#Above VAE ckpt:Corr to optimum VAE latent dim 64 and kl weight : 0.001 : AsthanaSh
+  ae_load_state_file: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/VAE_ckpts/VAE_levels_latentdim_16_klweight_0.01_checkpoint.ckpt
 
   #Note : Output from LDM : [batch_size, 4, height, width] (AsthanaSh)
   lr: 1e-3
