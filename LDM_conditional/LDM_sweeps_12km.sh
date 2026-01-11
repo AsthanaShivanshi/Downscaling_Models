@@ -26,4 +26,4 @@ python -c "import wandb; print(wandb.__version__)"
 
 
 python LDM_conditional/train_LDM.py -m \
-  model.beta_schedule=linear,quadratic,cosine
+  model.beta_schedule=quadratic,cosine,linear

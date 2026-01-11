@@ -138,7 +138,7 @@ model:
   linear_end: 0.01
   #Note : Output from LDM : [batch_size, 4, height, width] (AsthanaSh)
   lr: 1e-4
-  lar_patience: 3
+  lr_patience: 3
   lr_factor: 0.5
   parameterization: "v"
   beta_schedule: "cosine"  #Could be "linear" or "cosine" or "quadratic"

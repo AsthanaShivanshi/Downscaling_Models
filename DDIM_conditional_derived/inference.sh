@@ -9,7 +9,7 @@
 #SBATCH --partition=gpu #Using GPU while DDIM sampling tbs. 
 #SBATCH --gres=gpu:1
 
-source diffscaler.sh
+source ../diffscaler.sh
 export PYTHONPATH="$PROJECT_DIR"
 mkdir -p logs/inference
 
@@ -22,4 +22,4 @@ which python
 python -c "import wandb; print(wandb.__version__)"
 
 #python DDIM_conditional_derived/inference_all_frames_CRPS.py
-python DDIM_conditional_derived/inference_all_frames_Huber.py
+python DDIM_conditional_derived/inference_single_frame_hierarchy.py --idx 26
