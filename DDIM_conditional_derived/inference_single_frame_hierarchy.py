@@ -158,7 +158,7 @@ def main(idx):
         loss_type="l2"
     )
     ddim_ckpt = torch.load(
-        "DDIM_conditional_derived/trained_ckpts/12km/DDIM_checkpoint_model.parameterization=0_model.timesteps=0_model.beta_schedule=0.ckpt",
+        "DDIM_conditional_derived/trained_ckpts/12km/DDIM_checkpoint_model.parameterization=0_model.timesteps=0_model.beta_schedule=0-v1.ckpt",
         map_location=device
     )
     ddim.load_state_dict(ddim_ckpt["state_dict"], strict=False)
@@ -228,7 +228,7 @@ def main(idx):
             axes[1, j].set_title(f"UNet Output (denorm) {channel_names[j]}")
             axes[1, j].axis('off')
             axes[2, j].imshow(np.flipud(ldm_pred_denorm[j]), cmap='coolwarm', vmin=vmins[j], vmax=vmaxs[j])
-            axes[2, j].set_title(f"LDM Output (denorm) {channel_names[j]}")
+            axes[2, j].set_title(f"DDIM stochastic generation (eta=0.0)Output (denorm) {channel_names[j]}")
             axes[2, j].axis('off')
             axes[3, j].imshow(np.flipud(target_denorm[j]), cmap='coolwarm', vmin=vmins[j], vmax=vmaxs[j])
             axes[3, j].set_title(f"Ground Truth (denorm) {channel_names[j]}")

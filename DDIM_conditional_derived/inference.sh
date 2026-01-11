@@ -22,4 +22,4 @@ which python
 python -c "import wandb; print(wandb.__version__)"
 
 #python DDIM_conditional_derived/inference_all_frames_CRPS.py
-python DDIM_conditional_derived/inference_single_frame_hierarchy.py --idx 26
+python DDIM_conditional_derived/inference_single_frame_hierarchy.py --idx 10
