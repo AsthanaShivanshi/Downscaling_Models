@@ -72,7 +72,9 @@ class LatentDiffusion(LightningModule):
         linear_start=1e-4,
         linear_end=2e-2,
         cosine_s=8e-3,
-        parameterization="eps",  # all assuming fixed variance schedules
+        lr_patience=3,
+        lr_factor=0.5,
+        parameterization="eps",  # all assuming fixed variance schedules,, changeable from config to v and x0
         ae_load_state_file:str= None,
     ):
         super().__init__()
@@ -90,6 +92,8 @@ class LatentDiffusion(LightningModule):
         self.context_encoder = context_encoder
         self.lr = lr
         self.lr_warmup = lr_warmup
+        self.lr_patience = lr_patience
+        self.lr_factor = lr_factor
 
         assert parameterization in ["eps", "x0", "v"], 'currently only supporting "eps" and "x0" and "v"'
         self.parameterization = parameterization
@@ -303,9 +307,9 @@ class LatentDiffusion(LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr,
-            betas=(0.5, 0.9), weight_decay=1e-3)
+        betas=(0.5, 0.9), weight_decay=1e-3)
         reduce_lr = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, patience=3, factor=0.25
+            optimizer, patience=self.lr_patience, factor=self.lr_factor
         )
         return {
             "optimizer": optimizer,

@@ -22,8 +22,8 @@ export HYDRA_FULL_ERROR=1
 which python
 python -c "import wandb; print(wandb.__version__)"
 
-#ldm sweep
+#ldm sweep :::: hydra multirun
 
-python LDM_conditional/train_LDM.py -m --config-name LDM_bivariate_config.yaml \
-  model.parameterization=eps,v \
-  sampler.schedule=cosine,linear,quadratic
+
+python LDM_conditional/train_LDM.py -m \
+  model.beta_schedule=linear,quadratic,cosine
