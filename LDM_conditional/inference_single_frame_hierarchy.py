@@ -104,6 +104,8 @@ def main(idx):
         channel_names=["precip", "temp"],
         precip_scaling_json="Dataset_Setup_I_Chronological_12km/RhiresD_scaling_params.json",
     )
+
+
     unet_regr_ckpt = torch.load(
         "LDM_conditional/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_logtransform_lr0.01_precip_loss_weight5.0_1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt",
         map_location="cpu", weights_only=False
@@ -167,7 +169,11 @@ def main(idx):
         context_encoder=conditioner,
         timesteps=1000,
         parameterization="v",
-        loss_type="l2"
+        loss_type="l2",
+        beta_schedule="quadratic",   
+        linear_start=1e-4,       
+        linear_end=2e-2,            
+        cosine_s=8e-3               
     )
 
 
@@ -199,8 +205,10 @@ def main(idx):
 
         latent_shape = (1, 16, unet_pred.shape[2] // 4, unet_pred.shape[3] // 4)
         z = torch.randn(latent_shape, device=device)
+
+
         sampled_latent, _ = sampler.sample(
-            S=500,
+            S=1000,
             batch_size=1,
             shape=latent_shape[1:],
             conditioning=[(unet_pred, None)],
@@ -277,14 +285,20 @@ def main(idx):
 
 
         #Printing stats : debug
-        print("mu shape:", mu.shape)
-        print("z_vae shape:", z_vae.shape)
-        print("z (LDM input) shape:", z.shape)
+        print("unet_pred shape:", unet_pred.shape)
         print("sampled_latent shape:", sampled_latent.shape)
         print("unet_pred stats:", unet_pred.min().item(), unet_pred.max().item(), torch.isnan(unet_pred).any().item())
         print("generated_residual stats:", generated_residual.min().item(), generated_residual.max().item(), torch.isnan(generated_residual).any().item())
         print("final_pred stats:", final_pred.min().item(), final_pred.max().item(), torch.isnan(final_pred).any().item())
+        print("sampled_latent stats:", sampled_latent.min().item(), sampled_latent.max().item(), torch.isnan(sampled_latent).any().item())
+        print("z stats:", z.min().item(), z.max().item(), torch.isnan(z).any().item())
+        print("z_vae stats:", z_vae.min().item(), z_vae.max().item(), torch.isnan(z_vae).any().item())
+        print("mu stats:", mu.min().item(), mu.max().item(), torch.isnan(mu).any().item())
+        print("std stats:", std.min().item(), std.max().item(), torch.isnan(std).any().item())
 
+
+
+        
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--idx", type=int, default=26, help="index to plot")

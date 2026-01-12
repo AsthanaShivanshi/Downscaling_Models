@@ -31,17 +31,34 @@ def make_ddim_timesteps(ddim_discr_method, num_ddim_timesteps, num_ddpm_timestep
     return steps_out
 
 
+
+#Problematic function for large alphas close to 1 ::: AsthanaSh
+#Div0 errors in computing sigmas,,, alphas being exactly 1 initially lead to nan values in sigmas, 
 def make_ddim_sampling_parameters(alphacums, ddim_timesteps, eta, verbose=True):
     # select alphas for computing the variance schedule
     alphas = alphacums[ddim_timesteps]
+
+
     alphas_prev = np.asarray([alphacums[0]] + alphacums[ddim_timesteps[:-1]].tolist())
 
     # according the the formula provided in https://arxiv.org/abs/2010.02502
-    sigmas = eta * np.sqrt((1 - alphas_prev) / (1 - alphas) * (1 - alphas / alphas_prev))
+
+    #Is first few alphas==1, div0 error, For avoiding nan values in such cases, clipping ::: AsthanaSh
+    #Doesnt affect trainingm, affects inference. 
+    eps=1e-7
+
+    
+    alphas=np.clip(alphas, eps, 1.0-eps) #Small value to avoid alphas being exactly 1
+
+
+    alphas_prev=np.clip(alphas_prev, eps, 1.0-eps)
+
+
+    sigmas = np.clip(eta * np.sqrt((1 - alphas_prev) / (1 - alphas) * (1 - alphas / alphas_prev),0,None))
     if verbose:
         print(f'Selected alphas for ddim sampler: a_t: {alphas}; a_(t-1): {alphas_prev}')
         print(f'For the chosen value of eta, which is {eta}, '
-              f'this results in the following sigma_t schedule for ddim sampler {sigmas}')
+              f'this results in the following sigma_t schedule for ddim sampler {sigmas}') #first few sigmas may be nan if alphas are 1: AsthanaSh
     return sigmas, alphas, alphas_prev
 
 

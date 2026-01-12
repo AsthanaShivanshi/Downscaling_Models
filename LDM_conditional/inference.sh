@@ -11,7 +11,6 @@
 
 source ../diffscaler.sh
 export PYTHONPATH="$PROJECT_DIR"
-mkdir -p logs/inference
 
 export WANDB_MODE=online
 export PYTHONUNBUFFERED=1
