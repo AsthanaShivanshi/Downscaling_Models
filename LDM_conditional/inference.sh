@@ -9,9 +9,9 @@
 #SBATCH --partition=gpu #Using GPU while LDM sampling tbs. 
 #SBATCH --gres=gpu:1
 
-source diffscaler.sh
+source ../diffscaler.sh
 export PYTHONPATH="$PROJECT_DIR"
-mkdir -p logs/ckpts_LDM
+mkdir -p logs/inference
 
 export WANDB_MODE=online
 export PYTHONUNBUFFERED=1
@@ -21,6 +21,7 @@ export HYDRA_FULL_ERROR=1
 which python
 python -c "import wandb; print(wandb.__version__)"
 
-python LDM_conditional/inference_all_frames_CRPS.py
-#python LDM_conditional/inference_all_frames_YeoJohnson.py
+python LDM_conditional/inference_single_frame_hierarchy.py --idx 25
+python LDM_conditional/inference_single_frame_hierarchy.py --idx 10
+python LDM_conditional/inference_single_frame_hierarchy.py --idx 23
 
