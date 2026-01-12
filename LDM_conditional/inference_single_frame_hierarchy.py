@@ -9,11 +9,13 @@ sys.path.append("..")
 sys.path.append("../..")
 
 from models.unet_module import DownscalingUnetLightning
+from models.ae_module import AutoencoderKL
+from models.components.ae import SimpleConvEncoder, SimpleConvDecoder
+from models.components.ldm.denoiser import UNetModel
+from models.components.ldm.denoiser.ddim import DDIMSampler
+from models.components.ldm.conditioner import AFNOConditionerNetCascade
+from models.ldm_module import LatentDiffusion
 from DownscalingDataModule import DownscalingDataModule
-from models.components.diff.denoiser.unet import UNetModel
-from models.components.diff.denoiser.ddim import DDIMSampler
-from models.components.diff.conditioner import AFNOConditionerNetCascade
-from models.diff_module import DDIMResidualContextual
 
 def denorm_pr(x, pr_params):
     return np.exp(x * pr_params['std'] + pr_params['mean']) - pr_params['epsilon']
@@ -23,26 +25,21 @@ def denorm_temp(x, params):
 
 
 
+#Running from downscaling models due to sourcing env diffscaler.sh
+
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
+
+
 def main(idx):
-
-
-
-
     with open("Dataset_Setup_I_Chronological_12km/RhiresD_scaling_params.json", 'r') as f:
         pr_params = json.load(f)
     with open("Dataset_Setup_I_Chronological_12km/TabsD_scaling_params.json", 'r') as f:
         temp_params = json.load(f)
 
-
-
-
-
-
-
-
+    # Data paths
     train_input_paths = {
         'precip': "Dataset_Setup_I_Chronological_12km/RhiresD_input_train_scaled.nc",
         'temp': "Dataset_Setup_I_Chronological_12km/TabsD_input_train_scaled.nc",
@@ -72,7 +69,7 @@ def main(idx):
 
 
 
-
+    # DM
     dm = DownscalingDataModule(
         train_input=train_input_paths,
         train_target=train_target_paths,
@@ -94,19 +91,8 @@ def main(idx):
 
 
     dm.setup()
-    train_loader = dm.train_dataloader()
-    val_loader = dm.val_dataloader()
     test_loader = dm.test_dataloader()
-
-
-
-
-    train_inputs, train_targets = next(iter(train_loader))
-    val_inputs, val_targets = next(iter(val_loader))
     test_inputs, test_targets = next(iter(test_loader))
-
-
-
 
 
 
@@ -126,69 +112,126 @@ def main(idx):
     unet_regr = unet_regr.to(device)
     unet_regr.eval()
 
-    
 
-    # DDIM
+
+    # VAE
+    encoder = SimpleConvEncoder(in_dim=2, levels=2, min_ch=16, ch_mult=4)
+    decoder = SimpleConvDecoder(in_dim=16, levels=2, min_ch=16, out_dim=2, ch_mult=4)
+    vae_model = AutoencoderKL(
+        encoder=encoder,
+        decoder=decoder,
+        kl_weight=0.001,
+        ae_flag="residual",
+        unet_regr=unet_regr,
+        latent_dim=16
+    )
+    vae_ckpt = torch.load(
+        "LDM_conditional/trained_ckpts_optimised/12km/VAE_ckpts/VAE_levels_latentdim_16_klweight_0.001_checkpoint.ckpt",
+        map_location="cpu"
+    )["state_dict"]
+    vae_model.load_state_dict(vae_ckpt, strict=False)
+    vae_model = vae_model.to(device)
+
+    vae_model.eval()
+
+
     denoiser = UNetModel(
-        model_channels=32,
-        in_channels=2,
-        out_channels=2,
+        model_channels=64,
+        in_channels=16,
+        out_channels=16,
         num_res_blocks=2,
         attention_resolutions=[1, 2, 4],
-        context_ch=[32, 64, 128],
-        channel_mult=[1, 2, 4],
+        context_ch=[64, 128, 256, 256],
+        channel_mult=[1, 2, 4, 4],
         conv_resample=True,
         dims=2,
         use_fp16=False,
-        num_heads=2
+        num_heads=4
     )
+
+
+
     conditioner = AFNOConditionerNetCascade(
-        autoencoder=None,
-        input_channels=[2],
-        embed_dim=[32, 64, 128],
-        analysis_depth=3,
-        cascade_depth=3,
-        context_ch=[32, 64, 128]
+        autoencoder=vae_model,
+        embed_dim=[64, 128, 256, 256],
+        analysis_depth=4,
+        cascade_depth=4,
+        context_ch=[64, 128, 256, 256]
     )
-    ddim = DDIMResidualContextual(
+
+
+
+    ldm = LatentDiffusion(
         denoiser=denoiser,
+        autoencoder=vae_model,
         context_encoder=conditioner,
         timesteps=1000,
         parameterization="v",
         loss_type="l2"
     )
-    ddim_ckpt = torch.load(
-        "DDIM_conditional_derived/trained_ckpts/12km/DDIM_checkpoint_model.parameterization=0_model.timesteps=0_model.beta_schedule=0-v2.ckpt",
+
+
+
+    ldm_ckpt = torch.load(
+        "LDM_conditional/trained_ckpts_optimised/12km/LDM_ckpts/LDM_ckpt_model.parameterization=0_model.timesteps=0_model.noise_schedule=0_lr0.0001_latent_dim16_checkpoint.ckpt",
         map_location=device
     )
-    ddim.load_state_dict(ddim_ckpt["state_dict"], strict=False)
-    ddim = ddim.to(device)
-    ddim.eval()
-    sampler = DDIMSampler(ddim, device=device)
+
+
+
+    ldm.load_state_dict(ldm_ckpt["state_dict"], strict=False)
+    ldm = ldm.to(device)
+    ldm.eval()
+    sampler = DDIMSampler(ldm, device=device)
+
 
     # inf
     with torch.no_grad():
         input_sample = test_inputs[idx].unsqueeze(0).to(device)  # (1, C_in, H, W)
-        unet_pred = unet_regr(input_sample)                      # (1, C_out, H, W)
-        context = [(unet_pred, None)]
-        sample_shape = unet_pred.shape[1:]                       # (C_out, H, W)
-        z = torch.randn((1, *sample_shape), device=device)       # (1, C_out, H, W)
+        unet_pred = unet_regr(input_sample)                   
 
-        residual, _ = sampler.sample(
-            S=1000,
+        mu, logvar = vae_model.encode(unet_pred)
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+        z_vae = mu + eps * std
+
+
+
+        latent_shape = (1, 16, unet_pred.shape[2] // 4, unet_pred.shape[3] // 4)
+        z = torch.randn(latent_shape, device=device)
+        sampled_latent, _ = sampler.sample(
+            S=500,
             batch_size=1,
-            shape=sample_shape,
-            conditioning=context,
+            shape=latent_shape[1:],
+            conditioning=[(unet_pred, None)],
             eta=0.0,
-            verbose=False,
+            verbose=True,
             x_T=z,
         )
-        final_pred = unet_pred + residual
+        generated_residual = vae_model.decode(sampled_latent)
 
-        final_pred_np = final_pred[0].cpu().numpy()              # (C_out, H, W)
-        unet_pred_np = unet_pred[0].cpu().numpy()                # (C_out, H, W)
-        input_np = input_sample[0, :unet_pred_np.shape[0]].cpu().numpy()  # (C_out, H, W)
-        target_np = test_targets[idx][:unet_pred_np.shape[0]].cpu().numpy()  # (C_out, H, W)
+
+        if generated_residual.shape != unet_pred.shape:
+            _, _, h1, w1 = unet_pred.shape
+            _, _, h2, w2 = generated_residual.shape
+            crop_h = min(h1, h2)
+            crop_w = min(w1, w2)
+            start_h = (h2 - crop_h) // 2
+            start_w = (w2 - crop_w) // 2
+            generated_residual = generated_residual[:, :, start_h:start_h+crop_h, start_w:start_w+crop_w]
+            if h1 != crop_h or w1 != crop_w:
+                start_h_u = (h1 - crop_h) // 2
+                start_w_u = (w1 - crop_w) // 2
+                unet_pred = unet_pred[:, :, start_h_u:start_h_u+crop_h, start_w_u:start_w_u+crop_w]
+        final_pred = unet_pred + generated_residual
+
+
+
+
+        final_pred_np = final_pred[0].cpu().numpy()
+        unet_pred_np = unet_pred[0].cpu().numpy()
+        input_np = input_sample[0, :unet_pred_np.shape[0]].cpu().numpy()
+        target_np = test_targets[idx][:unet_pred_np.shape[0]].cpu().numpy()
 
         channel_names = ["Precip", "Temp"]
         params_list = [pr_params, temp_params]
@@ -196,23 +239,15 @@ def main(idx):
         input_denorm = np.empty_like(input_np)
         for i, params in enumerate(params_list):
             input_denorm[i] = denorm_pr(input_np[i], pr_params) if i == 0 else denorm_temp(input_np[i], params)
-
         unet_pred_denorm = np.empty_like(unet_pred_np)
         for i, params in enumerate(params_list):
             unet_pred_denorm[i] = denorm_pr(unet_pred_np[i], pr_params) if i == 0 else denorm_temp(unet_pred_np[i], params)
-
         ldm_pred_denorm = np.empty_like(final_pred_np)
         for i, params in enumerate(params_list):
             ldm_pred_denorm[i] = denorm_pr(final_pred_np[i], pr_params) if i == 0 else denorm_temp(final_pred_np[i], params)
-
         target_denorm = np.empty_like(target_np)
         for i, params in enumerate(params_list):
             target_denorm[i] = denorm_pr(target_np[i], pr_params) if i == 0 else denorm_temp(target_np[i], params)
-
-        print("input_denorm", np.nanmin(input_denorm), np.nanmax(input_denorm))
-        print("unet_pred_denorm", np.nanmin(unet_pred_denorm), np.nanmax(unet_pred_denorm))
-        print("ddim_pred_denorm", np.nanmin(ldm_pred_denorm), np.nanmax(ldm_pred_denorm))
-        print("target_denorm", np.nanmin(target_denorm), np.nanmax(target_denorm))
 
         vmins = [min(input_denorm[j].min(), unet_pred_denorm[j].min(), ldm_pred_denorm[j].min(), target_denorm[j].min()) for j in range(len(params_list))]
         vmaxs = [max(input_denorm[j].max(), unet_pred_denorm[j].max(), ldm_pred_denorm[j].max(), target_denorm[j].max()) for j in range(len(params_list))]
@@ -228,7 +263,7 @@ def main(idx):
             axes[1, j].set_title(f"UNet Output (denorm) {channel_names[j]}")
             axes[1, j].axis('off')
             axes[2, j].imshow(np.flipud(ldm_pred_denorm[j]), cmap='coolwarm', vmin=vmins[j], vmax=vmaxs[j])
-            axes[2, j].set_title(f"DDIM stochastic generation (eta=0.0)Output (denorm) {channel_names[j]}")
+            axes[2, j].set_title(f"LDM Output (denorm) {channel_names[j]}")
             axes[2, j].axis('off')
             axes[3, j].imshow(np.flipud(target_denorm[j]), cmap='coolwarm', vmin=vmins[j], vmax=vmaxs[j])
             axes[3, j].set_title(f"Ground Truth (denorm) {channel_names[j]}")
@@ -236,13 +271,22 @@ def main(idx):
             cbar = fig.colorbar(axes[0, j].images[0], ax=axes[:, j], fraction=0.02, pad=0.01)
             cbar.ax.set_ylabel(channel_names[j])
 
-        fig.savefig(f"DDIM_conditional_derived/outputs/debug_output_{idx}_model_2.png")
-        print(f"Plot saved as debug_output_{idx}_model_2.png")
+        fig.savefig(f"LDM_conditional/outputs/debug_output_{idx}_ldm_hierarchy.png")
+        print(f"Plot saved as debug_output_{idx}_ldm_hierarchy.png")
+
+
+
+        #Printing stats : debug
+        print("mu shape:", mu.shape)
+        print("z_vae shape:", z_vae.shape)
+        print("z (LDM input) shape:", z.shape)
+        print("sampled_latent shape:", sampled_latent.shape)
+        print("unet_pred stats:", unet_pred.min().item(), unet_pred.max().item(), torch.isnan(unet_pred).any().item())
+        print("generated_residual stats:", generated_residual.min().item(), generated_residual.max().item(), torch.isnan(generated_residual).any().item())
+        print("final_pred stats:", final_pred.min().item(), final_pred.max().item(), torch.isnan(final_pred).any().item())
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--idx", type=int, default=26, help="index to plot")
     args = parser.parse_args()
     main(args.idx)
-
-  #index plotting from from the slurm script
