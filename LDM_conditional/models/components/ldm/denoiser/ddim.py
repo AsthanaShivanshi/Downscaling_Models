@@ -54,7 +54,13 @@ def make_ddim_sampling_parameters(alphacums, ddim_timesteps, eta, verbose=True):
     alphas_prev=np.clip(alphas_prev, eps, 1.0-eps)
 
 
-    sigmas = np.clip(eta * np.sqrt((1 - alphas_prev) / (1 - alphas) * (1 - alphas / alphas_prev),0,None))
+    sigmas = eta * np.sqrt(
+    np.clip(
+        (1 - alphas_prev) / (1 - alphas) * (1 - alphas / alphas_prev),
+        0, None
+    )
+)
+
     if verbose:
         print(f'Selected alphas for ddim sampler: a_t: {alphas}; a_(t-1): {alphas_prev}')
         print(f'For the chosen value of eta, which is {eta}, '

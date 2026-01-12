@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import json
 import sys
+import xarray as xr
 
 sys.path.append("..")
 sys.path.append("../..")
@@ -25,13 +26,10 @@ def denorm_temp(x, params):
 
 
 
-#Running from downscaling models due to sourcing env diffscaler.sh
-
+with xr.open_dataset("Dataset_Setup_I_Chronological_12km/RhiresD_target_train_scaled.nc") as ds:
+    precip_mask_full = ~np.isnan(ds["RhiresD"].values[0])  # shape [H_full, W_full]
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
-
 
 def main(idx):
     with open("Dataset_Setup_I_Chronological_12km/RhiresD_scaling_params.json", 'r') as f:
@@ -39,7 +37,10 @@ def main(idx):
     with open("Dataset_Setup_I_Chronological_12km/TabsD_scaling_params.json", 'r') as f:
         temp_params = json.load(f)
 
-    # Data paths
+
+
+
+
     train_input_paths = {
         'precip': "Dataset_Setup_I_Chronological_12km/RhiresD_input_train_scaled.nc",
         'temp': "Dataset_Setup_I_Chronological_12km/TabsD_input_train_scaled.nc",
@@ -66,9 +67,6 @@ def main(idx):
     }
     elevation_path = 'elevation.tif'
 
-
-
-
     # DM
     dm = DownscalingDataModule(
         train_input=train_input_paths,
@@ -89,12 +87,9 @@ def main(idx):
         }
     )
 
-
     dm.setup()
     test_loader = dm.test_dataloader()
     test_inputs, test_targets = next(iter(test_loader))
-
-
 
     # UNet
     unet_regr = DownscalingUnetLightning(
@@ -105,7 +100,6 @@ def main(idx):
         precip_scaling_json="Dataset_Setup_I_Chronological_12km/RhiresD_scaling_params.json",
     )
 
-
     unet_regr_ckpt = torch.load(
         "LDM_conditional/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_logtransform_lr0.01_precip_loss_weight5.0_1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt",
         map_location="cpu", weights_only=False
@@ -113,8 +107,6 @@ def main(idx):
     unet_regr.load_state_dict(unet_regr_ckpt, strict=False)
     unet_regr = unet_regr.to(device)
     unet_regr.eval()
-
-
 
     # VAE
     encoder = SimpleConvEncoder(in_dim=2, levels=2, min_ch=16, ch_mult=4)
@@ -133,9 +125,7 @@ def main(idx):
     )["state_dict"]
     vae_model.load_state_dict(vae_ckpt, strict=False)
     vae_model = vae_model.to(device)
-
     vae_model.eval()
-
 
     denoiser = UNetModel(
         model_channels=64,
@@ -151,8 +141,6 @@ def main(idx):
         num_heads=4
     )
 
-
-
     conditioner = AFNOConditionerNetCascade(
         autoencoder=vae_model,
         embed_dim=[64, 128, 256, 256],
@@ -160,8 +148,6 @@ def main(idx):
         cascade_depth=4,
         context_ch=[64, 128, 256, 256]
     )
-
-
 
     ldm = LatentDiffusion(
         denoiser=denoiser,
@@ -173,23 +159,17 @@ def main(idx):
         beta_schedule="quadratic",   
         linear_start=1e-4,       
         linear_end=2e-2,            
-        cosine_s=8e-3               
     )
-
-
 
     ldm_ckpt = torch.load(
         "LDM_conditional/trained_ckpts_optimised/12km/LDM_ckpts/LDM_ckpt_model.parameterization=0_model.timesteps=0_model.noise_schedule=0_lr0.0001_latent_dim16_checkpoint.ckpt",
         map_location=device
     )
 
-
-
     ldm.load_state_dict(ldm_ckpt["state_dict"], strict=False)
     ldm = ldm.to(device)
     ldm.eval()
     sampler = DDIMSampler(ldm, device=device)
-
 
     # inf
     with torch.no_grad():
@@ -201,14 +181,11 @@ def main(idx):
         eps = torch.randn_like(std)
         z_vae = mu + eps * std
 
-
-
         latent_shape = (1, 16, unet_pred.shape[2] // 4, unet_pred.shape[3] // 4)
         z = torch.randn(latent_shape, device=device)
 
-
         sampled_latent, _ = sampler.sample(
-            S=1000,
+            S=50,
             batch_size=1,
             shape=latent_shape[1:],
             conditioning=[(unet_pred, None)],
@@ -218,7 +195,7 @@ def main(idx):
         )
         generated_residual = vae_model.decode(sampled_latent)
 
-
+        # Crop arrays if needed to match shapes
         if generated_residual.shape != unet_pred.shape:
             _, _, h1, w1 = unet_pred.shape
             _, _, h2, w2 = generated_residual.shape
@@ -232,9 +209,6 @@ def main(idx):
                 start_w_u = (w1 - crop_w) // 2
                 unet_pred = unet_pred[:, :, start_h_u:start_h_u+crop_h, start_w_u:start_w_u+crop_w]
         final_pred = unet_pred + generated_residual
-
-
-
 
         final_pred_np = final_pred[0].cpu().numpy()
         unet_pred_np = unet_pred[0].cpu().numpy()
@@ -257,34 +231,47 @@ def main(idx):
         for i, params in enumerate(params_list):
             target_denorm[i] = denorm_pr(target_np[i], pr_params) if i == 0 else denorm_temp(target_np[i], params)
 
-        vmins = [min(input_denorm[j].min(), unet_pred_denorm[j].min(), ldm_pred_denorm[j].min(), target_denorm[j].min()) for j in range(len(params_list))]
-        vmaxs = [max(input_denorm[j].max(), unet_pred_denorm[j].max(), ldm_pred_denorm[j].max(), target_denorm[j].max()) for j in range(len(params_list))]
+        # Ensure precip_mask matches data shape
+        arr_h, arr_w = target_denorm[0].shape
+        mask_h, mask_w = precip_mask_full.shape
+        if mask_h != arr_h or mask_w != arr_w:
+            start_h = (mask_h - arr_h) // 2
+            start_w = (mask_w - arr_w) // 2
+            precip_mask = precip_mask_full[start_h:start_h+arr_h, start_w:start_w+arr_w]
+        else:
+            precip_mask = precip_mask_full
+
+        vmins = [target_denorm[j][precip_mask].min() if channel_names[j].lower().startswith("precip")
+                else target_denorm[j].min() for j in range(len(params_list))]
+        vmaxs = [target_denorm[j][precip_mask].max() if channel_names[j].lower().startswith("precip")
+                else target_denorm[j].max() for j in range(len(params_list))]
 
         fig, axes = plt.subplots(4, len(params_list), figsize=(5*len(params_list), 12), dpi=150)
         if len(params_list) == 1:
             axes = axes[:, np.newaxis]
-        for j in range(len(params_list)):
-            axes[0, j].imshow(np.flipud(input_denorm[j]), cmap='coolwarm', vmin=vmins[j], vmax=vmaxs[j])
-            axes[0, j].set_title(f"Input (denorm) {channel_names[j]}")
-            axes[0, j].axis('off')
-            axes[1, j].imshow(np.flipud(unet_pred_denorm[j]), cmap='coolwarm', vmin=vmins[j], vmax=vmaxs[j])
-            axes[1, j].set_title(f"UNet Output (denorm) {channel_names[j]}")
-            axes[1, j].axis('off')
-            axes[2, j].imshow(np.flipud(ldm_pred_denorm[j]), cmap='coolwarm', vmin=vmins[j], vmax=vmaxs[j])
-            axes[2, j].set_title(f"LDM Output (denorm) {channel_names[j]}")
-            axes[2, j].axis('off')
-            axes[3, j].imshow(np.flipud(target_denorm[j]), cmap='coolwarm', vmin=vmins[j], vmax=vmaxs[j])
-            axes[3, j].set_title(f"Ground Truth (denorm) {channel_names[j]}")
-            axes[3, j].axis('off')
+
+        for j, params in enumerate(params_list):
+            arrs = [input_denorm[j], unet_pred_denorm[j], ldm_pred_denorm[j], target_denorm[j]]
+            for i, arr in enumerate(arrs):
+                arr_to_plot = arr.copy()
+                if channel_names[j].lower().startswith("precip"):
+                    mask_h, mask_w = precip_mask.shape
+                    arr_h, arr_w = arr_to_plot.shape
+                    if mask_h != arr_h or mask_w != arr_w:
+                        start_h = (mask_h - arr_h) // 2
+                        start_w = (mask_w - arr_w) // 2
+                        mask_cropped = precip_mask[start_h:start_h+arr_h, start_w:start_w+arr_w]
+                    else:
+                        mask_cropped = precip_mask
+                    arr_to_plot[~mask_cropped] = np.nan
+                axes[i, j].imshow(np.flipud(arr_to_plot), cmap='coolwarm', vmin=vmins[j], vmax=vmaxs[j])
+                axes[i, j].set_title(f"{['Input','UNet Output','LDM Output','Ground Truth'][i]} (denorm) {channel_names[j]}")
+                axes[i, j].axis('off')
             cbar = fig.colorbar(axes[0, j].images[0], ax=axes[:, j], fraction=0.02, pad=0.01)
             cbar.ax.set_ylabel(channel_names[j])
 
-        fig.savefig(f"LDM_conditional/outputs/debug_output_{idx}_ldm_hierarchy.png")
-        print(f"Plot saved as debug_output_{idx}_ldm_hierarchy.png")
+        plt.savefig(f"LDM_conditional/outputs/ldm_inference_hierarchy_idx{idx}_{channel_names[j]}.png")
 
-
-
-        #Printing stats : debug
         print("unet_pred shape:", unet_pred.shape)
         print("sampled_latent shape:", sampled_latent.shape)
         print("unet_pred stats:", unet_pred.min().item(), unet_pred.max().item(), torch.isnan(unet_pred).any().item())
@@ -296,9 +283,6 @@ def main(idx):
         print("mu stats:", mu.min().item(), mu.max().item(), torch.isnan(mu).any().item())
         print("std stats:", std.min().item(), std.max().item(), torch.isnan(std).any().item())
 
-
-
-        
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--idx", type=int, default=26, help="index to plot")
