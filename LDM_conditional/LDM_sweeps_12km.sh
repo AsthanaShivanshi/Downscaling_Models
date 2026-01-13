@@ -11,9 +11,10 @@
 
 source ../diffscaler.sh
 export PYTHONPATH="$PROJECT_DIR"
-mkdir -p logs/ckpts_LDM/LDM/
+cd LDM_conditional
 
-cd "$PROJECT_DIR"
+mkdir -p logs/ckpts_LDM/
+
 export WANDB_MODE=online
 export WANDB_START_METHOD=thread
 export PYTHONUNBUFFERED=1
@@ -22,8 +23,21 @@ export HYDRA_FULL_ERROR=1
 which python
 python -c "import wandb; print(wandb.__version__)"
 
-#ldm sweep :::: hydra multirun
+python train_LDM.py --multirun --config-name LDM_bivariate_config.yaml \
+  model.beta_schedule=cosine model.cosine_s=8e-3 model.loss_type=l1
+python train_LDM.py --multirun --config-name LDM_bivariate_config.yaml \
+  model.beta_schedule=cosine model.cosine_s=1e-2 model.loss_type=l2
+python train_LDM.py --multirun --config-name LDM_bivariate_config.yaml \
+  model.beta_schedule=quadratic model.linear_end=1e-3 model.loss_type=l1
+python train_LDM.py --multirun --config-name LDM_bivariate_config.yaml \
+  model.beta_schedule=quadratic model.linear_end=5e-3 model.loss_type=l2
+python train_LDM.py --multirun --config-name LDM_bivariate_config.yaml \
+  model.beta_schedule=cosine model.cosine_s=8e-3 model.loss_type=l2
+python train_LDM.py --multirun --config-name LDM_bivariate_config.yaml \
+  model.beta_schedule=cosine model.cosine_s=1e-2 model.loss_type=l1
 
 
-python LDM_conditional/train_LDM.py -m \
-  model.beta_schedule=quadratic,cosine,linear
+# Each sweep corresponds to a different combination of beta schedule and loss type,,, -- is crucial to separate diff runs
+# total runs =6
+
+#VAE being used : VAE_levels_latentdim_64_klweight_0.01_checkpoint.ckpt

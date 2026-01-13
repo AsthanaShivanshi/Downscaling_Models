@@ -179,13 +179,13 @@ def main(idx):
         mu, logvar = vae_model.encode(unet_pred)
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
-        z_vae = mu + eps * std
+        z_vae = mu #+ eps * std
 
         latent_shape = (1, 16, unet_pred.shape[2] // 4, unet_pred.shape[3] // 4)
         z = torch.randn(latent_shape, device=device)
 
         sampled_latent, _ = sampler.sample(
-            S=50,
+            S=25,
             batch_size=1,
             shape=latent_shape[1:],
             conditioning=[(unet_pred, None)],

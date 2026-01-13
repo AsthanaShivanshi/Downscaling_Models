@@ -81,6 +81,9 @@ def train(cfg: DictConfig):
         "ae_ckpt": cfg.model.get("ae_load_state_file"),
         "unet_regr_ckpt": cfg.model.get("unet_regr"),
         "beta_schedule": cfg.model.get("beta_schedule"),
+        "linear_start": cfg.model.get("linear_start"),
+        "linear_end": cfg.model.get("linear_end"),
+        "cosine_s": cfg.model.get("cosine_s"),
         
     })
 

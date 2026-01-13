@@ -203,65 +203,79 @@ class LatentDiffusion(LightningModule):
                 extract_into_tensor(self.sqrt_one_minus_alphas_cumprod, t, x_t.shape) * x_t
         )
 
-    def get_loss(self, pred, target, mean=True):
-        if self.loss_type == 'crps':
-            # pred: [n_samples, batch, channels, ...]
-            # target: [batch, channels, ...]
-            return empirical_crps(pred, target)
-        elif self.loss_type == 'l1':
-            loss = (target - pred).abs()
-            if mean:
-                loss = loss.mean()
-        elif self.loss_type == 'l2':
-            if mean:
-                loss = torch.nn.functional.mse_loss(target, pred)
-            else:
-                loss = torch.nn.functional.mse_loss(target, pred, reduction='none')
-        else:
-            raise NotImplementedError("unknown loss type '{loss_type}'")
-        return loss
 
-    def p_losses(self, x_start, t, noise=None, context=None):
-        if self.loss_type == 'crps':
-            n_samples = 10  
-            samples = []
-            for _ in range(n_samples):
-                noise = torch.randn_like(x_start)
+
+
+    def get_loss(self, pred, target, mean=True, channelwise=False):
+            if self.loss_type == 'crps':
+                return empirical_crps(pred, target)
+            elif self.loss_type == 'l1':
+                loss = (target - pred).abs()
+                if channelwise:
+                    #mean over batch and spatial
+                    dims = tuple(i for i in range(loss.ndim) if i != 1)
+                    return loss.mean(dim=dims)
+                if mean:
+                    loss = loss.mean()
+            elif self.loss_type == 'l2':
+                loss = (target - pred) ** 2
+                if channelwise:
+                    dims = tuple(i for i in range(loss.ndim) if i != 1)
+                    return loss.mean(dim=dims)
+                if mean:
+                    loss = loss.mean()
+            else:
+                raise NotImplementedError(f"unknown loss type '{self.loss_type}'")
+            return loss
+
+
+
+
+
+    def p_losses(self, x_start, t, noise=None, context=None, channelwise=False):
+            if self.loss_type == 'crps':
+                # Not implemented for channelwise
+                n_samples = 10  
+                samples = []
+                for _ in range(n_samples):
+                    noise = torch.randn_like(x_start)
+                    x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
+                    denoiser_out = self.denoiser(x_noisy, t, context=context)
+                    samples.append(denoiser_out)
+                samples = torch.stack(samples)
+                if self.parameterization == "eps":
+                    target = noise
+                elif self.parameterization == "x0":
+                    target = x_start
+                elif self.parameterization == "v":
+                    target = self.get_v(x_start, noise, t)
+                else:
+                    raise NotImplementedError(f"Parameterization {self.parameterization} not yet supported")
+                return self.get_loss(samples, target, mean=True)
+            else:
+                if noise is None:
+                    noise = torch.randn_like(x_start)
                 x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
                 denoiser_out = self.denoiser(x_noisy, t, context=context)
-                samples.append(denoiser_out)
-            samples = torch.stack(samples)  # [n_samples, batch, channels, ...]
+                if self.parameterization == "eps":
+                    target = noise
+                elif self.parameterization == "x0":
+                    target = x_start
+                elif self.parameterization == "v":
+                    target = self.get_v(x_start, noise, t)
+                else:
+                    raise NotImplementedError(f"Parameterization {self.parameterization} not yet supported")
+                return self.get_loss(denoiser_out, target, mean=False, channelwise=channelwise).mean(), \
+                    self.get_loss(denoiser_out, target, mean=False, channelwise=True)
 
-
-            if self.parameterization == "eps":
-                target = noise
-            elif self.parameterization == "x0":
-                target = x_start
-            elif self.parameterization == "v":
-                target = self.get_v(x_start, noise, t)
-            else:
-                raise NotImplementedError(f"Parameterization {self.parameterization} not yet supported")
-            return self.get_loss(samples, target, mean=True)
-        else:
-            if noise is None:
-                noise = torch.randn_like(x_start)
-            x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
-            denoiser_out = self.denoiser(x_noisy, t, context=context)
-            if self.parameterization == "eps":
-                target = noise
-            elif self.parameterization == "x0":
-                target = x_start
-            elif self.parameterization == "v":
-                target = self.get_v(x_start, noise, t)
-            else:
-                raise NotImplementedError(f"Parameterization {self.parameterization} not yet supported")
-            return self.get_loss(denoiser_out, target, mean=False).mean()
 
 
 
     def forward(self, x, *args, **kwargs):
         t = torch.randint(0, self.num_timesteps, (x.shape[0],), device=self.device).long()
         return self.p_losses(x, t, *args, **kwargs)
+    
+
 
     def shared_step(self, batch):
         (x, y) = batch  # input, target
@@ -271,35 +285,55 @@ class LatentDiffusion(LightningModule):
             residual, _ = self.autoencoder.preprocess_batch([x, y])
             y = self.autoencoder.encode(residual)[0]
         else:
-            y = self.autoencoder.encode(y)[0]   # returns mean ONLY!!!
+            y = self.autoencoder.encode(y)[0]  
 
         # Use UNet mean prediction as context, processed by conditioner (AFNO)
         coarse_pred = self.unet_regr(x)  # [B, 4, H, W]
         context = self.context_encoder([(coarse_pred, None)]) if self.conditional else None
-        return self(y, context=context)
+        loss, channelwise_loss = self(y, context=context, channelwise=True)
+        return loss, channelwise_loss
 
     def training_step(self, batch, batch_idx):
-        loss = self.shared_step(batch)
+        loss, channelwise_loss = self.shared_step(batch)
         self.log("train/loss", loss, sync_dist=True)
+        channel_names = ["precip", "temp"]
+        for i, ch_loss in enumerate(channelwise_loss):
+            name = channel_names[i] if i < len(channel_names) else f"channel_{i}"
+            self.log(f"train/loss_{name}", ch_loss, sync_dist=True)
         return loss
 
     @torch.no_grad()
     def validation_step(self, batch, batch_idx):
-        loss = self.shared_step(batch)
+        loss, channelwise_loss = self.shared_step(batch)
         with self.ema_scope():
-            loss_ema = self.shared_step(batch)
+            loss_ema, channelwise_loss_ema = self.shared_step(batch)
         log_params = {"on_step": False, "on_epoch": True, "prog_bar": True}
+        channel_names = ["precip", "temp"]
         self.log("val/loss", loss, **log_params, sync_dist=True)
         self.log("val/loss_ema", loss_ema, **log_params, sync_dist=True)
+        for i, ch_loss in enumerate(channelwise_loss):
+            name = channel_names[i] if i < len(channel_names) else f"channel_{i}"
+            self.log(f"val/loss_{name}", ch_loss, **log_params, sync_dist=True)
+        for i, ch_loss in enumerate(channelwise_loss_ema):
+            name = channel_names[i] if i < len(channel_names) else f"channel_{i}"
+            self.log(f"val/loss_{name}_ema", ch_loss, **log_params, sync_dist=True)
 
     @torch.no_grad()
     def test_step(self, batch, batch_idx):
-        loss = self.shared_step(batch)
+        loss, channelwise_loss = self.shared_step(batch)
         with self.ema_scope():
-            loss_ema = self.shared_step(batch)
+            loss_ema, channelwise_loss_ema = self.shared_step(batch)
         log_params = {"on_step": False, "on_epoch": True, "prog_bar": True}
+        channel_names = ["precip", "temp"]
         self.log("test/loss", loss, **log_params, sync_dist=True)
         self.log("test/loss_ema", loss_ema, **log_params, sync_dist=True)
+        for i, ch_loss in enumerate(channelwise_loss):
+            name = channel_names[i] if i < len(channel_names) else f"channel_{i}"
+            self.log(f"test/loss_{name}", ch_loss, **log_params, sync_dist=True)
+        for i, ch_loss in enumerate(channelwise_loss_ema):
+            name = channel_names[i] if i < len(channel_names) else f"channel_{i}"
+            self.log(f"test/loss_{name}_ema", ch_loss, **log_params, sync_dist=True)
+
 
     def on_train_batch_end(self, *args, **kwargs):
         if self.use_ema:

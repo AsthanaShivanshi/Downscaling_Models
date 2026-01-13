@@ -32,3 +32,6 @@ python LDM_conditional/train.py --multirun --config-name VAE_bivariate_config.ya
 #HP search based on 
 #having a large enough bottleneck that your reconstruction is good. 
 #having a small enough bottleneck and a large enough KL term that the z variables are not overly correlated
+
+
+# VAE being used after HP search for LDM : VAE_levels_latentdim_64_klweight_0.01_checkpoint.ckpt
