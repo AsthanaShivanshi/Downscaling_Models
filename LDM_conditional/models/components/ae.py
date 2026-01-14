@@ -30,8 +30,11 @@ class SimpleConvEncoder(nn.Module):
             in_channels = out_channels
         self.net = nn.Sequential(*sequence)
 
-    def forward(self, x):
-        return self.net(x)
+    def forward(self, x, output_size=None):
+        x = self.net(x)
+        if output_size is not None:
+            x = nn.functional.interpolate(x, size=output_size, mode='bilinear', align_corners=False)
+        return x
 
 
 class SimpleConvDecoder(nn.Module):
@@ -62,8 +65,11 @@ class SimpleConvDecoder(nn.Module):
             sequence.append(res_block)
         self.net = nn.Sequential(*sequence)
 
-    def forward(self, x):
-        return self.net(x)
+    def forward(self, x, output_size=None):
+        x = self.net(x)
+        if output_size is not None:
+            x = nn.functional.interpolate(x, size=output_size, mode='bilinear', align_corners=False)
+        return x
     
     def last_layer(self):
         return self.net[-1].sequence[-1]
