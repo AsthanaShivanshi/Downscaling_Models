@@ -4,7 +4,7 @@
 #SBATCH --error=logs/ckpts_LDM/LDM/LDM_sweep12km_UNet_Sweep_job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --time=12:00:00
+#SBATCH --time=20:00:00
 #SBATCH --mem=128G
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
@@ -49,6 +49,6 @@ sbatch --job-name=LDM_cosine_l1b --output=logs/ckpts_LDM/LDM/cosine_l1b_%j.out -
 
 
 # Each sweep corresponds to a different combination of beta schedule and loss type,,, -- is crucial to separate diff runs
-# total runs =6,,, parallel runs
+# total runs =6,,, parallel
 
 #VAE being used : VAE_levels_latentdim_64_klweight_0.01_checkpoint.ckpt

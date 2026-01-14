@@ -92,7 +92,7 @@ def train(cfg: DictConfig):
     trainer = Trainer(
         callbacks=callbacks,
         logger=logger,
-        max_epochs=100,
+        max_epochs=80,
         
         #accelerator="cpu",  # Forcing CPU for debugging on interactive partition : AsthanaSh
         #devices=1,
