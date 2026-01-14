@@ -1,4 +1,3 @@
-from ast import For
 import multiprocessing
 multiprocessing.set_start_method("spawn", force=True)
 import os
@@ -65,25 +64,18 @@ def train(cfg: DictConfig):
 
     logger.experiment.config.update({
         "learning_rate": cfg.model.get("lr"),
-        "noise_schedule": cfg.sampler.get("schedule"),
         "parameterization": cfg.model.get("parameterization"),
         "loss_type": cfg.model.get("loss_type"),
-        "timesteps": cfg.model.get("timesteps"),
         "latent_dim": cfg.get("latent_dim"),
         "vae_kl_weight": cfg.model.get("kl_weight"),
         "vae_beta_anneal_steps": cfg.model.get("beta_anneal_steps"),
-        "denoiser_channels": cfg.denoiser.get("model_channels"),
-        "denoiser_num_heads": cfg.denoiser.get("num_heads"),
-        "denoiser_attention_resolutions": cfg.denoiser.get("attention_resolutions"),
-        "denoiser_channel_mult": cfg.denoiser.get("channel_mult"),
-        "conditioner_context_ch": cfg.conditioner.get("context_ch"),
-        "conditioner_embed_dim": cfg.conditioner.get("embed_dim"),
         "ae_ckpt": cfg.model.get("ae_load_state_file"),
         "unet_regr_ckpt": cfg.model.get("unet_regr"),
         "beta_schedule": cfg.model.get("beta_schedule"),
         "linear_start": cfg.model.get("linear_start"),
         "linear_end": cfg.model.get("linear_end"),
         "cosine_s": cfg.model.get("cosine_s"),
+        "model_ckpt_name": cfg.get("ckpt_path", "None"),
         
     })
 
@@ -100,7 +92,7 @@ def train(cfg: DictConfig):
     trainer = Trainer(
         callbacks=callbacks,
         logger=logger,
-        max_epochs=200,
+        max_epochs=100,
         
         #accelerator="cpu",  # Forcing CPU for debugging on interactive partition : AsthanaSh
         #devices=1,
