@@ -118,7 +118,7 @@ callbacks:
     dirpath: trained_ckpts_optimised/LDM_ckpts/
     filename: LDM_ckpt_{model.beta_schedule}_cosines{model.cosine_s}_linearend{model.linear_end}_loss{model.loss_type}_latent{latent_dim}_checkpoint
     save_top_k: 1
-    monitor: val/loss
+    monitor: val/loss_ema
     mode: min
 
 model:

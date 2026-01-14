@@ -5,6 +5,8 @@ import torch
 import json
 import sys
 
+import xarray as xr
+
 sys.path.append("..")
 sys.path.append("../..")
 
@@ -20,6 +22,11 @@ def denorm_pr(x, pr_params):
 
 def denorm_temp(x, params):
     return x * params['std'] + params['mean']
+
+
+
+with xr.open_dataset("Dataset_Setup_I_Chronological_12km/RhiresD_target_train_scaled.nc") as ds:
+    precip_mask_full = ~np.isnan(ds["RhiresD"].values[0])  # shape [H_full, W_full]
 
 
 
@@ -158,7 +165,7 @@ def main(idx):
         loss_type="l2"
     )
     ddim_ckpt = torch.load(
-        "DDIM_conditional_derived/trained_ckpts/12km/DDIM_checkpoint_model.parameterization=0_model.timesteps=0_model.beta_schedule=0-v2.ckpt",
+        "DDIM_conditional_derived/trained_ckpts/12km/DDIM_checkpoint_model.parameterization=0_model.timesteps=0_model.beta_schedule=0-v1.ckpt",
         map_location=device
     )
     ddim.load_state_dict(ddim_ckpt["state_dict"], strict=False)
@@ -214,30 +221,48 @@ def main(idx):
         print("ddim_pred_denorm", np.nanmin(ldm_pred_denorm), np.nanmax(ldm_pred_denorm))
         print("target_denorm", np.nanmin(target_denorm), np.nanmax(target_denorm))
 
-        vmins = [min(input_denorm[j].min(), unet_pred_denorm[j].min(), ldm_pred_denorm[j].min(), target_denorm[j].min()) for j in range(len(params_list))]
-        vmaxs = [max(input_denorm[j].max(), unet_pred_denorm[j].max(), ldm_pred_denorm[j].max(), target_denorm[j].max()) for j in range(len(params_list))]
 
+        arr_h, arr_w = target_denorm[0].shape
+        mask_h, mask_w = precip_mask_full.shape
+        if mask_h != arr_h or mask_w != arr_w:
+            start_h = (mask_h - arr_h) // 2
+            start_w = (mask_w - arr_w) // 2
+            precip_mask = precip_mask_full[start_h:start_h+arr_h, start_w:start_w+arr_w]
+        else:
+            precip_mask = precip_mask_full
+
+
+
+        vmins = [target_denorm[j][precip_mask].min() if channel_names[j].lower().startswith("precip")
+                else target_denorm[j].min() for j in range(len(params_list))]
+        vmaxs = [target_denorm[j][precip_mask].max() if channel_names[j].lower().startswith("precip")
+                else target_denorm[j].max() for j in range(len(params_list))]
+    
         fig, axes = plt.subplots(4, len(params_list), figsize=(5*len(params_list), 12), dpi=150)
         if len(params_list) == 1:
             axes = axes[:, np.newaxis]
         for j in range(len(params_list)):
-            axes[0, j].imshow(np.flipud(input_denorm[j]), cmap='coolwarm', vmin=vmins[j], vmax=vmaxs[j])
-            axes[0, j].set_title(f"Input (denorm) {channel_names[j]}")
-            axes[0, j].axis('off')
-            axes[1, j].imshow(np.flipud(unet_pred_denorm[j]), cmap='coolwarm', vmin=vmins[j], vmax=vmaxs[j])
-            axes[1, j].set_title(f"UNet Output (denorm) {channel_names[j]}")
-            axes[1, j].axis('off')
-            axes[2, j].imshow(np.flipud(ldm_pred_denorm[j]), cmap='coolwarm', vmin=vmins[j], vmax=vmaxs[j])
-            axes[2, j].set_title(f"DDIM stochastic generation (eta=0.0)Output (denorm) {channel_names[j]}")
-            axes[2, j].axis('off')
-            axes[3, j].imshow(np.flipud(target_denorm[j]), cmap='coolwarm', vmin=vmins[j], vmax=vmaxs[j])
-            axes[3, j].set_title(f"Ground Truth (denorm) {channel_names[j]}")
-            axes[3, j].axis('off')
+            arrs = [input_denorm[j], unet_pred_denorm[j], ldm_pred_denorm[j], target_denorm[j]]
+            for i, arr in enumerate(arrs):
+                arr_to_plot = arr.copy()
+                if channel_names[j].lower().startswith("precip"):
+                    mask_h, mask_w = precip_mask.shape
+                    arr_h, arr_w = arr_to_plot.shape
+                    if mask_h != arr_h or mask_w != arr_w:
+                        start_h = (mask_h - arr_h) // 2
+                        start_w = (mask_w - arr_w) // 2
+                        mask_cropped = precip_mask[start_h:start_h+arr_h, start_w:start_w+arr_w]
+                    else:
+                        mask_cropped = precip_mask
+                    arr_to_plot[~mask_cropped] = np.nan
+                axes[i, j].imshow(np.flipud(arr_to_plot), cmap='coolwarm', vmin=vmins[j], vmax=vmaxs[j])
+                axes[i, j].set_title(f"{['Input','UNet Output','DDIM Output','Ground Truth'][i]} (denorm) {channel_names[j]}")
+                axes[i, j].axis('off')
             cbar = fig.colorbar(axes[0, j].images[0], ax=axes[:, j], fraction=0.02, pad=0.01)
             cbar.ax.set_ylabel(channel_names[j])
 
-        fig.savefig(f"DDIM_conditional_derived/outputs/debug_output_{idx}_model_2.png")
-        print(f"Plot saved as debug_output_{idx}_model_2.png")
+        fig.savefig(f"DDIM_conditional_derived/outputs/debug_output_{idx}_model_1.png")
+        print(f"Plot saved as debug_output_{idx}_model_1.png")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

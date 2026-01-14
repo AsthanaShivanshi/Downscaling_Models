@@ -11,7 +11,6 @@
 
 source ../diffscaler.sh
 export PYTHONPATH="$PROJECT_DIR"
-mkdir -p logs/inference
 
 export WANDB_MODE=online
 export PYTHONUNBUFFERED=1
@@ -24,4 +23,5 @@ python -c "import wandb; print(wandb.__version__)"
 #python DDIM_conditional_derived/inference_all_frames_CRPS.py
 python DDIM_conditional_derived/inference_single_frame_hierarchy.py --idx 25
 python DDIM_conditional_derived/inference_single_frame_hierarchy.py --idx 10
-python DDIM_conditional_derived/inference_single_frame_hierarchy.py --idx 23
+python DDIM_conditional_derived/inference_single_frame_hierarchy.py --idx 20
+python DDIM_conditional_derived/inference_single_frame_hierarchy.py --idx 5
