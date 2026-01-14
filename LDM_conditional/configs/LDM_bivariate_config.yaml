@@ -75,10 +75,10 @@ denoiser:
   num_heads: 4
 
 
-sampler:
+sampler: #For inference only : AsthanaSh
   _target_: LDM_conditional.models.components.ldm.denoiser.DDIMSampler
   model: ${denoiser}
-  schedule: "quadratic"
+  schedule: "quadratic" 
   device: "cuda"
   ddim_num_steps: 1000
   ddim_eta: 0.0
@@ -115,7 +115,7 @@ callbacks:
     
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
-    dirpath: LDM_conditional/trained_ckpts_optimised/12km/LDM_ckpts/
+    dirpath: trained_ckpts_optimised/LDM_ckpts/
     filename: LDM_ckpt_{model.beta_schedule}_cosines{model.cosine_s}_linearend{model.linear_end}_loss{model.loss_type}_latent{latent_dim}_checkpoint
     save_top_k: 1
     monitor: val/loss

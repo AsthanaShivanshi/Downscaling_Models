@@ -57,6 +57,15 @@ def empirical_crps(samples, target):
 
 
 
+def center_crop(x,ref):
+    _, _, h, w = x.shape
+    _, _, h_ref, w_ref = ref.shape
+    cropped_h = (h - h_ref) // 2
+    cropped_w = (w - w_ref) // 2
+    return x[:, :, cropped_h:cropped_h + h_ref, cropped_w:cropped_w + w_ref]
+
+
+
 class LatentDiffusion(LightningModule):
     def __init__(self,
         denoiser,
@@ -277,62 +286,72 @@ class LatentDiffusion(LightningModule):
     
 
 
+#Loss latent space, not interpretable,,, hence, decoded loss being calculated for logging and checkpoint selection
+
     def shared_step(self, batch):
         (x, y) = batch  # input, target
         assert not torch.any(torch.isnan(x)).item(), 'input data has NaNs'
         assert not torch.any(torch.isnan(y)).item(), 'target has NaNs'
         if self.autoencoder.ae_flag == 'residual':
             residual, _ = self.autoencoder.preprocess_batch([x, y])
-            y = self.autoencoder.encode(residual)[0]
+            y_latent = self.autoencoder.encode(residual)[0]
         else:
-            y = self.autoencoder.encode(y)[0]  
+            y_latent = self.autoencoder.encode(y)[0]  
 
-        # Use UNet mean prediction as context, processed by conditioner (AFNO)
-        coarse_pred = self.unet_regr(x)  # [B, 4, H, W]
+        coarse_pred = self.unet_regr(x)
         context = self.context_encoder([(coarse_pred, None)]) if self.conditional else None
-        loss, channelwise_loss = self(y, context=context, channelwise=True)
-        return loss, channelwise_loss
+
+        # LDM denoising in latent space
+        loss_latent, channelwise_loss_latent = self(y_latent, context=context, channelwise=True)
+
+        # Decode denoised latent to physical space and compute losses
+        with torch.no_grad():
+            t = torch.randint(0, self.num_timesteps, (y_latent.shape[0],), device=self.device).long()
+            x_noisy = self.q_sample(x_start=y_latent, t=t)
+            denoised_latent = self.denoiser(x_noisy, t, context=context)
+            decoded = self.autoencoder.decode(denoised_latent)  # [B, 2, H, W]
+
+            if decoded.shape[2:] != y.shape[2:]: #For calculating loss,,, cropping to match input-target size
+                decoded = center_crop(decoded, y)
+
+
+            # Compute per-channel loss in physical space
+            loss_fn = nn.L1Loss() if self.loss_type == "l1" else nn.MSELoss()
+            loss_precip = loss_fn(decoded[:, 0], y[:, 0])
+            loss_temp = loss_fn(decoded[:, 1], y[:, 1])
+
+        return loss_latent, channelwise_loss_latent, loss_precip, loss_temp
+
 
     def training_step(self, batch, batch_idx):
-        loss, channelwise_loss = self.shared_step(batch)
-        self.log("train/loss", loss, sync_dist=True)
-        channel_names = ["precip", "temp"]
-        for i, ch_loss in enumerate(channelwise_loss):
-            name = channel_names[i] if i < len(channel_names) else f"channel_{i}"
-            self.log(f"train/loss_{name}", ch_loss, sync_dist=True)
-        return loss
+            _, _, loss_precip, loss_temp = self.shared_step(batch)
+            self.log("train/loss_precip", loss_precip, sync_dist=True)
+            self.log("train/loss_temp", loss_temp, sync_dist=True)
+            return loss_precip + loss_temp  # or return just one if you prefer
 
     @torch.no_grad()
+    
     def validation_step(self, batch, batch_idx):
-        loss, channelwise_loss = self.shared_step(batch)
-        with self.ema_scope():
-            loss_ema, channelwise_loss_ema = self.shared_step(batch)
-        log_params = {"on_step": False, "on_epoch": True, "prog_bar": True}
-        channel_names = ["precip", "temp"]
-        self.log("val/loss", loss, **log_params, sync_dist=True)
-        self.log("val/loss_ema", loss_ema, **log_params, sync_dist=True)
-        for i, ch_loss in enumerate(channelwise_loss):
-            name = channel_names[i] if i < len(channel_names) else f"channel_{i}"
-            self.log(f"val/loss_{name}", ch_loss, **log_params, sync_dist=True)
-        for i, ch_loss in enumerate(channelwise_loss_ema):
-            name = channel_names[i] if i < len(channel_names) else f"channel_{i}"
-            self.log(f"val/loss_{name}_ema", ch_loss, **log_params, sync_dist=True)
+            _, _, loss_precip, loss_temp = self.shared_step(batch)
+            with self.ema_scope():
+                _, _, loss_precip_ema, loss_temp_ema = self.shared_step(batch)
+            log_params = {"on_step": False, "on_epoch": True, "prog_bar": True}
+            self.log("val/loss_precip", loss_precip, **log_params, sync_dist=True)
+            self.log("val/loss_temp", loss_temp, **log_params, sync_dist=True)
+            self.log("val/loss_precip_ema", loss_precip_ema, **log_params, sync_dist=True)
+            self.log("val/loss_temp_ema", loss_temp_ema, **log_params, sync_dist=True)
 
     @torch.no_grad()
+    
     def test_step(self, batch, batch_idx):
-        loss, channelwise_loss = self.shared_step(batch)
-        with self.ema_scope():
-            loss_ema, channelwise_loss_ema = self.shared_step(batch)
-        log_params = {"on_step": False, "on_epoch": True, "prog_bar": True}
-        channel_names = ["precip", "temp"]
-        self.log("test/loss", loss, **log_params, sync_dist=True)
-        self.log("test/loss_ema", loss_ema, **log_params, sync_dist=True)
-        for i, ch_loss in enumerate(channelwise_loss):
-            name = channel_names[i] if i < len(channel_names) else f"channel_{i}"
-            self.log(f"test/loss_{name}", ch_loss, **log_params, sync_dist=True)
-        for i, ch_loss in enumerate(channelwise_loss_ema):
-            name = channel_names[i] if i < len(channel_names) else f"channel_{i}"
-            self.log(f"test/loss_{name}_ema", ch_loss, **log_params, sync_dist=True)
+            _, _, loss_precip, loss_temp = self.shared_step(batch)
+            with self.ema_scope():
+                _, _, loss_precip_ema, loss_temp_ema = self.shared_step(batch)
+            log_params = {"on_step": False, "on_epoch": True, "prog_bar": True}
+            self.log("test/loss_precip", loss_precip, **log_params, sync_dist=True)
+            self.log("test/loss_temp", loss_temp, **log_params, sync_dist=True)
+            self.log("test/loss_precip_ema", loss_precip_ema, **log_params, sync_dist=True)
+            self.log("test/loss_temp_ema", loss_temp_ema, **log_params, sync_dist=True)
 
 
     def on_train_batch_end(self, *args, **kwargs):
