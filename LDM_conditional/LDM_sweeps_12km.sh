@@ -20,6 +20,8 @@ export WANDB_START_METHOD=thread
 export PYTHONUNBUFFERED=1
 export HYDRA_FULL_ERROR=1
 
+
+
 which python
 python -c "import wandb; print(wandb.__version__)"
 
@@ -27,9 +29,6 @@ sbatch --job-name=LDM_cosine_l1 --output=logs/ckpts_LDM/LDM/cosine_l1_%j.out --e
   --ntasks=1 --cpus-per-task=4 --time=12:00:00 --mem=128G --partition=gpu --gres=gpu:1 \
   --wrap="python train_LDM.py --multirun --config-name LDM_bivariate_config.yaml model.beta_schedule=cosine model.cosine_s=8e-3 model.loss_type=l1"
 
-# sbatch --job-name=LDM_cosine_l2 --output=logs/ckpts_LDM/LDM/cosine_l2_%j.out --error=logs/ckpts_LDM/LDM/cosine_l2_%j.err \
-#   --ntasks=1 --cpus-per-task=4 --time=12:00:00 --mem=128G --partition=gpu --gres=gpu:1 \
-#   --wrap="python train_LDM.py --multirun --config-name LDM_bivariate_config.yaml model.beta_schedule=cosine model.cosine_s=1e-2 model.loss_type=l2"
 
 # sbatch --job-name=LDM_quadratic_l1 --output=logs/ckpts_LDM/LDM/quadratic_l1_%j.out --error=logs/ckpts_LDM/LDM/quadratic_l1_%j.err \
 #   --ntasks=1 --cpus-per-task=4 --time=12:00:00 --mem=128G --partition=gpu --gres=gpu:1 \
