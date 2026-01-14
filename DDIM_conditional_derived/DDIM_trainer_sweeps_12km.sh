@@ -9,7 +9,7 @@
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
 
-source diffscaler.sh
+source ../diffscaler.sh
 export PYTHONPATH="$PROJECT_DIR"
 mkdir -p logs/ckpts_DDIM/
 
@@ -25,6 +25,12 @@ which python
 python -c "import wandb; print(wandb.__version__)"
 
 
-python DDIM_conditional_derived/train.py --multirun --config-name DDIM_bivariate_config.yaml \
-  model.parameterization=v \
-  model.beta_schedule=cosine,quadratic \
+for beta_schedule in cosine quadratic; do
+  sbatch --job-name=DDIM_${beta_schedule} \
+    --output=logs/ckpts_DDIM/DDIM_${beta_schedule}_%j.out \
+    --error=logs/ckpts_DDIM/DDIM_${beta_schedule}_%j.err \
+    --ntasks=1 --cpus-per-task=4 --time=3-00:00:00 --mem=256G --partition=gpu --gres=gpu:1 \
+    --wrap="source ../diffscaler.sh && export PYTHONPATH='$PROJECT_DIR' && cd '$PROJECT_DIR' && \
+      export WANDB_MODE=online && export WANDB_START_METHOD=thread && export PYTHONUNBUFFERED=1 && export HYDRA_FULL_ERROR=1 && \
+      python DDIM_conditional_derived/train.py --config-name DDIM_bivariate_config.yaml model.parameterization=v model.beta_schedule=${beta_schedule}"
+done

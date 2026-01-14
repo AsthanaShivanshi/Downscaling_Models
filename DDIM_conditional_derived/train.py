@@ -49,9 +49,15 @@ def train(cfg: DictConfig):
             if not os.path.exists(v):
                 raise FileNotFoundError(f"Val target file for {k} not found: {v}")
 
-    wandb.finish() 
+ 
+    run_name = (
+    f"DDIM_{cfg.model.get('parameterization', 'none')}_"
+    f"{cfg.model.get('beta_schedule', 'none')}_"
+    f"bs{cfg.experiment.get('batch_size', 'NA')}_"
+    f"seed{cfg.get('seed', 'NA')}_"
+    f"{os.environ.get('HYDRA_JOB_NUM', '0')}_{os.getpid()}"
+)
 
-    run_name = f"run_{os.environ.get('HYDRA_JOB_NUM', '0')}_{os.getpid()}"
     logger = WandbLogger(project="DDIM_residual_run_12km_bivariate", log_model=True, name=run_name)
     logger.experiment.config.update({
     # Model
@@ -111,7 +117,7 @@ def train(cfg: DictConfig):
     trainer = Trainer(
         callbacks=callbacks,
         logger=logger,
-        max_epochs=200,
+        max_epochs=100,
         accelerator=cfg.get("trainer", {}).get("accelerator", "cuda"),
         devices=cfg.get("trainer", {}).get("devices", 1),
     )
@@ -123,6 +129,7 @@ def train(cfg: DictConfig):
     ckpt_path = trainer.checkpoint_callback.best_model_path if hasattr(trainer, "checkpoint_callback") else None
     trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
 
+    wandb.finish() 
 @hydra.main(version_base="1.3", config_path="configs", config_name="DDIM_bivariate_config.yaml")
 def main(cfg: DictConfig):
     train(cfg)
