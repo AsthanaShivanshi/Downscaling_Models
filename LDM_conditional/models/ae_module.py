@@ -65,9 +65,9 @@ class AutoencoderKL(LightningModule):
         # print(f'MEAN SIZE: {mean.shape}')
         return (mean, log_var)
 
-    def decode(self, z):
+    def decode(self, z, output_size=None):
         z = self.to_decoder(z)
-        dec = self.decoder(z)
+        dec = self.decoder(z, output_size=output_size)
         return dec + self.bias
 
     def forward(self, input, sample_posterior=True):
@@ -77,7 +77,7 @@ class AutoencoderKL(LightningModule):
         else:
             z = mean
         print(f'BOTTLENECK SIZE: {z.shape}')
-        dec = self.decode(z)
+        dec = self.decode(z, output_size=input.shape[-2:])
         return (dec, mean, log_var)
     
 

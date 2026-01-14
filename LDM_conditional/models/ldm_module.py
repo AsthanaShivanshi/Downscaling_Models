@@ -312,7 +312,7 @@ class LatentDiffusion(LightningModule):
             print("y shape:", y.shape)
             print("y_latent shape:", y_latent.shape)
             print("denoised_latent shape:", denoised_latent.shape)
-            decoded = self.autoencoder.decode(denoised_latent)  # [B, 2, H, W]
+            decoded = self.autoencoder.decode(denoised_latent, output_size=y.shape[-2:])
             print("decoded shape:", decoded.shape)
 
             if decoded.shape[2:] != y.shape[2:]: #For calculating loss,,, cropping to match input-target size
