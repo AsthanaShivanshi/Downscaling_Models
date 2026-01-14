@@ -27,25 +27,25 @@ sbatch --job-name=LDM_cosine_l1 --output=logs/ckpts_LDM/LDM/cosine_l1_%j.out --e
   --ntasks=1 --cpus-per-task=4 --time=12:00:00 --mem=128G --partition=gpu --gres=gpu:1 \
   --wrap="python train_LDM.py --multirun --config-name LDM_bivariate_config.yaml model.beta_schedule=cosine model.cosine_s=8e-3 model.loss_type=l1"
 
-sbatch --job-name=LDM_cosine_l2 --output=logs/ckpts_LDM/LDM/cosine_l2_%j.out --error=logs/ckpts_LDM/LDM/cosine_l2_%j.err \
-  --ntasks=1 --cpus-per-task=4 --time=12:00:00 --mem=128G --partition=gpu --gres=gpu:1 \
-  --wrap="python train_LDM.py --multirun --config-name LDM_bivariate_config.yaml model.beta_schedule=cosine model.cosine_s=1e-2 model.loss_type=l2"
+# sbatch --job-name=LDM_cosine_l2 --output=logs/ckpts_LDM/LDM/cosine_l2_%j.out --error=logs/ckpts_LDM/LDM/cosine_l2_%j.err \
+#   --ntasks=1 --cpus-per-task=4 --time=12:00:00 --mem=128G --partition=gpu --gres=gpu:1 \
+#   --wrap="python train_LDM.py --multirun --config-name LDM_bivariate_config.yaml model.beta_schedule=cosine model.cosine_s=1e-2 model.loss_type=l2"
 
-sbatch --job-name=LDM_quadratic_l1 --output=logs/ckpts_LDM/LDM/quadratic_l1_%j.out --error=logs/ckpts_LDM/LDM/quadratic_l1_%j.err \
-  --ntasks=1 --cpus-per-task=4 --time=12:00:00 --mem=128G --partition=gpu --gres=gpu:1 \
-  --wrap="python train_LDM.py --multirun --config-name LDM_bivariate_config.yaml model.beta_schedule=quadratic model.linear_end=1e-3 model.loss_type=l1"
+# sbatch --job-name=LDM_quadratic_l1 --output=logs/ckpts_LDM/LDM/quadratic_l1_%j.out --error=logs/ckpts_LDM/LDM/quadratic_l1_%j.err \
+#   --ntasks=1 --cpus-per-task=4 --time=12:00:00 --mem=128G --partition=gpu --gres=gpu:1 \
+#   --wrap="python train_LDM.py --multirun --config-name LDM_bivariate_config.yaml model.beta_schedule=quadratic model.linear_end=1e-3 model.loss_type=l1"
 
-sbatch --job-name=LDM_quadratic_l2 --output=logs/ckpts_LDM/LDM/quadratic_l2_%j.out --error=logs/ckpts_LDM/LDM/quadratic_l2_%j.err \
-  --ntasks=1 --cpus-per-task=4 --time=12:00:00 --mem=128G --partition=gpu --gres=gpu:1 \
-  --wrap="python train_LDM.py --multirun --config-name LDM_bivariate_config.yaml model.beta_schedule=quadratic model.linear_end=5e-3 model.loss_type=l2"
+# sbatch --job-name=LDM_quadratic_l2 --output=logs/ckpts_LDM/LDM/quadratic_l2_%j.out --error=logs/ckpts_LDM/LDM/quadratic_l2_%j.err \
+#   --ntasks=1 --cpus-per-task=4 --time=12:00:00 --mem=128G --partition=gpu --gres=gpu:1 \
+#   --wrap="python train_LDM.py --multirun --config-name LDM_bivariate_config.yaml model.beta_schedule=quadratic model.linear_end=5e-3 model.loss_type=l2"
 
-sbatch --job-name=LDM_cosine_l2b --output=logs/ckpts_LDM/LDM/cosine_l2b_%j.out --error=logs/ckpts_LDM/LDM/cosine_l2b_%j.err \
-  --ntasks=1 --cpus-per-task=4 --time=12:00:00 --mem=128G --partition=gpu --gres=gpu:1 \
-  --wrap="python train_LDM.py --multirun --config-name LDM_bivariate_config.yaml model.beta_schedule=cosine model.cosine_s=8e-3 model.loss_type=l2"
+# sbatch --job-name=LDM_cosine_l2b --output=logs/ckpts_LDM/LDM/cosine_l2b_%j.out --error=logs/ckpts_LDM/LDM/cosine_l2b_%j.err \
+#   --ntasks=1 --cpus-per-task=4 --time=12:00:00 --mem=128G --partition=gpu --gres=gpu:1 \
+#   --wrap="python train_LDM.py --multirun --config-name LDM_bivariate_config.yaml model.beta_schedule=cosine model.cosine_s=8e-3 model.loss_type=l2"
 
-sbatch --job-name=LDM_cosine_l1b --output=logs/ckpts_LDM/LDM/cosine_l1b_%j.out --error=logs/ckpts_LDM/LDM/cosine_l1b_%j.err \
-  --ntasks=1 --cpus-per-task=4 --time=12:00:00 --mem=128G --partition=gpu --gres=gpu:1 \
-  --wrap="python train_LDM.py --multirun --config-name LDM_bivariate_config.yaml model.beta_schedule=cosine model.cosine_s=1e-2 model.loss_type=l1"
+# sbatch --job-name=LDM_cosine_l1b --output=logs/ckpts_LDM/LDM/cosine_l1b_%j.out --error=logs/ckpts_LDM/LDM/cosine_l1b_%j.err \
+#   --ntasks=1 --cpus-per-task=4 --time=12:00:00 --mem=128G --partition=gpu --gres=gpu:1 \
+#   --wrap="python train_LDM.py --multirun --config-name LDM_bivariate_config.yaml model.beta_schedule=cosine model.cosine_s=1e-2 model.loss_type=l1"
 
 
 # Each sweep corresponds to a different combination of beta schedule and loss type,,, -- is crucial to separate diff runs

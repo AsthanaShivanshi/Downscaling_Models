@@ -309,11 +309,14 @@ class LatentDiffusion(LightningModule):
             t = torch.randint(0, self.num_timesteps, (y_latent.shape[0],), device=self.device).long()
             x_noisy = self.q_sample(x_start=y_latent, t=t)
             denoised_latent = self.denoiser(x_noisy, t, context=context)
+            print("y shape:", y.shape)
+            print("y_latent shape:", y_latent.shape)
+            print("denoised_latent shape:", denoised_latent.shape)
             decoded = self.autoencoder.decode(denoised_latent)  # [B, 2, H, W]
+            print("decoded shape:", decoded.shape)
 
             if decoded.shape[2:] != y.shape[2:]: #For calculating loss,,, cropping to match input-target size
                 decoded = center_crop(decoded, y)
-
 
             # Compute per-channel loss in physical space
             loss_fn = nn.L1Loss() if self.loss_type == "l1" else nn.MSELoss()
