@@ -67,7 +67,7 @@ callbacks:
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: DDIM_conditional_derived/trained_ckpts/12km/
-    filename: DDIM_checkpoint_{model.parameterization}_{model.timesteps}_{model.beta_schedule}
+    filename: DDIM_checkpoint_{model.parameterization}_{model.timesteps}_{model.beta_schedule}_loss_type{model.loss_type}
     save_top_k: 1
     monitor: val/loss
     mode: min
@@ -109,4 +109,4 @@ model:
   use_ema: true
   ema_decay: 0.9999
   parameterization: "v"
-  loss_type: "l1" # "l2" or "L1"
+  loss_type: "l2" # "l2" or "L1"
