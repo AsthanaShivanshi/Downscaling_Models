@@ -198,10 +198,8 @@ class DDIMResidualContextual(LightningModule):
             else:
                 loss = torch.nn.functional.mse_loss(target, pred, reduction='none')
         else:
-            raise NotImplementedError("unknown loss type '{loss_type}'")
+            raise NotImplementedError(f"unknown loss type '{self.loss_type}'")
         return loss
-
-
 
 
 

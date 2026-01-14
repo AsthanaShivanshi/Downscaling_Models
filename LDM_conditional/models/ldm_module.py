@@ -324,35 +324,34 @@ class LatentDiffusion(LightningModule):
 
 
     def training_step(self, batch, batch_idx):
-            _, _, loss_precip, loss_temp = self.shared_step(batch)
-            self.log("train/loss_precip", loss_precip, sync_dist=True)
-            self.log("train/loss_temp", loss_temp, sync_dist=True)
-            return loss_precip + loss_temp  # or return just one if you prefer
+        loss_latent, _, loss_precip, loss_temp = self.shared_step(batch)
+        self.log("train/loss_precip", loss_precip, sync_dist=True)
+        self.log("train/loss_temp", loss_temp, sync_dist=True)
+        return loss_latent  # has to be latent loss for gradient flow and optim
 
     @torch.no_grad()
+
     
     def validation_step(self, batch, batch_idx):
-            _, _, loss_precip, loss_temp = self.shared_step(batch)
-            with self.ema_scope():
-                _, _, loss_precip_ema, loss_temp_ema = self.shared_step(batch)
-            log_params = {"on_step": False, "on_epoch": True, "prog_bar": True}
-            self.log("val/loss_precip", loss_precip, **log_params, sync_dist=True)
-            self.log("val/loss_temp", loss_temp, **log_params, sync_dist=True)
-            self.log("val/loss_precip_ema", loss_precip_ema, **log_params, sync_dist=True)
-            self.log("val/loss_temp_ema", loss_temp_ema, **log_params, sync_dist=True)
+        loss_latent, _, loss_precip, loss_temp = self.shared_step(batch)
+        with self.ema_scope():
+            _, _, loss_precip_ema, loss_temp_ema = self.shared_step(batch)
+        log_params = {"on_step": False, "on_epoch": True, "prog_bar": True}
+        self.log("val/loss_precip", loss_precip, **log_params, sync_dist=True)
+        self.log("val/loss_temp", loss_temp, **log_params, sync_dist=True)
+        self.log("val/loss_precip_ema", loss_precip_ema, **log_params, sync_dist=True)
+        self.log("val/loss_temp_ema", loss_temp_ema, **log_params, sync_dist=True)
+        self.log("val/loss_ema", 0.5 * (loss_precip_ema + loss_temp_ema), **log_params, sync_dist=True) #Mean of two val ema losses for early stopping : AsthanaSh
 
-    @torch.no_grad()
-    
     def test_step(self, batch, batch_idx):
-            _, _, loss_precip, loss_temp = self.shared_step(batch)
-            with self.ema_scope():
-                _, _, loss_precip_ema, loss_temp_ema = self.shared_step(batch)
-            log_params = {"on_step": False, "on_epoch": True, "prog_bar": True}
-            self.log("test/loss_precip", loss_precip, **log_params, sync_dist=True)
-            self.log("test/loss_temp", loss_temp, **log_params, sync_dist=True)
-            self.log("test/loss_precip_ema", loss_precip_ema, **log_params, sync_dist=True)
-            self.log("test/loss_temp_ema", loss_temp_ema, **log_params, sync_dist=True)
-
+        loss_latent, _, loss_precip, loss_temp = self.shared_step(batch)
+        with self.ema_scope():
+            _, _, loss_precip_ema, loss_temp_ema = self.shared_step(batch)
+        log_params = {"on_step": False, "on_epoch": True, "prog_bar": True}
+        self.log("test/loss_precip", loss_precip, **log_params, sync_dist=True)
+        self.log("test/loss_temp", loss_temp, **log_params, sync_dist=True)
+        self.log("test/loss_precip_ema", loss_precip_ema, **log_params, sync_dist=True)
+        self.log("test/loss_temp_ema", loss_temp_ema, **log_params, sync_dist=True)
 
     def on_train_batch_end(self, *args, **kwargs):
         if self.use_ema:
