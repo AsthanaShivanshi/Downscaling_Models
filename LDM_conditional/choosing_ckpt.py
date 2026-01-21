@@ -43,6 +43,8 @@ val_loader = dm.val_dataloader()
 
 
 
+
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 #UNet ckpt
@@ -53,7 +55,7 @@ unet.load_state_dict(unet_ckpt["state_dict"], strict=False)
 unet = unet.to(device)
 unet.eval()
 
-#For all VAE checkppints::::
+#For all VAE checkpoints::::
 
 ckpt_dir = "trained_ckpts_optimised/12km/VAE_ckpts"
 pattern = r"VAE_levels_latentdim_(\d+)_klweight_([0-9.]+)_checkpoint\.ckpt"
@@ -125,7 +127,7 @@ for kl in kl_weights_list:
 
 plt.xlabel('latent dim')
 plt.ylabel('Validation recon Loss (MAE)')
-plt.title('(colored by kl weight): Val loss vs latent dim for 9 VAE ckpts')
+plt.title('(colored by kl_weight): Val loss vs latent dim for 27 VAE ckpts')
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
