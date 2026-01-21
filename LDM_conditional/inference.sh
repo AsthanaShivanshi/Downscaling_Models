@@ -4,7 +4,7 @@
 #SBATCH --error=logs/ckpts_LDM/_UNet_LDM_inference-job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --time=20:00:00
+#SBATCH --time=10:00:00
 #SBATCH --mem=256G
 #SBATCH --partition=gpu #Using GPU while LDM sampling tbs. 
 #SBATCH --gres=gpu:1
