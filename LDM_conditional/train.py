@@ -60,7 +60,7 @@ def train(cfg: DictConfig):
     wandb.finish()  # Close any previous run
 
     run_name = f"run_{cfg.get('hydra', {}).get('job', {}).get('id', os.getpid())}" #unique for each run,,, appends job id
-    logger = WandbLogger(project="VAE_optim_run_12km_bivariate", log_model=True, name=run_name)
+    logger = WandbLogger(project=cfg.wandb.project, log_model=True, name=run_name)
     logger.experiment.config.update({
         #"kl_weight": cfg.model.get("kl_weight"),
         #"latent_dim": cfg.model.get("latent_dim"),
@@ -103,7 +103,7 @@ def train(cfg: DictConfig):
 
     trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
 
-@hydra.main(version_base="1.3", config_path="configs", config_name="VAE_bivariate_config.yaml")
+@hydra.main(version_base="1.3", config_path="configs", config_name="UNet_bivariate_config_48km.yaml")
 def main(cfg: DictConfig):
     train(cfg)
 
