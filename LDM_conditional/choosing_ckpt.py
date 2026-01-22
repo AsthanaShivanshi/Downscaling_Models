@@ -48,7 +48,7 @@ val_loader = dm.val_dataloader()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 #UNet ckpt
-unet_ckpt_path = "trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_logtransform_lr0.001_precip_loss_weight1.0_1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt"
+unet_ckpt_path = "trained_ckpts_optimised/12km/UNet_ckpts/LDM_conditional.models.unet_module.DownscalingUnetLightning_logtransform_lr0.001_precip_loss_weight1.0_1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt"
 unet = DownscalingUnet(in_ch=3, out_ch=2, features=[64,128,256,512])
 unet_ckpt = torch.load(unet_ckpt_path, map_location="cpu",weights_only=False)
 unet.load_state_dict(unet_ckpt["state_dict"], strict=False)
