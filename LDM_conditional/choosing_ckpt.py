@@ -125,6 +125,32 @@ for kl in kl_weights_list:
     mask = kl_weights == kl
     plt.scatter(latent_dims[mask], val_losses[mask], color=colors[kl], label=labels[kl], s=120)
 
+
+#Pareto Front code
+
+def pareto(latent_dims,val_losses):
+    points= np.array(list(zip(latent_dims,val_losses)))
+    pareto=[]
+
+
+    for i, (latent,val_loss) in enumerate(points):
+        if not np.any((points[:,0]<latent) & (points[:,1]<val_loss)):
+            pareto.append((latent,val_loss))
+
+
+
+
+
+    pareto= np.array(pareto)
+    pareto=pareto[pareto[:,0].argsort()]
+    return pareto
+
+
+pareto_points= pareto(latent_dims,val_losses)
+
+
+plt.plot(pareto_points[:,0],pareto_points[:,1], 
+         color='green', linestyle='--', label='Pareto Front')
 plt.xlabel('latent dim')
 plt.ylabel('Validation recon Loss (MAE)')
 plt.title('(colored by kl_weight): Val loss vs latent dim for 27 VAE ckpts')
