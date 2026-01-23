@@ -24,15 +24,15 @@ python -c "import wandb; print(wandb.__version__)"
 
 #vae sweep :mae sweep
 
-for latent_dim in 8 16 24 60 72 90; do
-  for kl_weight in 0.001 0.01 0.1; do
+for latent_dim in 8 16 24 32 60 72 90 128; do
+  for kl_weight in 0.01; do
     sbatch --job-name=VAE_ld${latent_dim}_kl${kl_weight} \
       --output=logs/ckpts_LDM/VAE/vae_ld${latent_dim}_kl${kl_weight}_%j.out \
       --error=logs/ckpts_LDM/VAE/vae_ld${latent_dim}_kl${kl_weight}_%j.err \
       --ntasks=1 --cpus-per-task=4 --time=8:00:00 --mem=128G --partition=gpu --gres=gpu:1 \
       --wrap="source ../diffscaler.sh && export PYTHONPATH='$PROJECT_DIR' && cd '$PROJECT_DIR' && \
         export WANDB_MODE=online && export WANDB_START_METHOD=thread && export PYTHONUNBUFFERED=1 && export HYDRA_FULL_ERROR=1 && \
-        python LDM_conditional/train.py --config-name VAE_bivariate_config.yaml vae.latent_dim=${latent_dim} vae.kl_weight=${kl_weight}"
+        python LDM_conditional/train.py --config-name VAE_bivariate_config_24km.yaml vae.latent_dim=${latent_dim} vae.kl_weight=${kl_weight}"
   done
 done
 
