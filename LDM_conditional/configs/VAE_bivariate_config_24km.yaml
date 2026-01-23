@@ -2,6 +2,9 @@ defaults:
   - paths: paths_24km_bivariate.yaml
   - _self_
 
+wandb:
+  project: VAE_optim_run_24km_bivariate
+  name: ${hydra.job.override_dirname}
 vae:
   latent_dim: 32
   kl_weight: 0.01
@@ -107,7 +110,7 @@ model:
   ae_flag: ${vae.ae_flag}
   beta_anneal_steps: ${vae.beta_anneal_steps}
 
-  unet_regr: /Users/sasthana/curnagl_shivanshi/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/24km/LDM_conditional.models.unet_module.DownscalingUnetLightning_24km_logtransform_lr0.001_precip_loss_weight5.0_1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt
+  unet_regr: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/24km/LDM_conditional.models.unet_module.DownscalingUnetLightning_24km_logtransform_lr0.001_precip_loss_weight5.0_1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt
 
 lr_scheduler:
   _target_: lightning.pytorch.lr_scheduler.ReduceLROnPlateau
