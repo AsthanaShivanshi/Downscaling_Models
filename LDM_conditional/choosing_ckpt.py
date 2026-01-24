@@ -137,10 +137,6 @@ def pareto(latent_dims,val_losses):
         if not np.any((points[:,0]<latent) & (points[:,1]<val_loss)):
             pareto.append((latent,val_loss))
 
-
-
-
-
     pareto= np.array(pareto)
     pareto=pareto[pareto[:,0].argsort()]
     return pareto
@@ -149,11 +145,29 @@ def pareto(latent_dims,val_losses):
 pareto_points= pareto(latent_dims,val_losses)
 
 
-plt.plot(pareto_points[:,0],pareto_points[:,1], 
-         color='green', linestyle='--', label='Pareto Front')
-plt.xlabel('VAE bottleneck size (Latent Dimension)', fontsize=16)
-plt.ylabel('Validation Reconstruction Error (MAE)', fontsize=16)
-plt.title('(colored by kl_weight): Mean Validation Set Reconstruction Error vs VAE Latent Dimensions', fontsize=22)
+
+
+plt.plot(pareto_points[:,0], pareto_points[:,1], color='green', linestyle='--', label='Pareto Front')
+
+
+
+min_latent_idx = np.argmin(pareto_points[:,0]) #y
+
+
+min_loss_idx = np.argmin(pareto_points[:,1]) #x
+
+highlight_indices = set([min_latent_idx, min_loss_idx])
+
+for idx in highlight_indices:
+
+    pt = pareto_points[idx]
+    plt.scatter([pt[0]], [pt[1]], 
+                s=300, facecolors='none', edgecolors='green', linewidths=3)
+
+
+plt.xlabel('VAE bottleneck size (latent_dim)', fontsize=15)
+plt.ylabel('Validation Reconstruction Error (MAE)', fontsize=15)
+plt.title('(colored by kl_weight): Val Set MAE vs Latent Dimensions of the VAE Bottleneck', fontsize=19)
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
