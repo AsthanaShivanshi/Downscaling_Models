@@ -30,10 +30,10 @@ pattern = r"VAE_levels_latentdim_(\d+)_klweight_([0-9.]+)_checkpoint\.ckpt"
 
 
 unet_ckpt_paths = {
-    '12km': "trained_ckpts_optimised/12km/UNet_ckpts/LDM_conditional.models.unet_module.DownscalingUnetLightning_logtransform_lr0.001_precip_loss_weight1.0_1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt",
-    '24km': "trained_ckpts_optimised/24km/UNet_ckpts/LDM_conditional.models.unet_module.DownscalingUnetLightning_24km_logtransform_lr0.001_precip_loss_weight1.0_1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt",
-    '36km': "trained_ckpts_optimised/36km/UNet_ckpts/LDM_conditional.models.unet_module.DownscalingUnetLightning_36km_logtransform_lr0.001_precip_loss_weight1.0_1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt",
-    '48km': "trained_ckpts_optimised/48km/UNet_ckpts/LDM_conditional.models.unet_module.DownscalingUnetLightning_48km_logtransform_lr0.001_precip_loss_weight1.0_1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt",
+    '12km': "trained_ckpts_optimised/12km/UNet_ckpts/LDM_conditional.models.unet_module.DownscalingUnetLightning_logtransform_lr0.001_precip_loss_weight5.0_1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt",
+    '24km': "trained_ckpts_optimised/24km/LDM_conditional.models.unet_module.DownscalingUnetLightning_24km_logtransform_lr0.001_precip_loss_weight5.0_1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt",
+    '36km': "trained_ckpts_optimised/36km/LDM_conditional.models.unet_module.DownscalingUnetLightning_36km_logtransform_lr0.001_precip_loss_weight5.0_1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt",
+    '48km': "trained_ckpts_optimised/48km/LDM_conditional.models.unet_module.DownscalingUnetLightning_48km_logtransform_lr0.001_precip_loss_weight5.0_1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt",
 }
 
 
@@ -160,5 +160,5 @@ plt.ylabel('SR Factor', fontsize=15)
 plt.title('SR Factor vs VAE Latent Dimension with lowest validation MAE  (KL=0.01) ', fontsize=17)
 plt.grid(True, axis='x')
 plt.tight_layout()
-plt.savefig("valloss_vs_SR_factors.png", dpi=1000)
+plt.savefig("outputs/valloss_vs_SR_factors.png", dpi=1000)
 plt.show()
