@@ -109,6 +109,8 @@ for sr in sr_factors:
 
         total_loss = 0.0
         n_samples = 0
+        total_squared_error = 0.0
+        n_pixels = 0
         with torch.no_grad():
             for batch_inputs, batch_targets in tqdm(val_loader, desc=f"Val {sr} {latent_dim}-{kl_weight}", leave=False):
                 batch_inputs = batch_inputs.to(device)
@@ -116,14 +118,14 @@ for sr in sr_factors:
                 regression_output = unet(batch_inputs)
                 residuals = batch_targets - regression_output
                 recon, *_ = vae(residuals)
-                loss = torch.nn.functional.l1_loss(recon, residuals, reduction='sum')
-                total_loss += loss.item()
-                n_samples += residuals.numel()
-        avg_loss = total_loss / n_samples
+                squared_error = torch.nn.functional.mse_loss(recon, residuals, reduction='sum')
+                total_squared_error += squared_error.item()
+                n_pixels += residuals.numel()
+        norm_rmse = np.sqrt(total_squared_error / n_pixels)
 
         all_latent_dims.append(latent_dim)
         all_sr_labels.append(sr)
-        all_mae_losses.append(avg_loss)
+        all_mae_losses.append(norm_rmse)
 
 plt.figure(figsize=(12, 8))
 sr_label_indices = {sr: i for i, sr in enumerate(sr_factors)}
@@ -143,7 +145,7 @@ for x, y, mae in zip(all_latent_dims, y_vals, all_mae_losses):
 plt.yticks(list(sr_label_indices.values()), list(sr_label_indices.keys()))
 plt.xlabel('Latent Dimension', fontsize=15)
 plt.ylabel('SR Factor', fontsize=15)
-plt.title('SR Factor vs Latent Dimension\n(Bubble size = Validation MAE, Color = SR Factor, KL=0.01)', fontsize=17)
+plt.title('SR Factor vs Latent Dimension\n(Bubble size = Normalised RMSE on Val Set, Color = SR Factor, KL=0.01)', fontsize=17)
 plt.grid(True, axis='x')
 plt.tight_layout()
 
