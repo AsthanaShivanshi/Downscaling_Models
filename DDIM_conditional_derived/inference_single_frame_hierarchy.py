@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import json
 import sys
+from tqdm import tqdm
 
 import xarray as xr
 
@@ -34,8 +35,6 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def main(idx):
-
-
 
 
     with open("Dataset_Setup_I_Chronological_12km/RhiresD_scaling_params.json", 'r') as f:
@@ -126,7 +125,7 @@ def main(idx):
         precip_scaling_json="Dataset_Setup_I_Chronological_12km/RhiresD_scaling_params.json",
     )
     unet_regr_ckpt = torch.load(
-        "LDM_conditional/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_logtransform_lr0.01_precip_loss_weight5.0_1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt",
+        "LDM_conditional/trained_ckpts_optimised/12km/UNet_ckpts/LDM_conditional.models.unet_module.DownscalingUnetLightning_logtransform_lr0.01_precip_loss_weight5.0_1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt",
         map_location="cpu", weights_only=False
     )["state_dict"]
     unet_regr.load_state_dict(unet_regr_ckpt, strict=False)
@@ -165,7 +164,7 @@ def main(idx):
         loss_type="l2"
     )
     ddim_ckpt = torch.load(
-        "DDIM_conditional_derived/trained_ckpts/12km/DDIM_checkpoint_model.parameterization=0_model.timesteps=0_model.beta_schedule=0-v1.ckpt",
+        "DDIM_conditional_derived/trained_ckpts/12km/DDIM_checkpoint_L2_loss_model.parameterization=0_model.timesteps=0_model.beta_schedule=0_loss_typemodel.loss_type=0-v1.ckpt",
         map_location=device
     )
     ddim.load_state_dict(ddim_ckpt["state_dict"], strict=False)
@@ -261,13 +260,18 @@ def main(idx):
             cbar = fig.colorbar(axes[0, j].images[0], ax=axes[:, j], fraction=0.02, pad=0.01)
             cbar.ax.set_ylabel(channel_names[j])
 
-        fig.savefig(f"DDIM_conditional_derived/outputs/debug_output_{idx}_model_1.png")
-        print(f"Plot saved as debug_output_{idx}_model_1.png")
+        fig.savefig(f"DDIM_conditional_derived/outputs/debug_output_{idx}_model_l2_model_2.png")
+        print(f"Plot saved as debug_output_{idx}_model_l2_model_2.png")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--idx", type=int, default=26, help="index to plot")
+    parser.add_argument("--idx", type=int, default=None, help="index to plot (if None, run all)")
     args = parser.parse_args()
-    main(args.idx)
-
-  #index plotting from from the slurm script
+    if args.idx is not None:
+        main(args.idx)
+    else:
+        with xr.open_dataset("Dataset_Setup_I_Chronological_12km/RhiresD_input_test_scaled.nc") as ds:
+            N = ds.dims["time"]  #Total frames in test
+        print(f"Total frames to downscale: {N}")
+        for idx in tqdm(range(N), desc="Downscaling frames"):
+            main(idx)
