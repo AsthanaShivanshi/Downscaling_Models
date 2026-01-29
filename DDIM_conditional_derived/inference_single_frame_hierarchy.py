@@ -161,10 +161,11 @@ def main(idx):
         context_encoder=conditioner,
         timesteps=1000,
         parameterization="v",
-        loss_type="l2"
+        loss_type="l1",
+        beta_schedule="cosine"
     )
     ddim_ckpt = torch.load(
-        "DDIM_conditional_derived/trained_ckpts/12km/DDIM_checkpoint_L2_loss_model.parameterization=0_model.timesteps=0_model.beta_schedule=0_loss_typemodel.loss_type=0-v1.ckpt",
+        "DDIM_conditional_derived/trained_ckpts/12km/DDIM_checkpoint_model.parameterization=0_model.timesteps=0_model.beta_schedule=0-v1.ckpt",
         map_location=device
     )
     ddim.load_state_dict(ddim_ckpt["state_dict"], strict=False)
@@ -207,9 +208,9 @@ def main(idx):
         for i, params in enumerate(params_list):
             unet_pred_denorm[i] = denorm_pr(unet_pred_np[i], pr_params) if i == 0 else denorm_temp(unet_pred_np[i], params)
 
-        ldm_pred_denorm = np.empty_like(final_pred_np)
+        ddim_pred_denorm = np.empty_like(final_pred_np)
         for i, params in enumerate(params_list):
-            ldm_pred_denorm[i] = denorm_pr(final_pred_np[i], pr_params) if i == 0 else denorm_temp(final_pred_np[i], params)
+            ddim_pred_denorm[i] = denorm_pr(final_pred_np[i], pr_params) if i == 0 else denorm_temp(final_pred_np[i], params)
 
         target_denorm = np.empty_like(target_np)
         for i, params in enumerate(params_list):
@@ -217,7 +218,7 @@ def main(idx):
 
         print("input_denorm", np.nanmin(input_denorm), np.nanmax(input_denorm))
         print("unet_pred_denorm", np.nanmin(unet_pred_denorm), np.nanmax(unet_pred_denorm))
-        print("ddim_pred_denorm", np.nanmin(ldm_pred_denorm), np.nanmax(ldm_pred_denorm))
+        print("ddim_pred_denorm", np.nanmin(ddim_pred_denorm), np.nanmax(ddim_pred_denorm))
         print("target_denorm", np.nanmin(target_denorm), np.nanmax(target_denorm))
 
 
@@ -241,7 +242,7 @@ def main(idx):
         if len(params_list) == 1:
             axes = axes[:, np.newaxis]
         for j in range(len(params_list)):
-            arrs = [input_denorm[j], unet_pred_denorm[j], ldm_pred_denorm[j], target_denorm[j]]
+            arrs = [input_denorm[j], unet_pred_denorm[j], ddim_pred_denorm[j], target_denorm[j]]
             for i, arr in enumerate(arrs):
                 arr_to_plot = arr.copy()
                 if channel_names[j].lower().startswith("precip"):
@@ -260,8 +261,8 @@ def main(idx):
             cbar = fig.colorbar(axes[0, j].images[0], ax=axes[:, j], fraction=0.02, pad=0.01)
             cbar.ax.set_ylabel(channel_names[j])
 
-        fig.savefig(f"DDIM_conditional_derived/outputs/debug_output_{idx}_model_l2_model_2.png")
-        print(f"Plot saved as debug_output_{idx}_model_l2_model_2.png")
+        fig.savefig(f"DDIM_conditional_derived/outputs/debug_output_{idx}_model_l1_model_1.png")
+        print(f"Plot saved as debug_output_{idx}_model_l1_model_1.png")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

@@ -78,7 +78,24 @@ dm = DownscalingDataModule(
 
 dm.setup()
 test_loader = dm.test_dataloader()
-test_inputs, test_targets = next(iter(test_loader))
+
+all_test_inputs = []
+all_test_targets = []
+for batch_inputs, batch_targets in test_loader:
+    all_test_inputs.append(batch_inputs)
+    all_test_targets.append(batch_targets)
+test_inputs = torch.cat(all_test_inputs, dim=0)
+test_targets = torch.cat(all_test_targets, dim=0)
+N = test_inputs.shape[0]
+spatial_shape = test_inputs.shape[2:]  # (H, W)
+
+
+params_list = [pr_params, temp_params]
+with xr.open_dataset(test_target_paths['precip']) as ds:
+    times = ds['time'].values
+
+unet_all = np.empty((N, 2, *spatial_shape), dtype=np.float32)
+target_all = np.empty((N, 2, *spatial_shape), dtype=np.float32)
 
 # UNet
 unet_regr = DownscalingUnetLightning(
@@ -123,10 +140,11 @@ ddim = DDIMResidualContextual(
     context_encoder=conditioner,
     timesteps=1000,
     parameterization="v",
-    loss_type="l2"
+    loss_type="l1",
+    beta_schedule="quadratic"
 )
 ddim_ckpt = torch.load(
-    "DDIM_conditional_derived/trained_ckpts/12km/DDIM_checkpoint_L2_loss_model.parameterization=0_model.timesteps=0_model.beta_schedule=0_loss_typemodel.loss_type=0.ckpt",
+    "DDIM_conditional_derived/trained_ckpts/12km/DDIM_checkpoint_model.parameterization=0_model.timesteps=0_model.beta_schedule=0-v1.ckpt",
     map_location=device
 )
 ddim.load_state_dict(ddim_ckpt["state_dict"], strict=False)
@@ -134,43 +152,12 @@ ddim = ddim.to(device)
 ddim.eval()
 sampler = DDIMSampler(ddim, device=device)
 
-etas = [0.0, 0.2, 0.4]  # Three eta values for DDIM
 
-with xr.open_dataset("Dataset_Setup_I_Chronological_12km/RhiresD_input_test_scaled.nc") as ds:
-    N = ds.dims["time"]
-    spatial_shape = ds["RhiresD"].shape[1:]  # (H, W)
-    times = ds["time"].values
+#Removed random seed
+num_samples = 5 
+eta = 0.0    
 
-unet_all = np.empty((N, 2, *spatial_shape), dtype=np.float32)
-ddim_all = np.empty((N, len(etas), 2, *spatial_shape), dtype=np.float32)
-target_all = np.empty((N, 2, *spatial_shape), dtype=np.float32)
-
-channel_names = ["precip", "temp"]
-params_list = [pr_params, temp_params]
-
-
-
-
-
-
-
-
-
-
-#fo4r reproducibility
-
-torch.manual_seed(42)
-
-np.random.seed(42)
-
-
-
-
-
-
-
-
-
+ddim_all = np.empty((N, num_samples, 2, *spatial_shape), dtype=np.float32)
 
 for idx in tqdm(range(N), desc="Downscaling frames"):
     with torch.no_grad():
@@ -180,7 +167,6 @@ for idx in tqdm(range(N), desc="Downscaling frames"):
         sample_shape = unet_pred.shape[1:]                       # (C_out, H, W)
         target_np = test_targets[idx][:unet_pred.shape[1]].cpu().numpy()  # (C_out, H, W)
 
-        # UNet denorm
         unet_pred_np = unet_pred[0].cpu().numpy()
         unet_pred_denorm = np.empty_like(unet_pred_np)
         target_denorm = np.empty_like(target_np)
@@ -190,8 +176,9 @@ for idx in tqdm(range(N), desc="Downscaling frames"):
         unet_all[idx] = unet_pred_denorm
         target_all[idx] = target_denorm
 
-        # DDIM for each eta
-        for j, eta in enumerate(etas):
+        for j in range(num_samples):
+            torch.manual_seed(j)
+            np.random.seed(j)
             z = torch.randn((1, *sample_shape), device=device)
             residual, _ = sampler.sample(
                 S=1000,
@@ -209,31 +196,14 @@ for idx in tqdm(range(N), desc="Downscaling frames"):
                 ddim_pred_denorm[i] = denorm_pr(final_pred_np[i], pr_params) if i == 0 else denorm_temp(final_pred_np[i], params)
             ddim_all[idx, j] = ddim_pred_denorm
 
-# Save UNet-only time series
-ds_unet = xr.Dataset(
-    {
-        "unet_downscaled": (["time", "channel", "y", "x"], unet_all),
-        "target": (["time", "channel", "y", "x"], target_all),
-    },
-    coords={
-        "time": times,
-        "channel": ["precip", "temp"],
-        "y": np.arange(spatial_shape[0]),
-        "x": np.arange(spatial_shape[1]),
-    }
-)
-ds_unet.to_netcdf("DDIM_conditional_derived/outputs/unet_downscaled_test_set.nc")
-print("Saved UNet downscaled test set to unet_downscaled_test_set.nc")
-
-# Save DDIM time series (with eta dimension)
 ds_ddim = xr.Dataset(
     {
-        "ddim_downscaled": (["time", "eta", "channel", "y", "x"], ddim_all),
+        "ddim_downscaled": (["time", "sample", "channel", "y", "x"], ddim_all),
         "target": (["time", "channel", "y", "x"], target_all),
     },
     coords={
         "time": times,
-        "eta": etas,
+        "sample": np.arange(num_samples),
         "channel": ["precip", "temp"],
         "y": np.arange(spatial_shape[0]),
         "x": np.arange(spatial_shape[1]),
