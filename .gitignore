@@ -68,3 +68,5 @@ DDIM_conditional_derived/paths.py
 *.pth
 *.pt
 *.joblib
+._*.DS_Store
+.DS_Store
