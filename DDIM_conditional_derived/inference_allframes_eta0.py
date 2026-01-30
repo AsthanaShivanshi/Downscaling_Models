@@ -22,9 +22,8 @@ from models.diff_module import DDIMResidualContextual
 torch.manual_seed(42)
 np.random.seed(42)
 
-#Removed random seed
-num_samples = 1 #Deterministic sample : single run
-eta = 0.0  
+num_samples = 1 #Deterministic sample : single run,,,,,
+eta = 0.0  #For DDIM deterministic sampling
 
 
 
@@ -216,23 +215,56 @@ for idx in tqdm(range(N), desc="Downscaling frames"):
                 ddim_pred_denorm[i] = denorm_pr(final_pred_np[i], pr_params) if i == 0 else denorm_temp(final_pred_np[i], params)
             ddim_all[idx, j] = ddim_pred_denorm
 
+# Load lat/lon if available
+with xr.open_dataset(test_input_paths['precip']) as ds:
+    lat2d = ds["lat"].values if "lat" in ds else None
+    lon2d = ds["lon"].values if "lon" in ds else None
+
+# Transpose arrays to (time, y, x, channel) if you want to match the CRPS file
+unet_preds_np = np.transpose(unet_all, (0, 2, 3, 1))  # (time, y, x, channel)
+target_np = np.transpose(target_all, (0, 2, 3, 1))    # (time, y, x, channel)
+
+var_names = ["precip", "temp"]
+
+# Save UNet predictions in CRPS style
+ds_unet = xr.Dataset(
+    {
+        var: (("time", "y", "x"), unet_preds_np[:, :, :, i])
+        for i, var in enumerate(var_names)
+    },
+    coords={
+        "time": times,
+        "y": np.arange(spatial_shape[0]),
+        "x": np.arange(spatial_shape[1]),
+        "lat": (("y", "x"), lat2d) if lat2d is not None else None,
+        "lon": (("y", "x"), lon2d) if lon2d is not None else None,
+    }
+)
+encoding = {var: {"_FillValue": np.nan} for var in var_names}
+ds_unet.to_netcdf("DDIM_conditional_derived/outputs/test_UNet_baseline.nc", encoding=encoding)
+print(f"UNet baseline saved with shape: {unet_preds_np.shape}")
+
+# Save DDIM samples in CRPS style (if you want to match the sample dimension)
+ddim_preds_np = np.transpose(ddim_all, (0, 1, 2, 3, 4))  # (time, sample, channel, y, x)
+ddim_preds_np = np.transpose(ddim_preds_np, (0, 1, 3, 4, 2))  # (time, sample, y, x, channel)
+
 ds_ddim = xr.Dataset(
     {
-        "ddim_downscaled": (["time", "sample", "channel", "y", "x"], ddim_all),
-        "target": (["time", "channel", "y", "x"], target_all),
+        var: (("time", "sample", "y", "x"), ddim_preds_np[:, :, :, :, i])
+        for i, var in enumerate(var_names)
     },
     coords={
         "time": times,
         "sample": np.arange(num_samples),
-        "channel": ["precip", "temp"],
         "y": np.arange(spatial_shape[0]),
         "x": np.arange(spatial_shape[1]),
+        "lat": (("y", "x"), lat2d) if lat2d is not None else None,
+        "lon": (("y", "x"), lon2d) if lon2d is not None else None,
     }
 )
-ds_ddim.to_netcdf("DDIM_conditional_derived/outputs/ddim_downscaled_test_set_v_L1_cosine.nc")
-print("Saved DDIM downscaled test set to ddim_downscaled_test_set_v_L1_cosine.nc")
-
-
+encoding_ddim = {var: {"_FillValue": np.nan} for var in var_names}
+ds_ddim.to_netcdf("DDIM_conditional_derived/outputs/ddim_downscaled_test_set_single_sample.nc", encoding=encoding_ddim)
+print(f"DDIM downscaled test set saved with shape: {ddim_preds_np.shape}")
 #Scores
 
 
