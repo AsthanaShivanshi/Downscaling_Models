@@ -5,7 +5,6 @@ import torch
 import json
 import sys
 from tqdm import tqdm
-
 import xarray as xr
 
 sys.path.append("..")
@@ -33,30 +32,16 @@ def denorm_temp(x, params):
         print("NaNs in denorm_temp!")
     return arr
 
-
-
 with xr.open_dataset("Dataset_Setup_I_Chronological_12km/RhiresD_target_train_scaled.nc") as ds:
     precip_mask_full = ~np.isnan(ds["RhiresD"].values[0])  # shape [H_full, W_full]
 
-
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
-def main(idx,sampling_steps=250):
-
-
+def main(idx, sampling_steps_list=[250, 500, 750, 999]):
     with open("Dataset_Setup_I_Chronological_12km/RhiresD_scaling_params.json", 'r') as f:
         pr_params = json.load(f)
     with open("Dataset_Setup_I_Chronological_12km/TabsD_scaling_params.json", 'r') as f:
         temp_params = json.load(f)
-
-
-
-
-
-
-
 
     train_input_paths = {
         'precip': "Dataset_Setup_I_Chronological_12km/RhiresD_input_train_scaled.nc",
@@ -84,10 +69,6 @@ def main(idx,sampling_steps=250):
     }
     elevation_path = 'elevation.tif'
 
-
-
-
-
     dm = DownscalingDataModule(
         train_input=train_input_paths,
         train_target=train_target_paths,
@@ -107,23 +88,9 @@ def main(idx,sampling_steps=250):
         }
     )
 
-
     dm.setup()
-    train_loader = dm.train_dataloader()
-    val_loader = dm.val_dataloader()
     test_loader = dm.test_dataloader()
-
-
-
-
-    train_inputs, train_targets = next(iter(train_loader))
-    val_inputs, val_targets = next(iter(val_loader))
     test_inputs, test_targets = next(iter(test_loader))
-
-
-
-
-
 
     # UNet
     unet_regr = DownscalingUnetLightning(
@@ -140,8 +107,6 @@ def main(idx,sampling_steps=250):
     unet_regr.load_state_dict(unet_regr_ckpt, strict=False)
     unet_regr = unet_regr.to(device)
     unet_regr.eval()
-
-    
 
     # DDIM
     denoiser = UNetModel(
@@ -165,24 +130,20 @@ def main(idx,sampling_steps=250):
         cascade_depth=3,
         context_ch=[32, 64, 128]
     )
-
     ddim = DDIMResidualContextual(
-            denoiser=denoiser,
-            context_encoder=conditioner,
-            timesteps=1000,                
-            parameterization="v",
-            loss_type="l1",
-            beta_schedule="cosine",
-            linear_start=1e-4,
-            linear_end=2e-2,
-            cosine_s=8e-3,
-            use_ema=True,
-            ema_decay=0.9999,
-            lr=1e-4
-        )
-
-
-
+        denoiser=denoiser,
+        context_encoder=conditioner,
+        timesteps=1000,                
+        parameterization="v",
+        loss_type="l1",
+        beta_schedule="cosine",
+        linear_start=1e-4,
+        linear_end=2e-2,
+        cosine_s=8e-3,
+        use_ema=True,
+        ema_decay=0.9999,
+        lr=1e-4
+    )
     ddim_ckpt = torch.load(
         "DDIM_conditional_derived/trained_ckpts/12km/DDIM_checkpoint_L1_cosine_schedule_loss_parameterisation_v.ckpt",
         map_location=device
@@ -192,18 +153,12 @@ def main(idx,sampling_steps=250):
     ddim.eval()
     sampler = DDIMSampler(ddim, device=device)
 
-
-
-    
-    #To check corruption
-
+    # Check for parameter corruption
     for name, param in unet_regr.named_parameters():
         if torch.isnan(param).any():
             print(f"NaN detected in UNet parameter: {name}")
         if torch.isinf(param).any():
             print(f"Inf detected in UNet parameter: {name}")
-
-
     for name, param in ddim.named_parameters():
         if torch.isnan(param).any():
             print(f"NaN detected in DDIM parameter: {name}")
@@ -211,68 +166,28 @@ def main(idx,sampling_steps=250):
             print(f"Inf detected in DDIM parameter: {name}")
 
 
+    maes = {step: {} for step in sampling_steps_list}
+    maes['Coarse'] = {}
+    channel_names = ["Precip", "Temp"]
+    params_list = [pr_params, temp_params]
 
     with torch.no_grad():
-        input_sample = test_inputs[idx].unsqueeze(0).to(device)  # (1, C_in, H, W)
-        unet_pred = unet_regr(input_sample)                      # (1, C_out, H, W)
+        input_sample = test_inputs[idx].unsqueeze(0).to(device)
+        unet_pred = unet_regr(input_sample)
         context = [(unet_pred, None)]
-        sample_shape = unet_pred.shape[1:]                       # (C_out, H, W)
-        z = torch.randn((1, *sample_shape), device=device)
-        print("Initial z min/max:", z.min().item(), z.max().item(), "Any NaN?", torch.isnan(z).any())
+        sample_shape = unet_pred.shape[1:]
+        target_np = test_targets[idx][:unet_pred.shape[1]].cpu().numpy()
 
-        residual, _ = sampler.sample(
-            S=sampling_steps,                 
-            batch_size=1,
-            shape=sample_shape,
-            conditioning=context,
-            eta=0.0,                
-            verbose=False,
-            x_T=z,
-            schedule="cosine"      ) 
-
-        print("unet_pred", torch.min(unet_pred).item(), torch.max(unet_pred).item())
-        print("residual", torch.min(residual).item(), torch.max(residual).item())
-        final_pred = unet_pred + residual
-        if torch.isnan(final_pred).any():
-            print("NaNs detected in final_pred after DDIM sampling!")
-            return 
-
-        final_pred_np = final_pred[0].cpu().numpy()              # (C_out, H, W)
-        unet_pred_np = unet_pred[0].cpu().numpy()                # (C_out, H, W)
-        input_np = input_sample[0, :unet_pred_np.shape[0]].cpu().numpy()  # (C_out, H, W)
-        target_np = test_targets[idx][:unet_pred_np.shape[0]].cpu().numpy()  # (C_out, H, W)
-
-        channel_names = ["Precip", "Temp"]
-        params_list = [pr_params, temp_params]
-
-        input_denorm = np.empty_like(input_np)
-        for i, params in enumerate(params_list):
-            input_denorm[i] = denorm_pr(input_np[i], pr_params) if i == 0 else denorm_temp(input_np[i], params)
-
-        unet_pred_denorm = np.empty_like(unet_pred_np)
-        for i, params in enumerate(params_list):
-            unet_pred_denorm[i] = denorm_pr(unet_pred_np[i], pr_params) if i == 0 else denorm_temp(unet_pred_np[i], params)
-
-        ddim_pred_denorm = np.empty_like(final_pred_np)
-        for i, params in enumerate(params_list):
-            ddim_pred_denorm[i] = denorm_pr(final_pred_np[i], pr_params) if i == 0 else denorm_temp(final_pred_np[i], params)
-
+        # Denormalize target for MAE computation
         target_denorm = np.empty_like(target_np)
         for i, params in enumerate(params_list):
             target_denorm[i] = denorm_pr(target_np[i], pr_params) if i == 0 else denorm_temp(target_np[i], params)
 
-
-        for i, name in enumerate(channel_names):
-            mask = precip_mask if name.lower().startswith("precip") else np.ones_like(target_denorm[i], dtype=bool)
-            unet_mae = np.nanmean(np.abs(unet_pred_denorm[i][mask] - target_denorm[i][mask]))
-            ddim_mae = np.nanmean(np.abs(ddim_pred_denorm[i][mask] - target_denorm[i][mask]))
-            print(f"[{name}] UNet MAE: {unet_mae:.4f}, DDIM MAE: {ddim_mae:.4f}")
-
-        print("input_denorm", np.nanmin(input_denorm), np.nanmax(input_denorm))
-        print("unet_pred_denorm", np.nanmin(unet_pred_denorm), np.nanmax(unet_pred_denorm))
-        print("ddim_pred_denorm", np.nanmin(ddim_pred_denorm), np.nanmax(ddim_pred_denorm))
-        print("target_denorm", np.nanmin(target_denorm), np.nanmax(target_denorm))
-
+        # Denormalize coarse input for plotting and MAE
+        coarse_input_np = input_sample[0, :2].cpu().numpy()  # assuming first 2 channels are precip, temp
+        coarse_denorm = np.empty_like(coarse_input_np)
+        for i, params in enumerate(params_list):
+            coarse_denorm[i] = denorm_pr(coarse_input_np[i], pr_params) if i == 0 else denorm_temp(coarse_input_np[i], params)
 
         arr_h, arr_w = target_denorm[0].shape
         mask_h, mask_w = precip_mask_full.shape
@@ -283,18 +198,66 @@ def main(idx,sampling_steps=250):
         else:
             precip_mask = precip_mask_full
 
+        # Coarse MAE
+        for i, name in enumerate(channel_names):
+            mask = precip_mask if name.lower().startswith("precip") else np.ones_like(target_denorm[i], dtype=bool)
+            coarse_mae = np.nanmean(np.abs(coarse_denorm[i][mask] - target_denorm[i][mask]))
+            maes['Coarse'][name] = coarse_mae
 
+        # UNet MAE (deterministic)
+        unet_pred_np = unet_pred[0].cpu().numpy()
+        unet_pred_denorm = np.empty_like(unet_pred_np)
+        for i, params in enumerate(params_list):
+            unet_pred_denorm[i] = denorm_pr(unet_pred_np[i], pr_params) if i == 0 else denorm_temp(unet_pred_np[i], params)
+        for i, name in enumerate(channel_names):
+            mask = precip_mask if name.lower().startswith("precip") else np.ones_like(target_denorm[i], dtype=bool)
+            unet_mae = np.nanmean(np.abs(unet_pred_denorm[i][mask] - target_denorm[i][mask]))
+            maes['UNet'] = maes.get('UNet', {})
+            maes['UNet'][name] = unet_mae
 
+        # DDIM MAE for each sampling step
+        for step in sampling_steps_list:
+            z = torch.randn((1, *sample_shape), device=device)
+            residual, _ = sampler.sample(
+                S=step,
+                batch_size=1,
+                shape=sample_shape,
+                conditioning=context,
+                eta=0.0,
+                verbose=False,
+                x_T=z,
+                schedule="cosine"
+            )
+            final_pred = unet_pred + residual
+            final_pred_np = final_pred[0].cpu().numpy()
+            ddim_pred_denorm = np.empty_like(final_pred_np)
+            for i, params in enumerate(params_list):
+                ddim_pred_denorm[i] = denorm_pr(final_pred_np[i], pr_params) if i == 0 else denorm_temp(final_pred_np[i], params)
+            for i, name in enumerate(channel_names):
+                mask = precip_mask if name.lower().startswith("precip") else np.ones_like(target_denorm[i], dtype=bool)
+                mae = np.nanmean(np.abs(ddim_pred_denorm[i][mask] - target_denorm[i][mask]))
+                maes[step][name] = mae
+
+        # Print MAE table
+        print("\nMAE Table for Frame idx =", idx)
+        print(f"{'Steps':>8} | {'Precip':>10} | {'Temp':>10}")
+        print("-" * 34)
+        print(f"{'Coarse':>8} | {maes['Coarse']['Precip']:10.4f} | {maes['Coarse']['Temp']:10.4f}")
+        print(f"{'UNet':>8} | {maes['UNet']['Precip']:10.4f} | {maes['UNet']['Temp']:10.4f}")
+        for step in sampling_steps_list:
+            print(f"{step:8d} | {maes[step]['Precip']:10.4f} | {maes[step]['Temp']:10.4f}")
+
+        # Plotting (now with coarse input in first row)
         vmins = [target_denorm[j][precip_mask].min() if channel_names[j].lower().startswith("precip")
                 else target_denorm[j].min() for j in range(len(params_list))]
         vmaxs = [target_denorm[j][precip_mask].max() if channel_names[j].lower().startswith("precip")
                 else target_denorm[j].max() for j in range(len(params_list))]
-    
         fig, axes = plt.subplots(4, len(params_list), figsize=(5*len(params_list), 12), dpi=150)
         if len(params_list) == 1:
             axes = axes[:, np.newaxis]
         for j in range(len(params_list)):
-            arrs = [input_denorm[j], unet_pred_denorm[j], ddim_pred_denorm[j], target_denorm[j]]
+            arrs = [coarse_denorm[j], unet_pred_denorm[j], ddim_pred_denorm[j], target_denorm[j]]
+            titles = ["Coarse Input", "UNet Output", "DDIM Output", "Ground Truth"]
             for i, arr in enumerate(arrs):
                 arr_to_plot = arr.copy()
                 if channel_names[j].lower().startswith("precip"):
@@ -308,24 +271,24 @@ def main(idx,sampling_steps=250):
                         mask_cropped = precip_mask
                     arr_to_plot[~mask_cropped] = np.nan
                 axes[i, j].imshow(np.flipud(arr_to_plot), cmap='coolwarm', vmin=vmins[j], vmax=vmaxs[j])
-                axes[i, j].set_title(f"{['Input','UNet Output','DDIM Output','Ground Truth'][i]} (denorm) {channel_names[j]}")
+                axes[i, j].set_title(f"{titles[i]} (denorm) {channel_names[j]}")
                 axes[i, j].axis('off')
             cbar = fig.colorbar(axes[0, j].images[0], ax=axes[:, j], fraction=0.02, pad=0.01)
             cbar.ax.set_ylabel(channel_names[j])
-
         fig.savefig(f"DDIM_conditional_derived/outputs/debug_output_{idx}_model_l1_model_1.png")
         print(f"Plot saved as debug_output_{idx}_model_l1_model_1.png")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--idx", type=int, default=None, help="index to plot (if None, run all)")
-    parser.add_argument("--sampling_steps", type=int, default=250, help="Number of DDIM sampling steps")
+    parser.add_argument("--sampling_steps", type=int, nargs='+', default=[250, 500, 750, 999], help="List of DDIM sampling steps")
     args = parser.parse_args()
     if args.idx is not None:
         main(args.idx, args.sampling_steps)
     else:
         with xr.open_dataset("Dataset_Setup_I_Chronological_12km/RhiresD_input_test_scaled.nc") as ds:
-            N = ds.dims["time"]  #Total frames in test
+            N = ds.dims["time"]  # Total frames in test
         print(f"Total frames to downscale: {N}")
         for idx in tqdm(range(N), desc="Downscaling frames"):
             main(idx, args.sampling_steps)

@@ -16,6 +16,20 @@ from models.components.diff.denoiser.ddim import DDIMSampler
 from models.components.diff.conditioner import AFNOConditionerNetCascade
 from models.diff_module import DDIMResidualContextual
 
+
+
+
+torch.manual_seed(42)
+np.random.seed(42)
+
+#Removed random seed
+num_samples = 1 #Deterministic sample : single run
+eta = 0.0  
+
+
+
+
+
 def denorm_pr(x, pr_params):
     return np.exp(x * pr_params['std'] + pr_params['mean']) - pr_params['epsilon']
 
@@ -160,9 +174,7 @@ ddim.eval()
 sampler = DDIMSampler(ddim, device=device)
 
 
-#Removed random seed
-num_samples = 5 
-eta = 0.0    
+  
 
 ddim_all = np.empty((N, num_samples, 2, *spatial_shape), dtype=np.float32)
 
@@ -244,6 +256,6 @@ for ch in range(2):
     ddim_crps.append(crps_ddim)
 
 print("\nCRPS Scores (averaged over all time, y, x):")
-print(f"{'Channel':<10} {'UNet':>10} {'DDIM (5 samples)':>20}")
+print(f"{'Channel':<10} {'UNet':>10} {'DDIM (2 samples)':>20}")
 for i, name in enumerate(channels):
     print(f"{name:<10} {unet_crps[i]:10.4f} {ddim_crps[i]:20.4f}")
