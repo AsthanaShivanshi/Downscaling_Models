@@ -136,15 +136,21 @@ conditioner = AFNOConditionerNetCascade(
     context_ch=[32, 64, 128]
 )
 ddim = DDIMResidualContextual(
-    denoiser=denoiser,
-    context_encoder=conditioner,
-    timesteps=1000,
-    parameterization="v",
-    loss_type="l1",
-    beta_schedule="quadratic"
-)
+            denoiser=denoiser,
+            context_encoder=conditioner,
+            timesteps=1000,                
+            parameterization="v",
+            loss_type="l1",
+            beta_schedule="cosine",
+            linear_start=1e-4,
+            linear_end=2e-2,
+            cosine_s=8e-3,
+            use_ema=True,
+            ema_decay=0.9999,
+            lr=1e-4
+        )
 ddim_ckpt = torch.load(
-    "DDIM_conditional_derived/trained_ckpts/12km/DDIM_checkpoint_model.parameterization=0_model.timesteps=0_model.beta_schedule=0-v1.ckpt",
+    "DDIM_conditional_derived/trained_ckpts/12km/DDIM_checkpoint_L1_cosine_schedule_loss_parameterisation_v.ckpt",
     map_location=device
 )
 ddim.load_state_dict(ddim_ckpt["state_dict"], strict=False)
@@ -181,13 +187,14 @@ for idx in tqdm(range(N), desc="Downscaling frames"):
             np.random.seed(j)
             z = torch.randn((1, *sample_shape), device=device)
             residual, _ = sampler.sample(
-                S=1000,
+                S=500,
                 batch_size=1,
                 shape=sample_shape,
                 conditioning=context,
                 eta=eta,
                 verbose=False,
                 x_T=z,
+                schedule="cosine"
             )
             final_pred = unet_pred + residual
             final_pred_np = final_pred[0].cpu().numpy()
