@@ -4,6 +4,7 @@ import json
 import sys
 from tqdm import tqdm
 import xarray as xr
+import properscoring as ps
 
 sys.path.append("..")
 sys.path.append("../..")
@@ -187,7 +188,7 @@ for idx in tqdm(range(N), desc="Downscaling frames"):
             np.random.seed(j)
             z = torch.randn((1, *sample_shape), device=device)
             residual, _ = sampler.sample(
-                S=500,
+                S=750,
                 batch_size=1,
                 shape=sample_shape,
                 conditioning=context,
@@ -218,3 +219,31 @@ ds_ddim = xr.Dataset(
 )
 ds_ddim.to_netcdf("DDIM_conditional_derived/outputs/ddim_downscaled_test_set.nc")
 print("Saved DDIM downscaled test set to ddim_downscaled_test_set.nc")
+
+
+#Scores
+
+
+channels = ["precip", "temp"]
+unet_crps = []
+ddim_crps = []
+
+for ch in range(2):
+    # UNet CRPS (deterministic, so ensemble is shape (N, 1, H, W))
+    crps_unet = ps.crps_ensemble(
+        target_all[:, ch].reshape(-1),  # (N*H*W,)
+        unet_all[:, ch].reshape(-1, 1)  # (N*H*W, 1)
+    ).mean()
+    unet_crps.append(crps_unet)
+
+    # DDIM CRPS (ensemble over num_samples)
+    crps_ddim = ps.crps_ensemble(
+        target_all[:, ch].reshape(-1),  # (N*H*W,)
+        ddim_all[:, :, ch].reshape(-1, ddim_all.shape[1])  # (N*H*W, num_samples)
+    ).mean()
+    ddim_crps.append(crps_ddim)
+
+print("\nCRPS Scores (averaged over all time, y, x):")
+print(f"{'Channel':<10} {'UNet':>10} {'DDIM (5 samples)':>20}")
+for i, name in enumerate(channels):
+    print(f"{name:<10} {unet_crps[i]:10.4f} {ddim_crps[i]:20.4f}")
