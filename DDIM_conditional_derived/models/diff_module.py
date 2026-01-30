@@ -112,6 +112,12 @@ class DDIMResidualContextual(LightningModule):
         alphas_cumprod = np.cumprod(alphas, axis=0)
         alphas_cumprod_prev = np.append(1., alphas_cumprod[:-1])
 
+
+
+
+        eps=1e-8
+        alphas_cumprod = np.clip(alphas_cumprod,eps,1.0)
+        alphas_cumprod_prev = np.clip(alphas_cumprod_prev,eps,1.0)
         timesteps, = betas.shape
         self.num_timesteps = int(timesteps)
         self.linear_start = linear_start

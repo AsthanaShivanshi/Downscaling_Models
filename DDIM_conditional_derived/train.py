@@ -129,6 +129,14 @@ def train(cfg: DictConfig):
     ckpt_path = trainer.checkpoint_callback.best_model_path if hasattr(trainer, "checkpoint_callback") else None
     trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
 
+
+    ckpt_path = None
+    if hasattr(trainer, "checkpoint_callback"):
+        ckpt_path = trainer.checkpoint_callback.best_model_path
+        print("Best checkpoint path:", ckpt_path)
+        if logger is not None:
+            logger.experiment.summary["best_checkpoint_path"] = ckpt_path
+
     wandb.finish() 
 @hydra.main(version_base="1.3", config_path="configs", config_name="DDIM_bivariate_config.yaml")
 def main(cfg: DictConfig):

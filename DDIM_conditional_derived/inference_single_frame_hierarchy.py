@@ -19,10 +19,19 @@ from models.components.diff.conditioner import AFNOConditionerNetCascade
 from models.diff_module import DDIMResidualContextual
 
 def denorm_pr(x, pr_params):
-    return np.exp(x * pr_params['std'] + pr_params['mean']) - pr_params['epsilon']
+    arr = x * pr_params['std'] + pr_params['mean']
+    if np.isnan(arr).any():
+        print("NaNs before exp in denorm_pr!")
+    arr = np.exp(arr) - pr_params['epsilon']
+    if np.isnan(arr).any():
+        print("NaNs after exp in denorm_pr!")
+    return arr
 
 def denorm_temp(x, params):
-    return x * params['std'] + params['mean']
+    arr = x * params['std'] + params['mean']
+    if np.isnan(arr).any():
+        print("NaNs in denorm_temp!")
+    return arr
 
 
 
@@ -156,16 +165,26 @@ def main(idx):
         cascade_depth=3,
         context_ch=[32, 64, 128]
     )
+
     ddim = DDIMResidualContextual(
-        denoiser=denoiser,
-        context_encoder=conditioner,
-        timesteps=1000,
-        parameterization="v",
-        loss_type="l1",
-        beta_schedule="cosine"
-    )
+            denoiser=denoiser,
+            context_encoder=conditioner,
+            timesteps=1000,                
+            parameterization="v",
+            loss_type="l1",
+            beta_schedule="cosine",
+            linear_start=1e-4,
+            linear_end=2e-2,
+            cosine_s=8e-3,
+            use_ema=True,
+            ema_decay=0.9999,
+            lr=1e-4
+        )
+
+
+
     ddim_ckpt = torch.load(
-        "DDIM_conditional_derived/trained_ckpts/12km/DDIM_checkpoint_model.parameterization=0_model.timesteps=0_model.beta_schedule=0-v1.ckpt",
+        "DDIM_conditional_derived/trained_ckpts/12km/DDIM_checkpoint_L1_cosine_schedule_loss_parameterisation_v.ckpt",
         map_location=device
     )
     ddim.load_state_dict(ddim_ckpt["state_dict"], strict=False)
@@ -173,24 +192,50 @@ def main(idx):
     ddim.eval()
     sampler = DDIMSampler(ddim, device=device)
 
-    # inf
+
+
+    
+    #To check corruption
+
+    for name, param in unet_regr.named_parameters():
+        if torch.isnan(param).any():
+            print(f"NaN detected in UNet parameter: {name}")
+        if torch.isinf(param).any():
+            print(f"Inf detected in UNet parameter: {name}")
+
+
+    for name, param in ddim.named_parameters():
+        if torch.isnan(param).any():
+            print(f"NaN detected in DDIM parameter: {name}")
+        if torch.isinf(param).any():
+            print(f"Inf detected in DDIM parameter: {name}")
+
+
+
     with torch.no_grad():
         input_sample = test_inputs[idx].unsqueeze(0).to(device)  # (1, C_in, H, W)
         unet_pred = unet_regr(input_sample)                      # (1, C_out, H, W)
         context = [(unet_pred, None)]
         sample_shape = unet_pred.shape[1:]                       # (C_out, H, W)
-        z = torch.randn((1, *sample_shape), device=device)       # (1, C_out, H, W)
+        z = torch.randn((1, *sample_shape), device=device)
+        print("Initial z min/max:", z.min().item(), z.max().item(), "Any NaN?", torch.isnan(z).any())
 
         residual, _ = sampler.sample(
-            S=1000,
+            S=250,                 
             batch_size=1,
             shape=sample_shape,
             conditioning=context,
-            eta=0.0,
+            eta=0.0,                
             verbose=False,
             x_T=z,
-        )
+            schedule="cosine"      ) 
+
+        print("unet_pred", torch.min(unet_pred).item(), torch.max(unet_pred).item())
+        print("residual", torch.min(residual).item(), torch.max(residual).item())
         final_pred = unet_pred + residual
+        if torch.isnan(final_pred).any():
+            print("NaNs detected in final_pred after DDIM sampling!")
+            return 
 
         final_pred_np = final_pred[0].cpu().numpy()              # (C_out, H, W)
         unet_pred_np = unet_pred[0].cpu().numpy()                # (C_out, H, W)

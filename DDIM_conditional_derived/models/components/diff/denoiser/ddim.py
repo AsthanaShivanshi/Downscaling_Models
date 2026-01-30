@@ -31,17 +31,40 @@ def make_ddim_timesteps(ddim_discr_method, num_ddim_timesteps, num_ddpm_timestep
     return steps_out
 
 
+
+#Problematic function for large alphas close to 1 ::: AsthanaSh
+#Div0 errors in computing sigmas,,, alphas being exactly 1 initially lead to nan values in sigmas, 
 def make_ddim_sampling_parameters(alphacums, ddim_timesteps, eta, verbose=True):
     # select alphas for computing the variance schedule
     alphas = alphacums[ddim_timesteps]
+
+
     alphas_prev = np.asarray([alphacums[0]] + alphacums[ddim_timesteps[:-1]].tolist())
 
     # according the the formula provided in https://arxiv.org/abs/2010.02502
-    sigmas = eta * np.sqrt((1 - alphas_prev) / (1 - alphas) * (1 - alphas / alphas_prev))
+
+    #Is first few alphas==1, div0 error, For avoiding nan values in such cases, clipping ::: AsthanaSh
+    #Doesnt affect trainingm, affects inference. 
+    eps=1e-7
+
+    
+    alphas=np.clip(alphas, eps, 1.0-eps) #Small value to avoid alphas being exactly 1
+
+
+    alphas_prev=np.clip(alphas_prev, eps, 1.0-eps)
+
+
+    sigmas = eta * np.sqrt(
+    np.clip(
+        (1 - alphas_prev) / (1 - alphas) * (1 - alphas / alphas_prev),
+        0, None
+    )
+)
+
     if verbose:
         print(f'Selected alphas for ddim sampler: a_t: {alphas}; a_(t-1): {alphas_prev}')
         print(f'For the chosen value of eta, which is {eta}, '
-              f'this results in the following sigma_t schedule for ddim sampler {sigmas}')
+              f'this results in the following sigma_t schedule for ddim sampler {sigmas}') #first few sigmas may be nan if alphas are 1: AsthanaSh
     return sigmas, alphas, alphas_prev
 
 
@@ -71,13 +94,12 @@ class DDIMSampler(object):
         self.register_buffer('alphas_cumprod_prev', to_torch(self.model.alphas_cumprod_prev))
 
         # calculations for diffusion q(x_t | x_{t-1}) and others
-        eps = 1e-10
-        acp = alphas_cumprod.cpu()
-        self.register_buffer('sqrt_alphas_cumprod', to_torch(np.sqrt(np.clip(acp, eps, 1.0))))
-        self.register_buffer('sqrt_one_minus_alphas_cumprod', to_torch(np.sqrt(np.clip(1. - acp, eps, 1.0))))
-        self.register_buffer('log_one_minus_alphas_cumprod', to_torch(np.log(np.clip(1. - acp, eps, 1.0))))
-        self.register_buffer('sqrt_recip_alphas_cumprod', to_torch(np.sqrt(1. / np.clip(acp, eps, 1.0))))
-        self.register_buffer('sqrt_recipm1_alphas_cumprod', to_torch(np.sqrt(1. / np.clip(acp, eps, 1.0) - 1)))
+        self.register_buffer('sqrt_alphas_cumprod', to_torch(np.sqrt(alphas_cumprod.cpu())))
+        self.register_buffer('sqrt_one_minus_alphas_cumprod', to_torch(np.sqrt(1. - alphas_cumprod.cpu())))
+        eps = 1e-7  # Small value to avoid log(0)
+        self.register_buffer('log_one_minus_alphas_cumprod', to_torch(np.log(np.clip(1. - alphas_cumprod.cpu(), eps, 1))))
+        self.register_buffer('sqrt_recip_alphas_cumprod', to_torch(np.sqrt(1. / alphas_cumprod.cpu())))
+        self.register_buffer('sqrt_recipm1_alphas_cumprod', to_torch(np.sqrt(1. / alphas_cumprod.cpu() - 1)))
 
         # ddim sampling parameters
         ddim_sigmas, ddim_alphas, ddim_alphas_prev = make_ddim_sampling_parameters(alphacums=alphas_cumprod.cpu(),
@@ -232,6 +254,8 @@ class DDIMSampler(object):
         if unconditional_conditioning is None or unconditional_guidance_scale == 1.:
             # print('the easier the better')
             model_output = self.model.apply_denoiser(x, t, c)
+            if torch.isnan(model_output).any():
+                print("NaN detected in model output in conditional p_sample_ddim")
         else:
             x_in = torch.cat([x] * 2)
             t_in = torch.cat([t] * 2)
