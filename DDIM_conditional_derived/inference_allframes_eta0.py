@@ -229,8 +229,8 @@ ds_ddim = xr.Dataset(
         "x": np.arange(spatial_shape[1]),
     }
 )
-ds_ddim.to_netcdf("DDIM_conditional_derived/outputs/ddim_downscaled_test_set.nc")
-print("Saved DDIM downscaled test set to ddim_downscaled_test_set.nc")
+ds_ddim.to_netcdf("DDIM_conditional_derived/outputs/ddim_downscaled_test_set_v_L1_cosine.nc")
+print("Saved DDIM downscaled test set to ddim_downscaled_test_set_v_L1_cosine.nc")
 
 
 #Scores
