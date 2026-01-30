@@ -20,9 +20,10 @@ export HYDRA_FULL_ERROR=1
 which python
 python -c "import wandb; print(wandb.__version__)"
 
-python DDIM_conditional_derived/inference_single_frame_hierarchy.py --idx 30
-#python DDIM_conditional_derived/inference_single_frame_hierarchy.py --idx 10
-python DDIM_conditional_derived/inference_single_frame_hierarchy.py --idx 5
-python DDIM_conditional_derived/inference_single_frame_hierarchy.py --idx 12
+python DDIM_conditional_derived/inference_single_frame_hierarchy.py --idx 12 --sampling_steps 500
+python DDIM_conditional_derived/inference_single_frame_hierarchy.py --idx 12 --sampling_steps 250
+python DDIM_conditional_derived/inference_single_frame_hierarchy.py --idx 12 --sampling_steps 999
+
+
 
 #python DDIM_conditional_derived/inference_allframes_different_etas.py

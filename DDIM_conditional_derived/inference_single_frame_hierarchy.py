@@ -43,7 +43,7 @@ with xr.open_dataset("Dataset_Setup_I_Chronological_12km/RhiresD_target_train_sc
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def main(idx):
+def main(idx,sampling_steps=250):
 
 
     with open("Dataset_Setup_I_Chronological_12km/RhiresD_scaling_params.json", 'r') as f:
@@ -221,7 +221,7 @@ def main(idx):
         print("Initial z min/max:", z.min().item(), z.max().item(), "Any NaN?", torch.isnan(z).any())
 
         residual, _ = sampler.sample(
-            S=250,                 
+            S=sampling_steps,                 
             batch_size=1,
             shape=sample_shape,
             conditioning=context,
@@ -260,6 +260,13 @@ def main(idx):
         target_denorm = np.empty_like(target_np)
         for i, params in enumerate(params_list):
             target_denorm[i] = denorm_pr(target_np[i], pr_params) if i == 0 else denorm_temp(target_np[i], params)
+
+
+        for i, name in enumerate(channel_names):
+            mask = precip_mask if name.lower().startswith("precip") else np.ones_like(target_denorm[i], dtype=bool)
+            unet_mae = np.nanmean(np.abs(unet_pred_denorm[i][mask] - target_denorm[i][mask]))
+            ddim_mae = np.nanmean(np.abs(ddim_pred_denorm[i][mask] - target_denorm[i][mask]))
+            print(f"[{name}] UNet MAE: {unet_mae:.4f}, DDIM MAE: {ddim_mae:.4f}")
 
         print("input_denorm", np.nanmin(input_denorm), np.nanmax(input_denorm))
         print("unet_pred_denorm", np.nanmin(unet_pred_denorm), np.nanmax(unet_pred_denorm))
@@ -312,12 +319,13 @@ def main(idx):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--idx", type=int, default=None, help="index to plot (if None, run all)")
+    parser.add_argument("--sampling_steps", type=int, default=250, help="Number of DDIM sampling steps")
     args = parser.parse_args()
     if args.idx is not None:
-        main(args.idx)
+        main(args.idx, args.sampling_steps)
     else:
         with xr.open_dataset("Dataset_Setup_I_Chronological_12km/RhiresD_input_test_scaled.nc") as ds:
             N = ds.dims["time"]  #Total frames in test
         print(f"Total frames to downscale: {N}")
         for idx in tqdm(range(N), desc="Downscaling frames"):
-            main(idx)
+            main(idx, args.sampling_steps)
