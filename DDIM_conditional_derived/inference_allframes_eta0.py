@@ -18,9 +18,11 @@ from models.diff_module import DDIMResidualContextual
 
 
 
-
-torch.manual_seed(42)
-np.random.seed(42)
+import time
+seed = int(time.time())
+torch.manual_seed(seed)
+np.random.seed(seed)
+print(f"Using random seed: {seed}")
 
 num_samples = 1 #Deterministic sample : single run,,,,,
 eta = 0.0  #For DDIM deterministic sampling
@@ -194,26 +196,26 @@ for idx in tqdm(range(N), desc="Downscaling frames"):
         unet_all[idx] = unet_pred_denorm
         target_all[idx] = target_denorm
 
-        for j in range(num_samples):
-            torch.manual_seed(j)
-            np.random.seed(j)
-            z = torch.randn((1, *sample_shape), device=device)
-            residual, _ = sampler.sample(
-                S=750,
-                batch_size=1,
-                shape=sample_shape,
-                conditioning=context,
-                eta=eta,
-                verbose=False,
-                x_T=z,
-                schedule="cosine"
+        #for j in range(num_samples):
+            #torch.manual_seed(j)
+            #np.random.seed(j)
+        z = torch.randn((1, *sample_shape), device=device)
+        residual, _ = sampler.sample(
+            S=750,
+            batch_size=1,
+            shape=sample_shape,
+            conditioning=context,
+            eta=eta,
+            verbose=False,
+            x_T=z,
+            schedule="cosine"
             )
-            final_pred = unet_pred + residual
-            final_pred_np = final_pred[0].cpu().numpy()
-            ddim_pred_denorm = np.empty_like(final_pred_np)
-            for i, params in enumerate(params_list):
-                ddim_pred_denorm[i] = denorm_pr(final_pred_np[i], pr_params) if i == 0 else denorm_temp(final_pred_np[i], params)
-            ddim_all[idx, j] = ddim_pred_denorm
+        final_pred = unet_pred + residual
+        final_pred_np = final_pred[0].cpu().numpy()
+        ddim_pred_denorm = np.empty_like(final_pred_np)
+        for i, params in enumerate(params_list):
+            ddim_pred_denorm[i] = denorm_pr(final_pred_np[i], pr_params) if i == 0 else denorm_temp(final_pred_np[i], params)
+        ddim_all[idx, 0] = ddim_pred_denorm
 
 # Load lat/lon if available
 with xr.open_dataset(test_input_paths['precip']) as ds:
@@ -241,7 +243,7 @@ ds_unet = xr.Dataset(
     }
 )
 encoding = {var: {"_FillValue": np.nan} for var in var_names}
-ds_unet.to_netcdf("DDIM_conditional_derived/outputs/test_UNet_baseline.nc", encoding=encoding)
+#ds_unet.to_netcdf("DDIM_conditional_derived/outputs/test_UNet_baseline.nc", encoding=encoding) #Just for second run
 print(f"UNet baseline saved with shape: {unet_preds_np.shape}")
 
 # Save DDIM samples in CRPS style (if you want to match the sample dimension)
@@ -263,7 +265,7 @@ ds_ddim = xr.Dataset(
     }
 )
 encoding_ddim = {var: {"_FillValue": np.nan} for var in var_names}
-ds_ddim.to_netcdf("DDIM_conditional_derived/outputs/ddim_downscaled_test_set_single_sample.nc", encoding=encoding_ddim)
+ds_ddim.to_netcdf("DDIM_conditional_derived/outputs/ddim_downscaled_test_set_fifth_sample_run.nc", encoding=encoding_ddim)
 print(f"DDIM downscaled test set saved with shape: {ddim_preds_np.shape}")
 #Scores
 

@@ -30,4 +30,4 @@ python -c "import wandb; print(wandb.__version__)"
 
 #python choosing_ckpt.py
 
-python valllos_SR_factors_latent_dim.py
+python inference_all_frames_CRPS.py
