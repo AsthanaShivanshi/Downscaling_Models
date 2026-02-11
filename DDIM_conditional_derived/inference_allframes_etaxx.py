@@ -25,8 +25,7 @@ np.random.seed(seed)
 print(f"Using random seed: {seed}")
 
 num_samples = 1 #Deterministic sample : single run,,,,,
-eta = 0.0  #For DDIM deterministic sampling
-
+eta = 0.6  #For DDIM deterministic sampling
 
 
 
@@ -265,7 +264,7 @@ ds_ddim = xr.Dataset(
     }
 )
 encoding_ddim = {var: {"_FillValue": np.nan} for var in var_names}
-ds_ddim.to_netcdf("DDIM_conditional_derived/outputs/ddim_downscaled_test_set_fifth_sample_run.nc", encoding=encoding_ddim)
+ds_ddim.to_netcdf("DDIM_conditional_derived/outputs/ddim_downscaled_test_set_third_sample_run_eta0.6.nc", encoding=encoding_ddim)
 print(f"DDIM downscaled test set saved with shape: {ddim_preds_np.shape}")
 #Scores
 
@@ -290,6 +289,6 @@ for ch in range(2):
     ddim_crps.append(crps_ddim)
 
 print("\nCRPS Scores (averaged over all time, y, x):")
-print(f"{'Channel':<10} {'UNet':>10} {'DDIM (2 samples)':>20}")
+print(f"{'Channel':<10} {'UNet':>10} {'DDIM (1 sample)':>20}")
 for i, name in enumerate(channels):
     print(f"{name:<10} {unet_crps[i]:10.4f} {ddim_crps[i]:20.4f}")
