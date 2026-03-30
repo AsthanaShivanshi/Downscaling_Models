@@ -28,6 +28,6 @@ python -c "import wandb; print(wandb.__version__)"
 #python LDM_conditional/inference_single_frame_hierarchy.py --idx 20
 #python LDM_conditional/inference_single_frame_hierarchy.py --idx 5
 
-#python choosing_ckpt.py
+python choosing_ckpt.py
 
-python inference_all_frames_CRPS.py
+#python inference_all_frames_CRPS.py

@@ -2,7 +2,7 @@
 
 ##EOF: heredoc for passing block to sbatch instead of creating separate scripts. 
 
-for config in UNet_bivariate_config_24km.yaml UNet_bivariate_config_36km.yaml UNet_bivariate_config_48km.yaml; do
+for config in UNet_bivariate_config_12km.yaml; do
   sbatch <<EOF
 #!/bin/bash
 #SBATCH --job-name=${config%.yaml}_Log_MAE_UNet_MAE_Sweep
@@ -32,8 +32,8 @@ python -c "import wandb; print(wandb.__version__)"
 #unet sweep :mae sweep
 
 python LDM_conditional/train.py --multirun --config-name ${config} \
-  model.precip_loss_weight=5.0\
-  model.use_crps_channels="[0,1]"\
+  model.precip_loss_weight=1.0,3.0,5.0,7.0 \
+  model.use_crps_channels="[0,1]" \
   model.lr=0.001
 EOF
 done
