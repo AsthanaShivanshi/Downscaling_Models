@@ -74,6 +74,8 @@ class DownscalingUnetLightning(LightningModule):
                 self.precip_std= scaling["std"]
 
     def forward(self, x):
+
+        #Imp: unet forward pass constrained for precip to be a small number around zero
             out = self.unet(x)
             # 
             # log(eps) = mean + std * z ------> z = (log(eps) - mu) / std 

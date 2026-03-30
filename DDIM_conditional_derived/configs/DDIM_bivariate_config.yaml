@@ -3,7 +3,7 @@ defaults:
   - _self_
 
 experiment:
-  batch_size: 8 #Any higher gives CUDA OOM 
+  batch_size: 8 #AsthanaSh : Note ::: Any higher gives CUDA OOM 
   num_workers: 2
 
 variables:
@@ -99,9 +99,9 @@ model:
   context_encoder: ${conditioner}
   unet_regr:
     _target_: DDIM_conditional_derived.models.unet_module.DownscalingUnetLightning
-    checkpoint: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/UNet_ckpts/LDM_conditional.models.unet_module.DownscalingUnetLightning_logtransform_lr0.001_precip_loss_weight5.0_1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt
+    checkpoint: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/UNet_ckpts/LDM_conditional.models.unet_module.DownscalingUnetLightning_12km_logtransform_lr0.001_precip_loss_weight1.0_1.0_crps[]_factor0.5_pat3.ckpt.ckpt
   timesteps: 1000
-  beta_schedule: "linear"
+  beta_schedule: "cosine"
   linear_start: 1e-4
   linear_end: 2e-2
   cosine_s: 8e-3
