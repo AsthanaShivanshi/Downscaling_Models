@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=DDIM_sweep_12km_cosine
+#SBATCH --job-name=DDIM_sweep_12km_quadratic
 #SBATCH --output=logs/ckpts_DDIM/DDIM_sweep_job_output-%j.txt
 #SBATCH --error=logs/ckpts_DDIM/DDIM_sweep_job_error-%j.txt
 #SBATCH --ntasks=1
@@ -24,7 +24,7 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 which python
 python -c "import wandb; print(wandb.__version__)"
 
-for beta_schedule in cosine; do
+for beta_schedule in quadratic; do
   sbatch --job-name=DDIM_${beta_schedule} \
     --output=logs/ckpts_DDIM/DDIM_${beta_schedule}_%j.out \
     --error=logs/ckpts_DDIM/DDIM_${beta_schedule}_%j.err \
