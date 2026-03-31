@@ -56,6 +56,7 @@ datamodule:
     variables: ${variables}
     preprocessing: ${preprocessing}
 
+
 callbacks:
   early_stopping:
     _target_: lightning.pytorch.callbacks.EarlyStopping
@@ -67,7 +68,7 @@ callbacks:
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: DDIM_conditional_derived/trained_ckpts/12km/
-    filename: DDIM_checkpoint_L1_linear_schedule_loss_parameterisation_v
+    filename: DDIM_checkpoint_L1_quadratic_schedule_loss_parameterisation_v
     save_top_k: 1
     monitor: val/loss
     mode: min
@@ -101,10 +102,10 @@ model:
     _target_: DDIM_conditional_derived.models.unet_module.DownscalingUnetLightning
     checkpoint: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/UNet_ckpts/LDM_conditional.models.unet_module.DownscalingUnetLightning_12km_logtransform_lr0.001_precip_loss_weight1.0_1.0_crps[]_factor0.5_pat3.ckpt.ckpt
   timesteps: 1000
-  beta_schedule: "cosine"
+  beta_schedule: "quadratic"
   linear_start: 1e-4
   linear_end: 2e-2
-  cosine_s: 8e-3
+  #cosine_s: 8e-3
   lr: 1e-4
   use_ema: true
   ema_decay: 0.9999
