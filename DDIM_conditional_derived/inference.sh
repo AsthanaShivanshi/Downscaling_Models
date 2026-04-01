@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=thirdRun_AllFrames_DDIM_inference
-#SBATCH --output=DDIM_conditional_derived/logs/ckpts_DDIM/ThirdRun_AllFrames_DDIM_inference-job_output-%j.txt
-#SBATCH --error=DDIM_conditional_derived/logs/ckpts_DDIM/ThirdRun_AllFrames_DDIM_inference-job_error-%j.txt
+#SBATCH --job-name=eta_0.8_AllFrames_DDIM_inference_4_sample
+#SBATCH --output=DDIM_conditional_derived/logs/ckpts_DDIM/eta_0.8_AllFrames_DDIM_inference-job_output-%j.txt
+#SBATCH --error=DDIM_conditional_derived/logs/ckpts_DDIM/eta_0.8_AllFrames_DDIM_inference-job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-00:00:00
@@ -24,5 +24,5 @@ python -c "import wandb; print(wandb.__version__)"
 #python DDIM_conditional_derived/inference_single_frame_hierarchy.py --idx 25 --sampling_steps 250 500 750 999
 #python DDIM_conditional_derived/inference_single_frame_hierarchy.py --idx 31 --sampling_steps 250 500 750 999
 
-#Single run determinisitc DDIm inference single sample... all frames. 
+#Seeded runs DDIm inference 2 samples test set---all frames
 python DDIM_conditional_derived/inference_allframes_etaxx.py
