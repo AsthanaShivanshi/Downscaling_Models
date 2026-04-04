@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=eta_0.8_AllFrames_DDIM_inference_4_sample
-#SBATCH --output=DDIM_conditional_derived/logs/ckpts_DDIM/eta_0.8_AllFrames_DDIM_inference-job_output-%j.txt
-#SBATCH --error=DDIM_conditional_derived/logs/ckpts_DDIM/eta_0.8_AllFrames_DDIM_inference-job_error-%j.txt
+#SBATCH --job-name=eta_0.1_AllFrames_DDIM_inference_4_sample
+#SBATCH --output=DDIM_conditional_derived/logs/ckpts_DDIM/eta_0.1_AllFrames_DDIM_inference-job_output-%j.txt
+#SBATCH --error=DDIM_conditional_derived/logs/ckpts_DDIM/eta_0.1_AllFrames_DDIM_inference-job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-00:00:00
