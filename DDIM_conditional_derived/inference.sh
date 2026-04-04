@@ -16,6 +16,7 @@ export WANDB_MODE=online
 export PYTHONUNBUFFERED=1
 export HYDRA_FULL_ERROR=1
 
+cd DDIM_conditional_derived
 
 which python
 python -c "import wandb; print(wandb.__version__)"
@@ -25,4 +26,4 @@ python -c "import wandb; print(wandb.__version__)"
 #python DDIM_conditional_derived/inference_single_frame_hierarchy.py --idx 31 --sampling_steps 250 500 750 999
 
 #Seeded runs DDIm inference 2 samples test set---all frames
-python DDIM_conditional_derived/inference_allframes_etaxx.py
+#python inference_allframes_etaxx.py
