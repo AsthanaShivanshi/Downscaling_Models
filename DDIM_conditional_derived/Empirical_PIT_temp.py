@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from statsmodels.distributions.empirical_distribution import ECDF
 
 ref_path = "Dataset_Setup_I_Chronological_12km/TabsD_step1_latlon.nc"
-etas = [0.0, 0.3, 0.5, 1.0]
+etas = [0.0, 0.3, 0.5, 0.8, 1.0]
 downscaled_paths = [
     f"DDIM_conditional_derived/output_inference/ddim_downscaled_test_set_eta_{eta}.nc"
     for eta in etas
@@ -41,34 +41,27 @@ for eta, ds_path in zip(etas, downscaled_paths):
     temp_flat = temp_masked[~np.isnan(temp_masked)]
     pit = ecdf_ref(temp_flat)
 
+
     bins = 50
-    fig, axs = plt.subplots(2, 1, figsize=(10, 8), dpi=300, sharex=True)
+    bin_edges = np.linspace(0, 1, bins + 1)
 
-    # Ref: top
-    axs[0].hist(
-        ref_pit, bins=bins, density=True, 
-        color='tab:blue', alpha=0.8, edgecolor='black'
-    )
-    axs[0].set_ylabel("Density", fontsize=14)
-    axs[0].set_title("Reference Test Set (2011-2023)", fontsize=16)
-    axs[0].grid(True, linestyle='--', alpha=0.5)
+    ref_hist, _ = np.histogram(ref_pit, bins=bin_edges, density=True)
+    pit_hist, _ = np.histogram(pit, bins=bin_edges, density=True)
 
-    # Diff: bottom
-    axs[1].hist(
-        pit, bins=bins, density=True, 
-        color='tab:orange', alpha=0.8, edgecolor='black'
-    )
-    axs[1].set_xlabel("Binned Cumulative Probability", fontsize=14)
-    axs[1].set_ylabel("Density", fontsize=14)
-    axs[1].set_title(f"Diffusion Samples (eta={eta})", fontsize=16)
-    axs[1].grid(True, linestyle='--', alpha=0.5)
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+    width = (bin_edges[1] - bin_edges[0]) * 0.4  # Bar width, <0.5 for side-by-side
 
-    ylim = max(axs[0].get_ylim()[1], axs[1].get_ylim()[1])
-    axs[0].set_ylim(0, ylim)
-    axs[1].set_ylim(0, ylim)
+    fig, ax = plt.subplots(figsize=(12, 6), dpi=1000)
 
-    plt.suptitle("Temperature :PIT Histograms", fontsize=18, y=0.98)
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.savefig(f"DDIM_conditional_derived/output_inference/Temperature_PIT_histogram_eta_{eta}.pdf", format='pdf', dpi=300)
+    ax.bar(bin_centers - width/2, ref_hist, width=width, label="Reference", color='tab:blue', alpha=0.8, edgecolor='black')
+    ax.bar(bin_centers + width/2, pit_hist, width=width, label=f"Diffusion (eta={eta})", color='tab:orange', alpha=0.8, edgecolor='black')
+
+    ax.set_xlabel("Binned Cumulative Probability", fontsize=14)
+    ax.set_ylabel("Density", fontsize=14)
+    ax.set_title(f"Temperature : PIT Histogram (eta={eta})", fontsize=16)
+    ax.grid(True, linestyle='--', alpha=0.5)
+    ax.legend(fontsize=13)
+
+    plt.tight_layout()
+    plt.savefig(f"DDIM_conditional_derived/output_inference/Temperature_PIT_histogram_eta_{eta}.pdf", format='pdf', dpi=1000)
     plt.close()
-

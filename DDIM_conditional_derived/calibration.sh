@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=Pr_Calibration
-#SBATCH --output=DDIM_conditional_derived/logs/ckpts_DDIM/pr_etas_calibration-job_output-%j.txt
-#SBATCH --error=DDIM_conditional_derived/logs/ckpts_DDIM/pr_etas_calibration-job_error-%j.txt
+#SBATCH --job-name=Calibration
+#SBATCH --output=DDIM_conditional_derived/logs/ckpts_DDIM/calibration-job_output-%j.txt
+#SBATCH --error=DDIM_conditional_derived/logs/ckpts_DDIM/calibration-job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=10:00:00
@@ -23,5 +23,5 @@ python -c "import wandb; print(wandb.__version__)"
 python DDIM_conditional_derived/Empirical_PIT_precip.py
 
 
-#python DDIM_conditional_derived/Empirical_PIT_temp.py
+python DDIM_conditional_derived/Empirical_PIT_temp.py
 
