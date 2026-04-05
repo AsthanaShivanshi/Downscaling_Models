@@ -24,38 +24,58 @@ ref_precip_flat = ref_precip_masked[mask]
 ecdf_ref = ECDF(ref_precip_flat)
 ref_pit = ecdf_ref(ref_precip_flat)
 
+
 for eta, ds_path in zip(etas, downscaled_paths):
+    print(f"Processing eta={eta}...")
+
+
+
     ds = xr.open_dataset(ds_path)
     precip = ds['precip']  # shape: (time, sample, lat, lon)
 
-    precip_values = precip.values 
-   
-    precip_values = np.moveaxis(precip_values, 1, 0) 
 
-    mask_broadcast = np.broadcast_to(mask, precip_values.shape[1:]) 
+    precip_values = precip.values 
+    precip_values = np.moveaxis(precip_values, 1, 0)  # (sample, time, lat, lon)
+
+    mask_broadcast = np.broadcast_to(mask, precip_values.shape)  # (sample, time, lat, lon)
     precip_masked = np.where(mask_broadcast, precip_values, np.nan) 
+    precip_masked= np.where(precip_masked < 0, 0, precip_masked) #Making sure no neg precip
 
     precip_flat = precip_masked[~np.isnan(precip_masked)]
-
     pit = ecdf_ref(precip_flat)
 
+    bins = 50
+    fig, axs = plt.subplots(2, 1, figsize=(10, 8), dpi=1000, sharex=True)
 
-    plt.figure(figsize=(12, 8), dpi=1000)
-    bins = 20
+    # Ref: top
+    axs[0].hist(
+        ref_pit, bins=bins, density=True, 
+        color='tab:blue', alpha=0.8, edgecolor='black'
+    )
+    axs[0].set_ylabel("Density", fontsize=14)
+    axs[0].set_title("Reference Test Set (2011-2023)", fontsize=16)
+    axs[0].grid(True, linestyle='--', alpha=0.5)
 
-    plt.hist(
-        pit, bins=bins, range=(0,1), density=True, 
-        histtype='step', linewidth=2, color='green', label=f"Diffusion samples (eta={eta})"
+    # Diff: bottom
+    axs[1].hist(
+        pit, bins=bins, density=True, 
+        color='tab:orange', alpha=0.8, edgecolor='black'
     )
-    plt.hist(
-        ref_pit, bins=bins, range=(0,1), density=True, 
-        histtype='step', linewidth=2, color='black', label="Reference Test Set (2011-2023)"
-    )
-    plt.xlim(0, 1)
-    plt.xlabel("Binned Cumulative Probability")
-    plt.ylabel("PDF")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
+    axs[1].set_xlabel("Binned Cumulative Probability", fontsize=14)
+    axs[1].set_ylabel("Density", fontsize=14)
+    axs[1].set_title(f"Diffusion Samples (eta={eta})", fontsize=16)
+    axs[1].grid(True, linestyle='--', alpha=0.5)
+
+    ylim = max(axs[0].get_ylim()[1], axs[1].get_ylim()[1])
+    axs[0].set_ylim(0, ylim)
+    axs[1].set_ylim(0, ylim)
+
+
+    for ax in axs:
+        ax.axhline(1, color='red', linestyle='--', linewidth=1, label='Uniform Density')
+        ax.legend(fontsize=12)
+
+    plt.suptitle("Precipitation :PIT Histograms", fontsize=18, y=0.98)
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.savefig(f"DDIM_conditional_derived/output_inference/Precip_PIT_histogram_eta_{eta}.pdf", format='pdf', dpi=1000)
     plt.close()
