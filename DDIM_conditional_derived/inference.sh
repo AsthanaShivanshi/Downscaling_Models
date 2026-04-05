@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=eta_0.1_AllFrames_DDIM_inference_4_sample
-#SBATCH --output=DDIM_conditional_derived/logs/ckpts_DDIM/eta_0.1_AllFrames_DDIM_inference-job_output-%j.txt
-#SBATCH --error=DDIM_conditional_derived/logs/ckpts_DDIM/eta_0.1_AllFrames_DDIM_inference-job_error-%j.txt
+#SBATCH --job-name=eta_0.0_5samples_50steps_AllFrames_DDIM_inference_4_sample
+#SBATCH --output=DDIM_conditional_derived/logs/ckpts_DDIM/eta_0.0_5samples_50steps_AllFrames_DDIM_inference-job_output-%j.txt
+#SBATCH --error=DDIM_conditional_derived/logs/ckpts_DDIM/eta_0.0_5samples_50steps_AllFrames_DDIM_inference-job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-00:00:00
@@ -16,7 +16,6 @@ export WANDB_MODE=online
 export PYTHONUNBUFFERED=1
 export HYDRA_FULL_ERROR=1
 
-cd DDIM_conditional_derived
 
 which python
 python -c "import wandb; print(wandb.__version__)"
@@ -25,5 +24,5 @@ python -c "import wandb; print(wandb.__version__)"
 #python DDIM_conditional_derived/inference_single_frame_hierarchy.py --idx 25 --sampling_steps 250 500 750 999
 #python DDIM_conditional_derived/inference_single_frame_hierarchy.py --idx 31 --sampling_steps 250 500 750 999
 
-#Seeded runs DDIm inference 2 samples test set---all frames
-#python inference_allframes_etaxx.py
+#Seeded runs DDIm inference 5 samples test set---all frames
+python DDIM_conditional_derived/inference_allframes_etaxx.py

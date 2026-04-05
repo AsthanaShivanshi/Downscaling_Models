@@ -32,14 +32,16 @@ for eta, ds_path in zip(etas, downscaled_paths):
     ds = xr.open_dataset(ds_path)
     temp = ds['temp']  # shape: (time, sample, lat, lon)
 
-    temp_values = temp.values 
-    temp_values = np.moveaxis(temp_values, 1, 0) 
 
-    mask_broadcast = np.broadcast_to(mask, temp_values.shape[1:])  # (time, lat, lon)
+    temp_values = temp.values 
+    temp_values = np.moveaxis(temp_values, 1, 0)  # (sample, time, lat, lon)
+
+    mask_broadcast = np.broadcast_to(mask, temp_values.shape)  # (sample, time, lat, lon)
     temp_masked = np.where(mask_broadcast, temp_values, np.nan) 
 
     temp_flat = temp_masked[~np.isnan(temp_masked)]
     pit = ecdf_ref(temp_flat)
+
 
 
     bins = 50

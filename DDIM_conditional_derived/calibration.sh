@@ -20,7 +20,7 @@ export HYDRA_FULL_ERROR=1
 which python
 python -c "import wandb; print(wandb.__version__)"
 
-python DDIM_conditional_derived/Empirical_PIT_precip.py
+#python DDIM_conditional_derived/Empirical_PIT_precip.py
 
 
 python DDIM_conditional_derived/Empirical_PIT_temp.py
