@@ -22,7 +22,7 @@ from models.diff_module import DDIMResidualContextual
 
 from concurrent.futures import ThreadPoolExecutor
 
-num_samples = 5 #Deterministic sample : single run,,,,,
+num_samples = 10 #Deterministic sample : single run,,,,,
 eta = 0.0  #For DDIM sampling : determinisitc. 
 
 
@@ -286,7 +286,7 @@ ds_ddim = xr.Dataset(
     }
 )
 encoding_ddim = {var: {"_FillValue": np.nan} for var in var_names}
-ds_ddim.to_netcdf("DDIM_conditional_derived/output_inference/ddim_downscaled_50steps_test_set_5samples_eta_0.0.nc", encoding=encoding_ddim)
+ds_ddim.to_netcdf("DDIM_conditional_derived/output_inference/ddim_downscaled_50steps_test_set_10samples_eta_0.0.nc", encoding=encoding_ddim)
 print(f"DDIM downscaled test set saved with shape: {ddim_preds_np.shape}")
 #Scores
 channels = ["precip", "temp"]
@@ -307,6 +307,6 @@ for ch in range(2):
     ddim_crps.append(crps_ddim)
 
 print("\nCRPS Scores (averaged over all time, y, x):")
-print(f"{'Channel':<10} {'UNet':>10} {'DDIM (5 samples, eta=0.0, 50 steps)':>40}")
+print(f"{'Channel':<10} {'UNet':>10} {'DDIM (10 samples, eta=0.0, 50 steps)':>40}")
 for i, name in enumerate(channels):
     print(f"{name:<10} {unet_crps[i]:10.4f} {ddim_crps[i]:40.4f}")

@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 from statsmodels.distributions.empirical_distribution import ECDF
 
 ref_path = "Dataset_Setup_I_Chronological_12km/RhiresD_step1_latlon.nc"
-etas = [0.0, 0.3, 0.5, 0.8, 1.0]
+etas = [0.0] #Etas removed for 0.0 case : AsthanaSh
 downscaled_paths = [
-    f"DDIM_conditional_derived/output_inference/ddim_downscaled_test_set_eta_{eta}.nc"
+    f"DDIM_conditional_derived/output_inference/ddim_downscaled_50steps_test_set_5samples_eta_{eta}.nc"
     for eta in etas
 ]
 
@@ -68,5 +68,5 @@ for eta, ds_path in zip(etas, downscaled_paths):
     ax.legend(fontsize=13)
 
     plt.tight_layout()
-    plt.savefig(f"DDIM_conditional_derived/output_inference/Precip_PIT_histogram_eta_{eta}.pdf", format='pdf', dpi=1000)
+    plt.savefig(f"DDIM_conditional_derived/output_inference/Precip_PIT_histogram_50steps_5samples_eta_{eta}.pdf", format='pdf', dpi=1000)
     plt.close()

@@ -12,6 +12,7 @@ results/
 *.log
 *.pth
 *.pt
+*.pdf
 *.wandb
 *.h5
 *.pyc

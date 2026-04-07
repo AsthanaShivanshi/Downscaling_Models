@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=eta_0.0_5samples_50steps_AllFrames_DDIM_inference_4_sample
-#SBATCH --output=DDIM_conditional_derived/logs/ckpts_DDIM/eta_0.0_5samples_50steps_AllFrames_DDIM_inference-job_output-%j.txt
-#SBATCH --error=DDIM_conditional_derived/logs/ckpts_DDIM/eta_0.0_5samples_50steps_AllFrames_DDIM_inference-job_error-%j.txt
+#SBATCH --job-name=eta_0.0_10samples_50steps_AllFrames_DDIM_inference_4_sample
+#SBATCH --output=DDIM_conditional_derived/logs/ckpts_DDIM/eta_0.0_10samples_50steps_AllFrames_DDIM_inference-job_output-%j.txt
+#SBATCH --error=DDIM_conditional_derived/logs/ckpts_DDIM/eta_0.0_10samples_50steps_AllFrames_DDIM_inference-job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-00:00:00
