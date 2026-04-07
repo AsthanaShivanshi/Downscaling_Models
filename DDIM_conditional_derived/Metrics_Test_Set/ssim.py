@@ -19,22 +19,33 @@ ref_precip = xr.open_dataset("Dataset_Setup_I_Chronological_12km/RhiresD_step1_l
 mask_temp = ~np.isnan(ref_temp.values)
 mask_precip = ~np.isnan(ref_precip.values)
 
-def pooled_ssim(ref, pred, mask):
+def ssim(ref, pred, mask):
+
+#ref:xarray datarray with dims (time, lat, lon)
+
+    imagewise_scores = []
+    n_samples, n_time, N, E = pred.shape
+
+    for s in range(n_samples):
+        for t in range(n_time):
+            ref_img = ref.values[t]  # (N, E) #gives underlying numpy arry. 
+            pred_img = pred[s, t]  # (N, E)
+            mask_img= mask[t]
 
 
-    if pred.shape[1] < pred.shape[0]:
-        pred = np.moveaxis(pred, 1, 0)  
-    mask_broadcast = np.broadcast_to(mask, pred.shape)
-    ref_broadcast = np.broadcast_to(ref.values, pred.shape)
-    ref_flat = ref_broadcast[mask_broadcast]
-    pred_flat = pred[mask_broadcast]
-    valid = ~np.isnan(pred_flat)
-    ref_flat = ref_flat[valid]
-    pred_flat = pred_flat[valid]
 
-    ref_flat = ref_flat.reshape(1, -1)
-    pred_flat = pred_flat.reshape(1, -1)
-    return ssim(ref_flat, pred_flat, data_range=ref_flat.max() - ref_flat.min())
+            #calcualting only for valid pixs
+
+
+            if np.sum(mask_img) > 0:
+
+
+
+
+                ssim_score = ssim(ref_img, pred_img, data_range=ref_img.max() - ref_img.min(), mask=mask_img)
+                imagewise_scores.append(ssim_score)
+
+    return np.mean(imagewise_scores)
 
 
 
@@ -43,23 +54,50 @@ ssim_precip = []
 steps = []
 
 for f, step in files:
+
     ds = xr.open_dataset(f)
-    temp = ds['temp'].sel(time=slice("2011-01-01", "2023-12-31")).values
-    ssim_temp.append(pooled_ssim(ref_temp, temp, mask_temp))
+    temp = ds['temp'].sel(time=slice("2011-01-01", "2023-12-31")).values  # (time, sample, N, E)
+
+
+    temp = np.moveaxis(temp, 1, 0)  # (sample, time, N, E)
+    ssim_temp.append(ssim(ref_temp, temp, mask_temp))
+
     precip = ds['precip'].sel(time=slice("2011-01-01", "2023-12-31")).values
+    
     precip = np.where(precip < 0, 0, precip)
-    ssim_precip.append(pooled_ssim(ref_precip, precip, mask_precip))
+    precip = np.moveaxis(precip, 1, 0)  # (sample, time, N, E)
+
+
+    ssim_precip.append(ssim(ref_precip, precip, mask_precip))
     steps.append(step)
 
 
-plt.figure(figsize=(12,8))
-plt.plot(steps, ssim_temp, marker='o', label='Temperature')
-plt.plot(steps, ssim_precip, marker='s', label='Precipitation')
-plt.xlabel("Denoising Steps")
-plt.ylabel("SSIM (pooled)")
+
+plt.figure(figsize=(10,10))
+
+
+#2 rows, 1 column, 1st
+
+
+plt.subplot(2,1,1) 
+plt.plot(steps, ssim_temp, marker='o', color='red', label='Temperature')
+plt.ylabel(r"SSIM(pooled) $\uparrow$") #uparrow
 plt.title("SSIM vs Denoising Steps")
 plt.legend()
-plt.grid(True, linestyle='--', alpha=0.6)
+
+#2 rows, 1 column, 2nd
+
+plt.subplot(2,1,2) 
+plt.plot(steps, ssim_precip, marker='s', color='blue', label='Precipitation')
+plt.ylabel(r"SSIM(pooled) $\uparrow$") #uparrow
+plt.title("SSIM vs Denoising Steps")
+plt.legend()
+
+
+
+
+
+
 plt.tight_layout()
 plt.savefig("DDIM_conditional_derived/Metrics_Test_Set/ssim_vs_steps.pdf")
 plt.show()

@@ -21,7 +21,7 @@ ref_precip = xr.open_dataset("Dataset_Setup_I_Chronological_12km/RhiresD_step1_l
 mask_temp = ~np.isnan(ref_temp.values)
 mask_precip = ~np.isnan(ref_precip.values)
 
-def pooled_rmse(ref, pred, mask):
+def rmse(ref, pred, mask):
 
 
     if pred.shape[1] < pred.shape[0]:
@@ -42,27 +42,51 @@ rmse_temp = []
 rmse_precip = []
 steps = []
 
+
 for f, step in files:
+
     ds = xr.open_dataset(f)
     temp = ds['temp'].sel(time=slice("2011-01-01", "2023-12-31")).values  # (time, sample, N, E)
-    rmse_temp.append(pooled_rmse(ref_temp, temp, mask_temp))
 
+
+    temp = np.moveaxis(temp, 1, 0)  # (sample, time, N, E)
+    rmse_temp.append(rmse(ref_temp, temp, mask_temp))
 
     precip = ds['precip'].sel(time=slice("2011-01-01", "2023-12-31")).values
+    
     precip = np.where(precip < 0, 0, precip)
-    rmse_precip.append(pooled_rmse(ref_precip, precip, mask_precip))
+    precip = np.moveaxis(precip, 1, 0)  # (sample, time, N, E)
+
+
+    rmse_precip.append(rmse(ref_precip, precip, mask_precip))
     steps.append(step)
 
 
 
 
-plt.figure(figsize=(12,8))
-plt.plot(steps, rmse_temp, marker='o', label='Temperature')
-plt.plot(steps, rmse_precip, marker='s', label='Precipitation')
-plt.xlabel("Denoising Steps")
-plt.ylabel("RMSE (spatiotemporally pooled)")
+plt.figure(figsize=(10,10))
+#2 rows, 1 column, 1st
+plt.subplot(2,1,1) 
+plt.plot(steps, rmse_temp, marker='o', color='red', label='Temperature')
+plt.ylabel("RMSE(pooled) $\downarrow$") #downarrow
 plt.title("RMSE vs Denoising Steps")
 plt.legend()
+
+
+
+#2 rows, 1 column, 2nd
+
+plt.subplot(2,1,2) 
+plt.plot(steps, rmse_precip, marker='s', color='blue', label='Precipitation')
+plt.ylabel("RMSE(pooled) $\downarrow$") #downarrow
+plt.title("RMSE vs Denoising Steps")
+plt.legend()
+
+
+
+
+
+
 plt.tight_layout()
-plt.savefig("DDIM_conditional_derived/Metrics_Test_Set/rmse_vs_denoising_steps.pdf")
+plt.savefig("DDIM_conditional_derived/Metrics_Test_Set/rmse_vs_steps.pdf")
 plt.show()
