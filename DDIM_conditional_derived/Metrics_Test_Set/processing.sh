@@ -11,7 +11,7 @@ source diffscaler.sh
 module load cdo
 
 
-python DDIM_conditional_derived/Metrics_Test_Set/rmse.py
+#python DDIM_conditional_derived/Metrics_Test_Set/rmse.py
 python DDIM_conditional_derived/Metrics_Test_Set/ssim.py
 
 
