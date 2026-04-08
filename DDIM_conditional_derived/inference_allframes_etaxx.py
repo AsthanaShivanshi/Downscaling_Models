@@ -22,7 +22,7 @@ from models.diff_module import DDIMResidualContextual
 
 from concurrent.futures import ThreadPoolExecutor
 
-num_samples = 10 #Deterministic sample : single run,,,,,
+num_samples = 1 #Deterministic sample : single run,,,,,
 eta = 0.0  #For DDIM sampling : determinisitc. 
 
 
@@ -264,8 +264,10 @@ ds_unet = xr.Dataset(
         "lon": (("y", "x"), lon2d) if lon2d is not None else None,
     }
 )
-encoding = {var: {"_FillValue": np.nan} for var in var_names}
-print(f"UNet baseline saved with shape: {unet_preds_np.shape}")
+
+
+
+
 
 # DDIM samples
 ddim_preds_np = np.transpose(ddim_all, (0, 1, 2, 3, 4))  # (time, sample, channel, y, x)
@@ -285,9 +287,18 @@ ds_ddim = xr.Dataset(
         "lon": (("y", "x"), lon2d) if lon2d is not None else None,
     }
 )
-encoding_ddim = {var: {"_FillValue": np.nan} for var in var_names}
-ds_ddim.to_netcdf("DDIM_conditional_derived/output_inference/ddim_downscaled_50steps_test_set_10samples_eta_0.0.nc", encoding=encoding_ddim)
-print(f"DDIM downscaled test set saved with shape: {ddim_preds_np.shape}")
+
+
+encoding = {var: {"_FillValue": np.nan} for var in var_names}
+
+
+ds_unet.to_netcdf("DDIM_conditional_derived/output_inference/unet_downscaled_test_set.nc", encoding=encoding)
+print(f"UNet downscaled test set saved with shape: {unet_preds_np.shape}")
+
+
+
+print(f"UNet baseline saved with shape: {unet_preds_np.shape}")
+
 #Scores
 channels = ["precip", "temp"]
 unet_crps = []
@@ -307,6 +318,6 @@ for ch in range(2):
     ddim_crps.append(crps_ddim)
 
 print("\nCRPS Scores (averaged over all time, y, x):")
-print(f"{'Channel':<10} {'UNet':>10} {'DDIM (10 samples, eta=0.0, 50 steps)':>40}")
+print(f"{'Channel':<10} {'UNet':>10} {'DDIM (2 samples, eta=0.0, 50 steps)':>40}")
 for i, name in enumerate(channels):
     print(f"{name:<10} {unet_crps[i]:10.4f} {ddim_crps[i]:40.4f}")
