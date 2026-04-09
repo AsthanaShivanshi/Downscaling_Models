@@ -95,6 +95,9 @@ all_test_targets = []
 for batch_inputs, batch_targets in test_loader:
     all_test_inputs.append(batch_inputs)
     all_test_targets.append(batch_targets)
+
+
+    
 test_inputs = torch.cat(all_test_inputs, dim=0)
 test_targets = torch.cat(all_test_targets, dim=0)
 N = test_inputs.shape[0]
@@ -126,86 +129,86 @@ unet_regr.load_state_dict(unet_regr_ckpt, strict=False)
 unet_regr = unet_regr.to(device)
 unet_regr.eval()
 
-# DDIM
+ # DDIM
 denoiser = UNetModel(
     model_channels=32,
-    in_channels=2,
+     in_channels=2,
     out_channels=2,
-    num_res_blocks=2,
-    attention_resolutions=[1, 2, 4],
-    context_ch=[32, 64, 128],
-    channel_mult=[1, 2, 4],
-    conv_resample=True,
-    dims=2,
-    use_fp16=False,
+     num_res_blocks=2,
+     attention_resolutions=[1, 2, 4],
+     context_ch=[32, 64, 128],
+     channel_mult=[1, 2, 4],
+     conv_resample=True,
+     dims=2,
+     use_fp16=False,
     num_heads=2
-)
-conditioner = AFNOConditionerNetCascade(
-    autoencoder=None,
-    input_channels=[2],
-    embed_dim=[32, 64, 128],
-    analysis_depth=3,
-    cascade_depth=3,
-    context_ch=[32, 64, 128]
-)
-ddim = DDIMResidualContextual(
-            denoiser=denoiser,
-            context_encoder=conditioner,
-            timesteps=1000,                
-            parameterization="v",
-            loss_type="l1",
-            beta_schedule="cosine",
-            linear_start=1e-4,
-            linear_end=2e-2,
-            cosine_s=8e-3,
-            use_ema=True,
-            ema_decay=0.9999,
-            lr=1e-4
-        )
-ddim_ckpt = torch.load(
-    "DDIM_conditional_derived/trained_ckpts/12km/DDIM_checkpoint_L1_cosine_schedule_loss_parameterisation_v.ckpt",
-    map_location=device
-)
+ )
+ conditioner = AFNOConditionerNetCascade(
+     autoencoder=None,
+     input_channels=[2],
+     embed_dim=[32, 64, 128],
+     analysis_depth=3,
+     cascade_depth=3,
+     context_ch=[32, 64, 128]
+ )
+ ddim = DDIMResidualContextual(
+             denoiser=denoiser,
+             context_encoder=conditioner,
+             timesteps=1000,                
+             parameterization="v",
+             loss_type="l1",
+             beta_schedule="cosine",
+             linear_start=1e-4,
+             linear_end=2e-2,
+             cosine_s=8e-3,
+             use_ema=True,
+             ema_decay=0.9999,
+             lr=1e-4
+         )
+ ddim_ckpt = torch.load(
+     "DDIM_conditional_derived/trained_ckpts/12km/DDIM_checkpoint_L1_cosine_schedule_loss_parameterisation_v.ckpt",
+     map_location=device
+ )
 
 
-ddim.load_state_dict(ddim_ckpt["state_dict"], strict=False)
-ddim = ddim.to(device)
-ddim.eval()
-sampler = DDIMSampler(ddim, device=device)
+ ddim.load_state_dict(ddim_ckpt["state_dict"], strict=False)
+ ddim = ddim.to(device)
+ ddim.eval()
+ sampler = DDIMSampler(ddim, device=device)
 
 
   
 
-ddim_all = np.empty((N, num_samples, 2, *spatial_shape), dtype=np.float32)
+ ddim_all = np.empty((N, num_samples, 2, *spatial_shape), dtype=np.float32)
 
 
 
-base_seed = 124
+ base_seed = 124
 
 
-#For parallelisation
+ #For parallelisation
 
 
-def ddim_sample_worker(j, base_seed, sample_shape, context, sampler, eta, unet_pred, pr_params, temp_params, params_list, device):
-    torch.manual_seed(base_seed + j)
-    np.random.seed(base_seed + j)
-    z = torch.randn((1, *sample_shape), device=device)
-    residual, _ = sampler.sample(
-        S=50,
-        batch_size=1,
-        shape=sample_shape,
-        conditioning=context,
-        eta=eta,
-        verbose=False,
-        x_T=z,
-        schedule="cosine",
-    )
-    final_pred = unet_pred + residual
-    final_pred_np = final_pred[0].cpu().numpy()
-    ddim_pred_denorm = np.empty_like(final_pred_np)
-    for i, params in enumerate(params_list):
-        ddim_pred_denorm[i] = denorm_pr(final_pred_np[i], pr_params) if i == 0 else denorm_temp(final_pred_np[i], params)
-    return ddim_pred_denorm
+ def ddim_sample_worker(j, base_seed, sample_shape, context, sampler, eta, unet_pred, pr_params, temp_params, params_list, device):
+     torch.manual_seed(base_seed + j)
+     np.random.seed(base_seed + j)
+     z = torch.randn((1, *sample_shape), device=device)
+     residual, _ = sampler.sample(
+         S=50,
+         batch_size=1,
+         shape=sample_shape,
+         conditioning=context,
+         eta=eta,
+         verbose=False,
+         x_T=z,
+         schedule="cosine",
+     )
+     final_pred = unet_pred + residual
+     final_pred_np = final_pred[0].cpu().numpy()
+     ddim_pred_denorm = np.empty_like(final_pred_np)
+     for i, params in enumerate(params_list):
+         ddim_pred_denorm[i] = denorm_pr(final_pred_np[i], pr_params) if i == 0 else denorm_temp(final_pred_np[i], params)
+     return ddim_pred_denorm
 
 
 
@@ -227,17 +230,17 @@ for idx in tqdm(range(N), desc="Downscaling frames"):
         unet_all[idx] = unet_pred_denorm
         target_all[idx] = target_denorm
 
-        # Parallelising over samples
-        with ThreadPoolExecutor(max_workers=num_samples) as executor:
-            futures = [
-                executor.submit(
-                    ddim_sample_worker, j, base_seed, sample_shape, context, sampler, eta,
-                    unet_pred, pr_params, temp_params, params_list, device
-                )
-                for j in range(num_samples)
-            ]
-            for j, future in enumerate(futures):
-                ddim_all[idx, j] = future.result()
+         # Parallelising over samples
+         with ThreadPoolExecutor(max_workers=num_samples) as executor:
+             futures = [
+                 executor.submit(
+                     ddim_sample_worker, j, base_seed, sample_shape, context, sampler, eta,
+                     unet_pred, pr_params, temp_params, params_list, device
+                 )
+                 for j in range(num_samples)
+             ]
+             for j, future in enumerate(futures):
+                 ddim_all[idx, j] = future.result()
 
 
 
@@ -269,55 +272,55 @@ ds_unet = xr.Dataset(
 
 
 
-# DDIM samples
-ddim_preds_np = np.transpose(ddim_all, (0, 1, 2, 3, 4))  # (time, sample, channel, y, x)
-ddim_preds_np = np.transpose(ddim_preds_np, (0, 1, 3, 4, 2))  # (time, sample, y, x, channel)
+ # DDIM samples
+ ddim_preds_np = np.transpose(ddim_all, (0, 1, 2, 3, 4))  # (time, sample, channel, y, x)
+ ddim_preds_np = np.transpose(ddim_preds_np, (0, 1, 3, 4, 2))  # (time, sample, y, x, channel)
 
-ds_ddim = xr.Dataset(
-    {
-        var: (("time", "sample", "y", "x"), ddim_preds_np[:, :, :, :, i])
-        for i, var in enumerate(var_names)
-    },
-    coords={
-        "time": times,
-        "sample": np.arange(num_samples),
-        "y": np.arange(spatial_shape[0]),
-        "x": np.arange(spatial_shape[1]),
-        "lat": (("y", "x"), lat2d) if lat2d is not None else None,
-        "lon": (("y", "x"), lon2d) if lon2d is not None else None,
-    }
-)
+ ds_ddim = xr.Dataset(
+     {
+         var: (("time", "sample", "y", "x"), ddim_preds_np[:, :, :, :, i])
+         for i, var in enumerate(var_names)
+     },
+     coords={
+         "time": times,
+         "sample": np.arange(num_samples),
+         "y": np.arange(spatial_shape[0]),
+         "x": np.arange(spatial_shape[1]),
+         "lat": (("y", "x"), lat2d) if lat2d is not None else None,
+         "lon": (("y", "x"), lon2d) if lon2d is not None else None,
+     }
+ )
 
 
 encoding = {var: {"_FillValue": np.nan} for var in var_names}
 
 
-ds_unet.to_netcdf("DDIM_conditional_derived/output_inference/unet_downscaled_test_set.nc", encoding=encoding)
+ds_unet.to_netcdf("DDIM_conditional_derived/output_inference/UNet_downscaled_test_set_2011_2023.nc", encoding=encoding)
 print(f"UNet downscaled test set saved with shape: {unet_preds_np.shape}")
 
 
 
 print(f"UNet baseline saved with shape: {unet_preds_np.shape}")
 
-#Scores
-channels = ["precip", "temp"]
-unet_crps = []
-ddim_crps = []
+ #Scores
+ channels = ["precip", "temp"]
+ unet_crps = []
+ ddim_crps = []
 
-for ch in range(2):
-    crps_unet = ps.crps_ensemble(
-        target_all[:, ch].reshape(-1),  # (N*H*W,)
-        unet_all[:, ch].reshape(-1, 1)  # (N*H*W, 1)
-    ).mean()
-    unet_crps.append(crps_unet)
+ for ch in range(2):
+     crps_unet = ps.crps_ensemble(
+         target_all[:, ch].reshape(-1),  # (N*H*W,)
+         unet_all[:, ch].reshape(-1, 1)  # (N*H*W, 1)
+     ).mean()
+     unet_crps.append(crps_unet)
 
-    crps_ddim = ps.crps_ensemble(
-        target_all[:, ch].reshape(-1),  # (N*H*W,)
-        ddim_all[:, :, ch].reshape(-1, ddim_all.shape[1])  # (N*H*W, num_samples)
-    ).mean()
-    ddim_crps.append(crps_ddim)
+     crps_ddim = ps.crps_ensemble(
+         target_all[:, ch].reshape(-1),  # (N*H*W,)
+         ddim_all[:, :, ch].reshape(-1, ddim_all.shape[1])  # (N*H*W, num_samples)
+     ).mean()
+     ddim_crps.append(crps_ddim)
 
-print("\nCRPS Scores (averaged over all time, y, x):")
-print(f"{'Channel':<10} {'UNet':>10} {'DDIM (2 samples, eta=0.0, 50 steps)':>40}")
-for i, name in enumerate(channels):
-    print(f"{name:<10} {unet_crps[i]:10.4f} {ddim_crps[i]:40.4f}")
+ print("\nCRPS Scores (averaged over all time, y, x):")
+ print(f"{'Channel':<10} {'UNet':>10} {'DDIM (2 samples, eta=0.0, 50 steps)':>40}")
+ for i, name in enumerate(channels):
+     print(f"{name:<10} {unet_crps[i]:10.4f} {ddim_crps[i]:40.4f}")

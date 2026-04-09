@@ -6,7 +6,8 @@ from skimage.metrics import structural_similarity
 files = [
     ("DDIM_conditional_derived/output_inference/ddim_downscaled_50steps_test_set_5samples_eta_0.0.nc", 50),
     ("DDIM_conditional_derived/output_inference/ddim_downscaled_100steps_test_set_5samples_eta_0.0.nc", 100),
-    ("DDIM_conditional_derived/output_inference/ddim_downscaled_500steps_test_set_2samples_eta_0.0.nc", 500),
+    ("DDIM_conditional_derived/output_inference/ddim_downscaled_250steps_test_set_5samples_eta_0.0.nc", 250),
+    ("DDIM_conditional_derived/output_inference/UNet_downscaled_test_set_2011_2023.nc",None)
 ]
 
 
@@ -19,23 +20,29 @@ mask_precip = ~np.isnan(ref_precip.values)
 
 
 
-
+print("temp shape bfor ssim : ", ref_temp.values.shape)
+print("precip shape bfor ssim : ", ref_precip.values.shape)
 
 def pooled_ssim(ref, pred, mask):
     imagewise_scores = []
+
+    print("pooled_ssim shapes:")
+    print("  ref:", ref.values.shape)
+    print("  pred:", pred.shape)
+    print("  mask:", mask.shape)
+
+    if pred.ndim == 3:
+        pred = np.expand_dims(pred, axis=0)  # (1, time, N, E)
+    if pred.shape[1:] != ref.values.shape:
+        raise ValueError(f"Shape mismatch: pred {pred.shape}, ref {ref.values.shape}")
+
     n_samples, n_time, N, E = pred.shape
-
-
-
 
     for s in range(n_samples):
         for t in range(n_time):
             ref_img = ref.values[t]
             pred_img = pred[s, t]
             mask_img = mask[t]
-
-
-
 
             if np.sum(mask_img) > 0:
                 ref_valid = ref_img[mask_img]
@@ -61,26 +68,43 @@ def pooled_ssim(ref, pred, mask):
 
 
 
-
-
 ssim_temp = []
 ssim_precip = []
 steps = []
 
-
-
-
 for f, step in files:
     ds = xr.open_dataset(f)
-    temp = ds['temp'].sel(time=slice("2011-01-01", "2023-12-31")).values
-    temp = np.moveaxis(temp, 1, 0)
-    ssim_temp.append(pooled_ssim(ref_temp, temp, mask_temp))
 
-    precip = ds['precip'].sel(time=slice("2011-01-01", "2023-12-31")).values
-    precip = np.where(precip < 0, 0, precip)
-    precip = np.moveaxis(precip, 1, 0)
+
+    if step is None:  # UNet
+
+
+
+        precip = ds['precip'].sel(time=slice("2011-01-01", "2023-12-31")).values  # (4748, 240, 370)
+        temp = ds['temp'].sel(time=slice("2011-01-01", "2023-12-31")).values      # (4748, 240, 370)
+        precip = precip[None, ...]  # (1, 4748, 240, 370)
+        temp = temp[None, ...]      # (1, 4748, 240, 370)
+
+
+
+
+        
+    else:
+        temp = ds['temp'].sel(time=slice("2011-01-01", "2023-12-31")).values
+        temp = np.moveaxis(temp, 1, 0)  # (n_samples, time, lat, lon)
+        precip = ds['precip'].sel(time=slice("2011-01-01", "2023-12-31")).values
+        precip = np.where(precip < 0, 0, precip)
+        precip = np.moveaxis(precip, 1, 0)
+
+    ssim_temp.append(pooled_ssim(ref_temp, temp, mask_temp))
     ssim_precip.append(pooled_ssim(ref_precip, precip, mask_precip))
-    steps.append(step)
+
+    if step is None:
+        steps.append("UNet")
+    else:
+        steps.append(step)
+
+
 
 
 
@@ -93,22 +117,31 @@ print("SSIM Precipitation:", ssim_precip)
 
 
 
+step_labels = [str(s) for s in steps]
+x_pos = list(range(len(steps)))  
+
+
+
 
 plt.figure(figsize=(10,10))
 plt.subplot(2,1,1) 
-plt.plot(steps, ssim_temp, marker='o', color='red', label='Temperature')
+plt.plot(x_pos, ssim_temp, marker='o', color='red', label='Temperature')
 plt.ylabel(r"SSIM(pooled) $\uparrow$") 
 plt.title("SSIM vs Denoising Steps")
 plt.legend()
+plt.xticks(x_pos, step_labels)
+
 
 
 
 
 plt.subplot(2,1,2) 
-plt.plot(steps, ssim_precip, marker='s', color='blue', label='Precipitation')
+plt.plot(x_pos, ssim_precip, marker='s', color='blue', label='Precipitation')
 plt.ylabel(r"SSIM(pooled) $\uparrow$") 
 plt.title("SSIM vs Denoising Steps")
 plt.legend()
+plt.xticks(x_pos, step_labels)
+
 
 
 
