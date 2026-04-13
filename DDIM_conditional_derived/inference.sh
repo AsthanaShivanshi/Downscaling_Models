@@ -24,5 +24,5 @@ python -c "import wandb; print(wandb.__version__)"
 #python DDIM_conditional_derived/inference_single_frame_hierarchy.py --idx 25 --sampling_steps 250 500 750 999
 #python DDIM_conditional_derived/inference_single_frame_hierarchy.py --idx 31 --sampling_steps 250 500 750 999
 
-#Seeded runs DDIm inference 5 samples test set---all frames
+#Experiment Nsteps Nsamples
 python DDIM_conditional_derived/experiment_Nsteps_Nsamples.py

@@ -4,17 +4,13 @@ import json
 import sys
 from tqdm import tqdm
 import xarray as xr
-import properscoring as ps
+
 import time
 import pandas as pd
 import gc
 
 sys.path.append("..")
 sys.path.append("../..")
-sys.path.append("DDIM_conditional_derived/Metrics_Test_Set")
-
-from Metrics_Test_Set.crps import crps_score
-from Metrics_Test_Set.ssim import pooled_ssim
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -27,6 +23,10 @@ from models.components.diff.conditioner import AFNOConditionerNetCascade
 from models.diff_module import DDIMResidualContextual
 
 from concurrent.futures import ThreadPoolExecutor
+
+
+import properscoring as ps
+from skimage.metrics import structural_similarity as ssim
 
 #--------------------------------------------------------------------------------#
 
@@ -48,6 +48,46 @@ def denorm_pr(x, pr_params):
 def denorm_temp(x, params):
     return x * params['std'] + params['mean']
 
+def pooled_ssim(gt, pred, mask):
+    # gt: (T, H, W), pred: (S, T, H, W) or (T, H, W), mask: (T, H, W) or (H, W)
+    # Returns mean SSIM over all valid pixels and times
+    if pred.ndim == 4:  # (S, T, H, W)
+        pred = pred.mean(axis=0)  # mean over samples
+    ssim_vals = []
+    for t in range(gt.shape[0]):
+        m = mask if mask.ndim == 2 else mask[t]
+        if np.any(m):
+            ssim_val = ssim(gt[t], pred[t], data_range=np.nanmax(gt[t]) - np.nanmin(gt[t]), win_size=11, gaussian_weights=True, use_sample_covariance=False, multichannel=False, mask=m)
+            ssim_vals.append(ssim_val)
+    return np.mean(ssim_vals)
+
+def crps_score(gt, pred, mask):
+    # gt: (T, H, W), pred: (S, T, H, W) or (T, H, W), mask: (T, H, W) or (H, W)
+    # Returns mean CRPS over all valid pixels and times
+    if pred.ndim == 4:  # (S, T, H, W)
+        pred = np.moveaxis(pred, 0, 1)  # (T, S, H, W)
+        pred = pred.reshape(pred.shape[0], -1, pred.shape[-2]*pred.shape[-1])  # (T, S, H*W)
+        gt = gt.reshape(gt.shape[0], -1)  # (T, H*W)
+        mask = mask.reshape(gt.shape)
+        crps_vals = []
+        for t in range(gt.shape[0]):
+            valid = mask[t].flatten()
+            if np.any(valid):
+                crps = ps.crps_ensemble(gt[t][valid], pred[t][:, valid].T).mean()
+                crps_vals.append(crps)
+        return np.mean(crps_vals)
+    else:
+        gt = gt.reshape(gt.shape[0], -1)
+        pred = pred.reshape(pred.shape[0], -1)
+        mask = mask.reshape(gt.shape)
+        crps_vals = []
+        for t in range(gt.shape[0]):
+            valid = mask[t].flatten()
+            if np.any(valid):
+                crps = ps.crps_ensemble(gt[t][valid], pred[t][valid][:, None]).mean()
+                crps_vals.append(crps)
+        return np.mean(crps_vals)
+
 #--------------------------------------------------------------------------------#
 
 with xr.open_dataset("Dataset_Setup_I_Chronological_12km/RhiresD_target_train_scaled.nc") as ds:
@@ -57,6 +97,8 @@ with open("Dataset_Setup_I_Chronological_12km/RhiresD_scaling_params.json", 'r')
     pr_params = json.load(f)
 with open("Dataset_Setup_I_Chronological_12km/TabsD_scaling_params.json", 'r') as f:
     temp_params = json.load(f)
+
+print("params loaded")
 
 train_input_paths = {
     'precip': "Dataset_Setup_I_Chronological_12km/RhiresD_input_train_scaled.nc",
@@ -109,6 +151,8 @@ dm = DownscalingDataModule(
 dm.setup()
 val_loader = dm.val_dataloader()
 
+print("DataLoader ready")
+
 # Only collect indices for the year of interest, not all data
 with xr.open_dataset(val_target_paths['precip']) as ds:
     times = ds['time'].load().values
@@ -125,8 +169,7 @@ with xr.open_dataset("Dataset_Setup_I_Chronological_12km/RhiresD_step1_latlon.nc
 
 gc.collect()
 
-
-
+print("Reference masks ready")
 
 val_inputs = []
 val_targets = []
@@ -169,6 +212,8 @@ unet_regr = unet_regr.to(device)
 unet_regr.eval()
 del unet_regr_ckpt
 gc.collect()
+
+print("UNet ready")
 
 # DDIM
 denoiser = UNetModel(
@@ -220,6 +265,7 @@ ddim.eval()
 sampler = DDIMSampler(ddim, device=device)
 del ddim_ckpt
 gc.collect()
+print("DDIM ready")
 
 #--------------------------------------------------------------------------------#
 
@@ -258,17 +304,35 @@ def ddim_sample_worker(j,
 
 results = []
 
-for S in denoising_steps_list:
-    for num_samples in num_samples_list:
+print("Running inference...")
+
+for S in tqdm(denoising_steps_list, desc="Denoising steps"):
+    for num_samples in tqdm(num_samples_list, desc="Num samples", leave=False):
+        print(f"Starting inference for S={S}, num_samples={num_samples}...")
+
         ddim_all = np.empty((N, num_samples, 2, *spatial_shape), dtype=np.float32)
         start_time = time.time()
-        for idx in range(N):
+        for idx in tqdm(range(N), desc=f"Inference S={S}, samples={num_samples}", leave=False):
             with torch.no_grad():
                 input_sample = val_inputs[idx].unsqueeze(0).to(device)
                 unet_pred = unet_regr(input_sample)
-                unet_all[idx] = unet_pred.cpu().numpy()
+                unet_pred_np = unet_pred[0].cpu().numpy()
+                # Denormalize UNet output and save
+                unet_pred_denorm = np.empty_like(unet_pred_np)
+                for i, params in enumerate(params_list):
+                    unet_pred_denorm[i] = denorm_pr(unet_pred_np[i], pr_params) if i == 0 else denorm_temp(unet_pred_np[i], params)
+                unet_all[idx] = unet_pred_denorm
+
+                # Denormalize target and save
+                target_np = val_targets[idx][:unet_pred.shape[1]].cpu().numpy()
+                target_denorm = np.empty_like(target_np)
+                for i, params in enumerate(params_list):
+                    target_denorm[i] = denorm_pr(target_np[i], pr_params) if i == 0 else denorm_temp(target_np[i], params)
+                target_all[idx] = target_denorm
+
                 context = [(unet_pred, None)]
                 sample_shape = unet_pred.shape[1:]
+
                 with ThreadPoolExecutor(max_workers=num_samples) as executor:
                     futures = [
                         executor.submit(
@@ -294,8 +358,9 @@ for S in denoising_steps_list:
                 gc.collect()
         elapsed_time = time.time() - start_time
 
-        # ,nc
+        # Save DDIM samples
         out_path = f"DDIM_conditional_derived/output_inference/ddim_samples_year_{Y}_S{S}_samples{num_samples}.nc"
+        print(f"Saving results to {out_path}...")
 
         ddim_preds_np = np.transpose(ddim_all, (0, 1, 2, 3, 4))  # (time, sample, channel, y, x)
         ddim_preds_np = np.transpose(ddim_preds_np, (0, 1, 3, 4, 2))  # (time, sample, y, x, channel)
@@ -319,25 +384,39 @@ for S in denoising_steps_list:
         gc.collect()
 
         # (n_samples, time, lat, lon)
-        pred_temp = np.moveaxis(ddim_preds_np[..., 1], 1, 0)
+        pred_temp = np.moveaxis(ddim_preds_np[..., 1], 1, 0)  # (samples, time, y, x)
         pred_precip = np.moveaxis(ddim_preds_np[..., 0], 1, 0)
         pred_precip = np.where(pred_precip < 0, 0, pred_precip)
 
-        # CRPS SSIM
-        ssim_temp_val = pooled_ssim(ref_temp, pred_temp, mask_temp)
-        ssim_precip_val = pooled_ssim(ref_precip, pred_precip, mask_precip)
-        crps_temp_val = crps_score(ref_temp, pred_temp, mask_temp)
-        crps_precip_val = crps_score(ref_precip, pred_precip, mask_precip)
+        # Compute metrics
+        ssim_temp_val = pooled_ssim(ref_temp.values, pred_temp, mask_temp)
+        ssim_precip_val = pooled_ssim(ref_precip.values, pred_precip, mask_precip)
+        crps_temp_val = crps_score(ref_temp.values, pred_temp, mask_temp)
+        crps_precip_val = crps_score(ref_precip.values, pred_precip, mask_precip)
+
+        # Also compute UNet metrics (single deterministic prediction)
+        unet_temp = unet_all[:, 1]
+        unet_precip = np.where(unet_all[:, 0] < 0, 0, unet_all[:, 0])
+        unet_temp = unet_temp.astype(np.float32)
+        unet_precip = unet_precip.astype(np.float32)
+        ssim_temp_unet = pooled_ssim(ref_temp.values, unet_temp, mask_temp)
+        ssim_precip_unet = pooled_ssim(ref_precip.values, unet_precip, mask_precip)
+        crps_temp_unet = crps_score(ref_temp.values, unet_temp, mask_temp)
+        crps_precip_unet = crps_score(ref_precip.values, unet_precip, mask_precip)
 
         results.append({
             "denoising_steps": S,
             "num_samples": num_samples,
             "inference_time_mins": elapsed_time / 60,
             "nc_file": out_path,
-            "SSIM_temp": ssim_temp_val,
-            "SSIM_precip": ssim_precip_val,
-            "CRPS_temp": crps_temp_val,
-            "CRPS_precip": crps_precip_val,
+            "SSIM_temp_DDIM": ssim_temp_val,
+            "SSIM_precip_DDIM": ssim_precip_val,
+            "CRPS_temp_DDIM": crps_temp_val,
+            "CRPS_precip_DDIM": crps_precip_val,
+            "SSIM_temp_UNet": ssim_temp_unet,
+            "SSIM_precip_UNet": ssim_precip_unet,
+            "CRPS_temp_UNet": crps_temp_unet,
+            "CRPS_precip_UNet": crps_precip_unet,
         })
 
         print(f"Denoising steps: {S}, Num samples: {num_samples}, Inference time (in mins): {elapsed_time / 60:.2f}")
@@ -346,8 +425,12 @@ for S in denoising_steps_list:
         gc.collect()
 
 df = pd.DataFrame(results)
-df.to_excel("DDIM_conditional_derived/Metrics_Test_Set/ddim_inference_experiment_results.xlsx", index=False)
-print("Results saved to DDIM_conditional_derived/Metrics_Test_Set/ddim_inference_experiment_results.xlsx")
+print(f"Inference completed for all frames in year {Y}. Results:")
+
+df.to_csv("DDIM_conditional_derived/Metrics_Test_Set/ddim_inference_experiment_results.csv", index=False)
+print("Results saved to DDIM_conditional_derived/Metrics_Test_Set/ddim_inference_experiment_results.csv")
+
+
 
 #--------------------------------------------------------------------------------#
 
@@ -375,10 +458,10 @@ ds_unet = xr.Dataset(
     }
 )
 
+
+
 encoding = {var: {"_FillValue": np.nan} for var in var_names}
 ds_unet.to_netcdf(f"DDIM_conditional_derived/output_inference/unet_downscaled_val_set_year_{Y}.nc", encoding=encoding)
+print(f"UNet predictions saved to DDIM_conditional_derived/output_inference/unet_downscaled_val_set_year_{Y}.nc")
 del ds_unet, unet_preds_np, target_np
 gc.collect()
-
-#--------------------------------------------------------------------------------# 
-#--------------------------------------------------------------------------------#
