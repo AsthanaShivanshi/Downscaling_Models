@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=Unet_DDIM_inference
-#SBATCH --output=DDIM_conditional_derived/logs/ckpts_DDIM/Unet_DDIM_inference-job_output-%j.txt
-#SBATCH --error=DDIM_conditional_derived/logs/ckpts_DDIM/Unet_DDIM_inference-job_error-%j.txt
+#SBATCH --job-name=Inference_Time_Exp
+#SBATCH --output=DDIM_conditional_derived/logs/ckpts_DDIM/Inference_Time_Exp-job_output-%j.txt
+#SBATCH --error=DDIM_conditional_derived/logs/ckpts_DDIM/Inference_Time_Exp-job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-00:00:00
@@ -25,4 +25,4 @@ python -c "import wandb; print(wandb.__version__)"
 #python DDIM_conditional_derived/inference_single_frame_hierarchy.py --idx 31 --sampling_steps 250 500 750 999
 
 #Seeded runs DDIm inference 5 samples test set---all frames
-python DDIM_conditional_derived/inference_allframes_etaxx.py
+python DDIM_conditional_derived/experiment_Nsteps_Nsamples.py
