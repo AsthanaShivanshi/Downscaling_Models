@@ -30,13 +30,20 @@ from skimage.metrics import structural_similarity as ssim
 
 #--------------------------------------------------------------------------------#
 
+
 eta = 0.0  #For DDIM sampling : determinisitc. 
 base_seed = 124
 Y= 2008
 
+
+
+
 #Exp parameters:
 denoising_steps_list = [10, 20, 30, 50, 100, 250, 500]
 num_samples_list = [2, 4, 6, 10, 15]
+
+
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -47,6 +54,9 @@ def denorm_pr(x, pr_params):
 
 def denorm_temp(x, params):
     return x * params['std'] + params['mean']
+
+#--------------------------------------------------------------------------------#
+
 
 def pooled_ssim(gt, pred, mask):
     # gt: (T, H, W), pred: (S, T, H, W) or (T, H, W), mask: (T, H, W) or (H, W)
@@ -428,6 +438,7 @@ df = pd.DataFrame(results)
 print(f"Inference completed for all frames in year {Y}. Results:")
 
 df.to_csv("DDIM_conditional_derived/Metrics_Test_Set/ddim_inference_experiment_results.csv", index=False)
+
 print("Results saved to DDIM_conditional_derived/Metrics_Test_Set/ddim_inference_experiment_results.csv")
 
 
@@ -461,7 +472,10 @@ ds_unet = xr.Dataset(
 
 
 encoding = {var: {"_FillValue": np.nan} for var in var_names}
+
+
 ds_unet.to_netcdf(f"DDIM_conditional_derived/output_inference/unet_downscaled_val_set_year_{Y}.nc", encoding=encoding)
+
 print(f"UNet predictions saved to DDIM_conditional_derived/output_inference/unet_downscaled_val_set_year_{Y}.nc")
 del ds_unet, unet_preds_np, target_np
 gc.collect()
