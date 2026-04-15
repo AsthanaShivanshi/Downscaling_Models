@@ -40,7 +40,7 @@ Y= 2008
 
 #Exp parameters:
 denoising_steps_list = [10, 20, 30, 50, 100, 250, 500]
-num_samples_list = [2, 4, 6, 10, 15]
+num_samples_list = [2, 4, 6, 10, 15] 
 
 
 
