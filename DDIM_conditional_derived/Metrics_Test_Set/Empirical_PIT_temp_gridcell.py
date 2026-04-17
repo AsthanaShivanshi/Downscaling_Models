@@ -7,7 +7,6 @@ import sys
 sys.path.append("../Processing_and_Analysis_Scripts/Prelim_Stats_Obs_only")
 from closest_grid_cell import select_nearest_grid_cell
 
-
 #--------------------------------------------------------------------#
 parser = argparse.ArgumentParser()
 parser.add_argument("--target_lat", type=float, required=True)
@@ -23,7 +22,7 @@ etas = [0.0]
 bins = 30
 #-----------------------------------------------------------------------#
 
-ref_path = "Dataset_Setup_I_Chronological_12km/RhiresD_step1_latlon.nc"
+ref_path = "Dataset_Setup_I_Chronological_12km/TabsD_step1_latlon.nc"
 
 downscaled_paths = [
     f"DDIM_conditional_derived/output_inference/ddim_downscaled_50steps_test_set_5samples_eta_{eta}.nc"
@@ -33,7 +32,7 @@ downscaled_paths = [
 #-----------------------------------------------------------------------#
 
 ref_ds = xr.open_dataset(ref_path).sel(time=slice("2011-01-01", "2023-12-31"))
-ref_cell = select_nearest_grid_cell(ref_ds, target_lat, target_lon, var_name='RhiresD')
+ref_cell = select_nearest_grid_cell(ref_ds, target_lat, target_lon, var_name='TabsD')
 ref_precip = ref_cell['data'].values  # shape: (time,)
 mask = ~np.isnan(ref_precip)
 ref_precip_masked = np.where(mask, ref_precip, np.nan)
@@ -48,20 +47,19 @@ for eta, ds_path in zip(etas, downscaled_paths):
 
     ds = xr.open_dataset(ds_path)
 
-    cell = select_nearest_grid_cell(ds, target_lat, target_lon, var_name='precip')
-    precip = cell['data'].values  # shape: (time, sample) or (sample, time)
+    cell = select_nearest_grid_cell(ds, target_lat, target_lon, var_name='temp')
+    temp = cell['data'].values  # shape: (time, sample) or (sample, time)
 
 
 
-    if precip.shape[0] != ref_precip.shape[0]:
-        precip = precip.T
+    if temp.shape[0] != ref_precip.shape[0]:
+        temp = temp.T
 
 
 
-    precip_flat = precip.reshape(-1)
-    precip_flat = np.where(precip_flat < 0, 0, precip_flat)
-    precip_flat = precip_flat[~np.isnan(precip_flat)]
-    pit = ecdf_ref(precip_flat)
+    temp_flat = temp.reshape(-1)
+    temp_flat = temp_flat[~np.isnan(temp_flat)]
+    pit = ecdf_ref(temp_flat)
 
   
 
@@ -73,30 +71,21 @@ for eta, ds_path in zip(etas, downscaled_paths):
 
 #-----------------------------------------------------------------------#
 
-
-
-
-    fig, ax = plt.subplots(figsize=(12, 8), dpi=1000)
-
-    ax.bar(bin_centers - width/2, ref_hist, width=width, 
-            label="Reference (2011–2023)", color='#4575b4', alpha=0.85, edgecolor='black')
-    ax.bar(bin_centers + width/2, pit_hist, width=width, 
-            label=f"Diffusion (η={eta})", color='#d73027', alpha=0.85, edgecolor='black')
-
+    fig, ax = plt.subplots(figsize=(10, 5), dpi=300)
+    ax.bar(bin_centers - width/2, ref_hist, width=width, label="Reference (2011–2023)", color='#4575b4', alpha=0.85, edgecolor='black')
+    ax.bar(bin_centers + width/2, pit_hist, width=width, label=f"Diffusion (η={eta})", color='#d73027', alpha=0.85, edgecolor='black')
     ax.plot([0, 1], [1, 1], color='gray', linestyle='-', linewidth=2, label='Uniform Density (Ideal)')
-
     ax.set_xlabel("Probability Integral Transform (PIT)", fontsize=15)
     ax.set_ylabel("Density", fontsize=15)
-    ax.set_title(f"PIT Histogram for Precipitation\n{city} (lat={target_lat:.3f}, lon={target_lon:.3f})", fontsize=17, pad=15)
-
-    ax.set_xlim(0.4, 1)  
-
-    ax.annotate(f"Grid cell: lat={target_lat:.3f}, lon={target_lon:.3f}\nTime steps: {ref_precip_flat.shape[0]}\nSamples: {precip.shape[1] if precip.ndim > 1 else 1}",
+    ax.set_title(f"PIT Histogram for Temperature\n{city} (lat={target_lat:.3f}, lon={target_lon:.3f})", fontsize=17, pad=15)
+    ax.annotate(f"Grid cell: lat={target_lat:.3f}, lon={target_lon:.3f}\nTime steps: {ref_precip_flat.shape[0]}\nSamples: {temp.shape[1] if temp.ndim > 1 else 1}",
                 xy=(0.99, 0.97), xycoords='axes fraction', ha='right', va='top', fontsize=11, bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="gray", alpha=0.7))
+
+
 
     ax.grid(True, linestyle=':', linewidth=0.7, alpha=0.7)
     ax.legend(fontsize=13, frameon=True)
-
     plt.tight_layout()
-    plt.savefig(f"DDIM_conditional_derived/Metrics_Test_Set/outputs/Precip_PIT_histogram_{city}_50steps_5samples_eta_{eta}_lat_{target_lat:.3f}_lon_{target_lon:.3f}.pdf", format='pdf', dpi=1000)
+    plt.savefig(f"DDIM_conditional_derived/Metrics_Test_Set/outputs/Temp_PIT_histogram_50steps_5samples_eta_{eta}_lat_{target_lat:.3f}_lon_{target_lon:.3f}.pdf", format='pdf', dpi=1000)
+
     plt.close()

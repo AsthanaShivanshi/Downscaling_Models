@@ -4,10 +4,11 @@ import json
 import sys
 from tqdm import tqdm
 import xarray as xr
-
+import os
 import time
 import pandas as pd
 import gc
+import argparse
 
 sys.path.append("..")
 sys.path.append("../..")
@@ -24,25 +25,28 @@ from models.diff_module import DDIMResidualContextual
 
 from concurrent.futures import ThreadPoolExecutor
 
-
 import properscoring as ps
 from skimage.metrics import structural_similarity as ssim
 
 #--------------------------------------------------------------------------------#
 
-
-eta = 0.0  #For DDIM sampling : determinisitc. 
+eta = 0.0  # For DDIM sampling : deterministic.
 base_seed = 124
-Y= 2008
+Y = 2010
 
+# Exp parameters:
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--S", type=int, default=None)
+parser.add_argument("--num_samples", type=int, default=None)
+args = parser.parse_args()
 
-
-#Exp parameters:
-denoising_steps_list = [10, 20, 30, 50, 100, 250, 500]
-num_samples_list = [2, 4, 6, 10, 15] 
-
-
+if args.S is not None and args.num_samples is not None:
+    denoising_steps_list = [args.S]
+    num_samples_list = [args.num_samples]
+else:
+    denoising_steps_list = [10, 20, 30, 50, 100, 250]
+    num_samples_list = [2, 4, 6, 10, 15]
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -57,10 +61,7 @@ def denorm_temp(x, params):
 
 #--------------------------------------------------------------------------------#
 
-
 def pooled_ssim(gt, pred, mask):
-    # gt: (T, H, W), pred: (S, T, H, W) or (T, H, W), mask: (T, H, W) or (H, W)
-    # Returns mean SSIM over all valid pixels and times
     if pred.ndim == 4:  # (S, T, H, W)
         pred = pred.mean(axis=0)  # mean over samples
     ssim_vals = []
@@ -72,8 +73,6 @@ def pooled_ssim(gt, pred, mask):
     return np.mean(ssim_vals)
 
 def crps_score(gt, pred, mask):
-    # gt: (T, H, W), pred: (S, T, H, W) or (T, H, W), mask: (T, H, W) or (H, W)
-    # Returns mean CRPS over all valid pixels and times
     if pred.ndim == 4:  # (S, T, H, W)
         pred = np.moveaxis(pred, 0, 1)  # (T, S, H, W)
         pred = pred.reshape(pred.shape[0], -1, pred.shape[-2]*pred.shape[-1])  # (T, S, H*W)
@@ -163,7 +162,9 @@ val_loader = dm.val_dataloader()
 
 print("DataLoader ready")
 
-# Only collect indices for the year of interest, not all data
+
+
+
 with xr.open_dataset(val_target_paths['precip']) as ds:
     times = ds['time'].load().values
     year_mask = (times >= np.datetime64(f'{Y}-01-01')) & (times < np.datetime64(f'{Y+1}-01-01'))
@@ -200,32 +201,49 @@ spatial_shape = val_inputs.shape[2:]
 params_list = [pr_params, temp_params]
 
 #--------------------------------------------------------------------------------#
+# UNet inference caching
+unet_save_path = f"DDIM_conditional_derived/output_inference/unet_downscaled_val_set_year_{Y}.npy"
 
-unet_all = np.empty((N, 2, *spatial_shape), dtype=np.float32)
-target_all = np.empty((N, 2, *spatial_shape), dtype=np.float32)
+if os.path.exists(unet_save_path):
+    print("Loading UNet predictions from file...")
+    unet_all = np.load(unet_save_path)
+else:
+    print("Running UNet inference...")
+    unet_all = np.empty((N, 2, *spatial_shape), dtype=np.float32)
+    # UNet
+    unet_regr = DownscalingUnetLightning(
+        in_ch=3,
+        out_ch=2,
+        features=[64, 128, 256, 512],
+        channel_names=["precip", "temp"],
+        precip_scaling_json="Dataset_Setup_I_Chronological_12km/RhiresD_scaling_params.json",
+    )
+    unet_regr_ckpt = torch.load(
+        "LDM_conditional/trained_ckpts_optimised/12km/UNet_ckpts/LDM_conditional.models.unet_module.DownscalingUnetLightning_12km_logtransform_lr0.001_precip_loss_weight1.0_1.0_crps[]_factor0.5_pat3.ckpt.ckpt",
+        map_location=device, weights_only=False
+    )["state_dict"]
 
-# UNet
-unet_regr = DownscalingUnetLightning(
-    in_ch=3,
-    out_ch=2,
-    features=[64, 128, 256, 512],
-    channel_names=["precip", "temp"],
-    precip_scaling_json="Dataset_Setup_I_Chronological_12km/RhiresD_scaling_params.json",
-)
-unet_regr_ckpt = torch.load(
-    "LDM_conditional/trained_ckpts_optimised/12km/UNet_ckpts/LDM_conditional.models.unet_module.DownscalingUnetLightning_12km_logtransform_lr0.001_precip_loss_weight1.0_1.0_crps[]_factor0.5_pat3.ckpt.ckpt",
-    map_location=device, weights_only=False
-)["state_dict"]
+    unet_regr.load_state_dict(unet_regr_ckpt, strict=False)
+    unet_regr = unet_regr.to(device)
+    unet_regr.eval()
+    del unet_regr_ckpt
+    gc.collect()
 
-unet_regr.load_state_dict(unet_regr_ckpt, strict=False)
-unet_regr = unet_regr.to(device)
-unet_regr.eval()
-del unet_regr_ckpt
-gc.collect()
+    print("UNet ready")
 
-print("UNet ready")
+    for idx in tqdm(range(N), desc="UNet inference"):
+        with torch.no_grad():
+            inp = val_inputs[idx].unsqueeze(0).to(device)
+            pred = unet_regr(inp).cpu().numpy()[0]
+            unet_all[idx] = pred
+            del inp, pred
+            gc.collect()
+    np.save(unet_save_path, unet_all)
+    print(f"UNet predictions saved to {unet_save_path}")
 
-# DDIM
+target_all = val_targets.numpy()
+
+#--------------------------------------------------------------------------------#
 denoiser = UNetModel(
     model_channels=32,
     in_channels=2,
@@ -252,7 +270,7 @@ conditioner = AFNOConditionerNetCascade(
 ddim = DDIMResidualContextual(
     denoiser=denoiser,
     context_encoder=conditioner,
-    timesteps=1000,                
+    timesteps=1000,
     parameterization="v",
     loss_type="l1",
     beta_schedule="cosine",
@@ -279,10 +297,10 @@ print("DDIM ready")
 
 #--------------------------------------------------------------------------------#
 
-def ddim_sample_worker(j, 
-    base_seed, 
-    sample_shape, context, sampler, eta, 
-    unet_pred, pr_params, temp_params, 
+def ddim_sample_worker(j,
+    base_seed,
+    sample_shape, context, sampler, eta,
+    unet_pred, pr_params, temp_params,
     params_list, device, S):
 
     torch.manual_seed(base_seed + j)
@@ -314,32 +332,25 @@ def ddim_sample_worker(j,
 
 results = []
 
-print("Running inference...")
+print("Running DDIM inference...")
 
 for S in tqdm(denoising_steps_list, desc="Denoising steps"):
     for num_samples in tqdm(num_samples_list, desc="Num samples", leave=False):
+        out_path = f"DDIM_conditional_derived/output_inference/ddim_samples_year_{Y}_S{S}_samples{num_samples}.nc"
+        metrics_path = f"DDIM_conditional_derived/Metrics_Test_Set/ddim_inference_experiment_results_S{S}_samples{num_samples}.csv"
+        # Skip if already done
+        if os.path.exists(out_path) and os.path.exists(metrics_path):
+            print(f"Skipping S={S}, num_samples={num_samples} (already done)")
+            continue
+
         print(f"Starting inference for S={S}, num_samples={num_samples}...")
 
         ddim_all = np.empty((N, num_samples, 2, *spatial_shape), dtype=np.float32)
         start_time = time.time()
         for idx in tqdm(range(N), desc=f"Inference S={S}, samples={num_samples}", leave=False):
             with torch.no_grad():
-                input_sample = val_inputs[idx].unsqueeze(0).to(device)
-                unet_pred = unet_regr(input_sample)
-                unet_pred_np = unet_pred[0].cpu().numpy()
-                # Denormalize UNet output and save
-                unet_pred_denorm = np.empty_like(unet_pred_np)
-                for i, params in enumerate(params_list):
-                    unet_pred_denorm[i] = denorm_pr(unet_pred_np[i], pr_params) if i == 0 else denorm_temp(unet_pred_np[i], params)
-                unet_all[idx] = unet_pred_denorm
-
-                # Denormalize target and save
-                target_np = val_targets[idx][:unet_pred.shape[1]].cpu().numpy()
-                target_denorm = np.empty_like(target_np)
-                for i, params in enumerate(params_list):
-                    target_denorm[i] = denorm_pr(target_np[i], pr_params) if i == 0 else denorm_temp(target_np[i], params)
-                target_all[idx] = target_denorm
-
+                # Use already computed UNet prediction
+                unet_pred = torch.from_numpy(unet_all[idx]).unsqueeze(0).to(device)
                 context = [(unet_pred, None)]
                 sample_shape = unet_pred.shape[1:]
 
@@ -364,12 +375,11 @@ for S in tqdm(denoising_steps_list, desc="Denoising steps"):
                     ]
                     for j, future in enumerate(futures):
                         ddim_all[idx, j] = future.result()
-                del input_sample, unet_pred, context, sample_shape, futures
+                del unet_pred, context, sample_shape, futures
                 gc.collect()
         elapsed_time = time.time() - start_time
 
         # Save DDIM samples
-        out_path = f"DDIM_conditional_derived/output_inference/ddim_samples_year_{Y}_S{S}_samples{num_samples}.nc"
         print(f"Saving results to {out_path}...")
 
         ddim_preds_np = np.transpose(ddim_all, (0, 1, 2, 3, 4))  # (time, sample, channel, y, x)
@@ -414,7 +424,7 @@ for S in tqdm(denoising_steps_list, desc="Denoising steps"):
         crps_temp_unet = crps_score(ref_temp.values, unet_temp, mask_temp)
         crps_precip_unet = crps_score(ref_precip.values, unet_precip, mask_precip)
 
-        results.append({
+        result_row = {
             "denoising_steps": S,
             "num_samples": num_samples,
             "inference_time_mins": elapsed_time / 60,
@@ -427,55 +437,14 @@ for S in tqdm(denoising_steps_list, desc="Denoising steps"):
             "SSIM_precip_UNet": ssim_precip_unet,
             "CRPS_temp_UNet": crps_temp_unet,
             "CRPS_precip_UNet": crps_precip_unet,
-        })
+        }
+        results.append(result_row)
+
+        # Save metrics for this run
+        pd.DataFrame([result_row]).to_csv(metrics_path, index=False)
+        print(f"Metrics saved to {metrics_path}")
 
         print(f"Denoising steps: {S}, Num samples: {num_samples}, Inference time (in mins): {elapsed_time / 60:.2f}")
 
         del ddim_all, ddim_preds_np, pred_temp, pred_precip
         gc.collect()
-
-df = pd.DataFrame(results)
-print(f"Inference completed for all frames in year {Y}. Results:")
-
-df.to_csv("DDIM_conditional_derived/Metrics_Test_Set/ddim_inference_experiment_results.csv", index=False)
-
-print("Results saved to DDIM_conditional_derived/Metrics_Test_Set/ddim_inference_experiment_results.csv")
-
-
-
-#--------------------------------------------------------------------------------#
-
-with xr.open_dataset(test_input_paths['precip']) as ds:
-    lat2d = ds["lat"].load().values if "lat" in ds else None
-    lon2d = ds["lon"].load().values if "lon" in ds else None
-
-unet_preds_np = np.transpose(unet_all, (0, 2, 3, 1))  # (time, y, x, channel)
-target_np = np.transpose(target_all, (0, 2, 3, 1))    # (time, y, x, channel)
-
-var_names = ["precip", "temp"]
-
-# UNet 
-ds_unet = xr.Dataset(
-    {
-        var: (("time", "y", "x"), unet_preds_np[:, :, :, i])
-        for i, var in enumerate(var_names)
-    },
-    coords={
-        "time": times,
-        "y": np.arange(spatial_shape[0]),
-        "x": np.arange(spatial_shape[1]),
-        "lat": (("y", "x"), lat2d) if lat2d is not None else None,
-        "lon": (("y", "x"), lon2d) if lon2d is not None else None,
-    }
-)
-
-
-
-encoding = {var: {"_FillValue": np.nan} for var in var_names}
-
-
-ds_unet.to_netcdf(f"DDIM_conditional_derived/output_inference/unet_downscaled_val_set_year_{Y}.nc", encoding=encoding)
-
-print(f"UNet predictions saved to DDIM_conditional_derived/output_inference/unet_downscaled_val_set_year_{Y}.nc")
-del ds_unet, unet_preds_np, target_np
-gc.collect()
