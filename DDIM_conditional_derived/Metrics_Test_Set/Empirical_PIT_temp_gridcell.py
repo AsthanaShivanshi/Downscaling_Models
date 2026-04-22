@@ -19,7 +19,7 @@ city = args.city
 
 
 etas = [0.0]
-bins = 30
+bins = 20
 #-----------------------------------------------------------------------#
 
 ref_path = "Dataset_Setup_I_Chronological_12km/TabsD_step1_latlon.nc"
@@ -61,13 +61,22 @@ for eta, ds_path in zip(etas, downscaled_paths):
     temp_flat = temp_flat[~np.isnan(temp_flat)]
     pit = ecdf_ref(temp_flat)
 
-  
+
 
     bin_edges = np.linspace(0, 1, bins + 1)
     ref_hist, _ = np.histogram(ref_pit, bins=bin_edges, density=True)
     pit_hist, _ = np.histogram(pit, bins=bin_edges, density=True)
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
     width = (bin_edges[1] - bin_edges[0]) * 0.4
+
+    uniform_density = np.ones_like(pit_hist) / (bin_edges[1] - bin_edges[0])
+    # Add a small epsilon to avoid log(0)
+    epsilon = 1e-10
+    pit_hist_safe = pit_hist + epsilon
+    uniform_density_safe = uniform_density + epsilon
+    kl_div = np.sum(pit_hist_safe * np.log(pit_hist_safe / uniform_density_safe)) * (bin_edges[1] - bin_edges[0])
+    print(f"KL divergence (PIT vs uniform) for eta={eta}: {kl_div:.4f}")
+
 
 #-----------------------------------------------------------------------#
 

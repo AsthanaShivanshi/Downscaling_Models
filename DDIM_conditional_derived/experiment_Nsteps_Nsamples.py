@@ -337,7 +337,7 @@ print("Running DDIM inference...")
 for S in tqdm(denoising_steps_list, desc="Denoising steps"):
     for num_samples in tqdm(num_samples_list, desc="Num samples", leave=False):
         out_path = f"DDIM_conditional_derived/output_inference/ddim_samples_year_{Y}_S{S}_samples{num_samples}.nc"
-        metrics_path = f"DDIM_conditional_derived/Metrics_Test_Set/ddim_inference_experiment_results_S{S}_samples{num_samples}.csv"
+        metrics_path = f"DDIM_conditional_derived/Metrics_Test_Set/outputs/ddim_inference_experiment_results_S{S}_samples{num_samples}.csv"
         # Skip if already done
         if os.path.exists(out_path) and os.path.exists(metrics_path):
             print(f"Skipping S={S}, num_samples={num_samples} (already done)")

@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=GridCell_Calib_Eval
-#SBATCH --output=DDIM_conditional_derived/logs/Metrics_Test_Set/calibration_eval-job_output-%j.txt
-#SBATCH --error=DDIM_conditional_derived/logs/Metrics_Test_Set/calibration_eval-job_error-%j.txt
+#SBATCH --job-name=Kiviat_job
+#SBATCH --output=DDIM_conditional_derived/logs/Metrics_Test_Set/kiviat_job_%j.log
+#SBATCH --error=DDIM_conditional_derived/logs/Metrics_Test_Set/kiviat_job_%j.log
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --time=5:00:00
-#SBATCH --mem=128G
+#SBATCH --time=1-00:00:00
+#SBATCH --mem=256G
 #SBATCH --partition=cpu
 #SBATCH --gres=gpu:0
 
@@ -30,5 +30,8 @@ python -c "import wandb; print(wandb.__version__)"
 #python DDIM_conditional_derived/Metrics_Test_Set/Empirical_PIT_temp_gridcell.py --target_lat 46.1670 --target_lon 8.7943 --city Locarno
 #python DDIM_conditional_derived/Metrics_Test_Set/Empirical_PIT_temp_gridcell.py --target_lat 46.9480 --target_lon 7.4474 --city Bern
 
-python DDIM_conditional_derived/Metrics_Test_Set/Empirical_PIT_precip.py 
-python DDIM_conditional_derived/Metrics_Test_Set/Empirical_PIT_temp.py
+#python DDIM_conditional_derived/Metrics_Test_Set/Empirical_PIT_precip.py 
+#python DDIM_conditional_derived/Metrics_Test_Set/Empirical_PIT_temp.py
+
+
+python DDIM_conditional_derived/Metrics_Test_Set/csv_metrics_poster_plot_cobweb.py
