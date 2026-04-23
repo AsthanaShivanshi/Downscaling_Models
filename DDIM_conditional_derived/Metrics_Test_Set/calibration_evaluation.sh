@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=Kiviat_job
-#SBATCH --output=DDIM_conditional_derived/logs/Metrics_Test_Set/kiviat_job_%j.log
-#SBATCH --error=DDIM_conditional_derived/logs/Metrics_Test_Set/kiviat_job_%j.log
+#SBATCH --job-name=Precip_Kiviat_job
+#SBATCH --output=DDIM_conditional_derived/logs/Metrics_Test_Set/pr_kiviat_job_%j.log
+#SBATCH --error=DDIM_conditional_derived/logs/Metrics_Test_Set/pr_kiviat_job_%j.log
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --time=2-00:00:00
+#SBATCH --time=3-00:00:00
 #SBATCH --mem=256G
 #SBATCH --partition=cpu
 #SBATCH --gres=gpu:0

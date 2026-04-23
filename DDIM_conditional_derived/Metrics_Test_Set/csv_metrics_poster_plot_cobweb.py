@@ -2,65 +2,98 @@ import xarray as xr
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
-mpl.use('Agg') #Non int backend
-from skimage.metrics import peak_signal_noise_ratio, structural_similarity, mean_squared_error
+mpl.use('Agg') # Non-interactive backend
+from skimage.metrics import structural_similarity
 from properscoring import crps_ensemble
 from statsmodels.distributions.empirical_distribution import ECDF
 from tqdm import tqdm
-import dask.array as da
-
-#for the cobweb plot . 
-
-
-#SR metrics for poster K. Plot.. 
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
 
-""" gridwise/framewise  : 
+#helpers
 
-RMSE :: sqrt(mean((i-j)^2))
-SSIM:: lib from skimage, averaged over frames
-CRPS :: using properscoring crps_ensemble, averaged over time and grid cells
-PITD:: (RMSE of PIT from observational distribution uniformity)
-LSD:: log spectral distance, computed on gridwise temporal FFTs, spatially averaged"""
+#--------------------------------------------------------------------#
 
 
 
-def compute_gridwise_temporal_metrics(obs, pred):
-    diff_sq= (obs-pred)**2
-    rmse_grid= (diff_sq.mean(dim="time", skipna=True))**0.5
+def crps_cell(i, j, obs_arr, ens_arr):
+    obs_series = obs_arr[:, i, j]
+    ens_series = ens_arr[:, :, i, j]
+    mask = ~np.isnan(obs_series)
+    if np.sum(mask) < 2:
+        return (i, j, np.nan)
+    obs_valid = obs_series[mask]
+    ens_valid = ens_series[:, mask]
+    if obs_valid.shape[0] == 0:
+        return (i, j, np.nan)
+    crps_vals = crps_ensemble(obs_valid, ens_valid.T, fair=True)
+    return (i, j, np.mean(crps_vals))
+
+def pitd_cell(i, j, obs, ens_pred, bin_edges):
+    obs_series = obs[:, i, j].values
+    ens_series = ens_pred[:, :, i, j]  # [ensemble, time]
+    mask = ~np.isnan(obs_series)
+    if np.sum(mask) < 2:
+        return (i, j, np.nan)
+    obs_valid = obs_series[mask]
+    ens_valid = ens_series[:, mask]  # [ensemble, valid_time]
+    pit = []
+    for t in range(ens_valid.shape[1]):
+        ecdf = ECDF(obs_valid)
+        for k in range(ens_valid.shape[0]):
+            pit.append(ecdf(ens_valid[k, t]))
+    pit = np.array(pit)
+    if pit.size == 0:
+        return (i, j, np.nan)
+    pit_hist, _ = np.histogram(pit, bins=bin_edges, density=True)
+    pit_hist = pit_hist / pit_hist.sum()
+    uniform = np.ones_like(pit_hist) / len(pit_hist)
+    return (i, j, np.sqrt(np.mean((pit_hist - uniform) ** 2)))
+
+def lsd_idx(idx, obs_flat, pred_flat, n_fft, eps):
+    obs_valid = obs_flat[:, idx]
+    pred_valid = pred_flat[:, idx]
+    if np.sum(~np.isnan(obs_valid)) < n_fft or np.sum(~np.isnan(pred_valid)) < n_fft:
+        return idx, np.nan
+    obs_fft = np.fft.rfft(obs_valid, n=n_fft)
+    pred_fft = np.fft.rfft(pred_valid, n=n_fft)
+    obs_log = np.log(np.abs(obs_fft) + eps)
+    pred_log = np.log(np.abs(pred_fft) + eps)
+    return idx, np.sqrt(np.mean((obs_log - pred_log) ** 2))
+
+#--------------------------------------------------------------------#
+
+
+
+def gridwise_temporal_rmse(obs, pred):
+    diff_sq = (obs - pred) ** 2
+    rmse_grid = (diff_sq.mean(dim="time", skipna=True)) ** 0.5
     return float(rmse_grid.mean().values)
 
 
 
 
-def compute_gridwise_temporal_crps(obs, ens_pred):
-    # obs: [time, N, E], ens_pred: [ensemble, time, N, E]
+def gridwise_temporal_crps(obs, ens_pred, n_workers=None):
     obs_arr = obs.values
-    ens_arr = ens_pred  # already np array
+    ens_arr = ens_pred
     T, N, E = obs_arr.shape
+    indices = [(i, j) for i in range(N) for j in range(E)]
     crps_grid = np.full((N, E), np.nan)
-    for i in range(N):
-        for j in range(E):
-            obs_series = obs_arr[:, i, j]
-            ens_series = ens_arr[:, :, i, j]
-            mask = ~np.isnan(obs_series)
-            if np.sum(mask) < 2:
-                continue
-            obs_valid = obs_series[mask]
-            ens_valid = ens_series[:, mask]
-            if obs_valid.shape[0] == 0:
-                continue
-            crps_vals = crps_ensemble(obs_valid, ens_valid.T)
-            crps_grid[i, j] = np.mean(crps_vals)
+    count=0
+    with ProcessPoolExecutor(max_workers=n_workers) as executor:
+        futures = {executor.submit(crps_cell, i, j, obs_arr, ens_arr): (i, j) for i, j in indices}
+        for future in tqdm(as_completed(futures), total=len(futures), desc="CRPS grid cells",miniters=1000):
+            i, j, value = future.result()
+            crps_grid[i, j] = value
+
+
+            count=count+1
+            if count%1000==0:
+                print(f"Processed {count} CRPS grid cells")
     return np.nanmean(crps_grid)
 
-
-
-
-
-
-def compute_framewise_ssim(obs, pred):
+def framewise_ssim(obs, pred):
     ssim_frames = []
     for t in range(obs.shape[0]):
         obs_frame = obs.isel(time=t).values
@@ -69,162 +102,138 @@ def compute_framewise_ssim(obs, pred):
         if not np.any(mask):
             ssim_frames.append(np.nan)
             continue
-
-
         obs_filled = np.where(mask, obs_frame, np.nanmean(obs_frame[mask]))
-
         pred_filled = np.where(mask, pred_frame, np.nanmean(pred_frame[mask]))
-
         data_range = obs_filled[mask].max() - obs_filled[mask].min()
-
-
         if data_range == 0:
             ssim_frames.append(np.nan)
             continue
         try:
-
-
             ssim = structural_similarity(obs_filled, pred_filled, data_range=data_range)
         except Exception:
             ssim = np.nan
         ssim_frames.append(ssim)
     return np.nanmean(ssim_frames)
 
-
-def compute_gridwise_temporal_lsd(obs, pred, n_fft=256, eps=1e-8):
+def gridwise_temporal_lsd(obs, pred, n_fft=256, eps=1e-8, n_workers=None):
     obs_arr = obs.values
     pred_arr = pred.values
     mask = ~np.isnan(obs_arr) & ~np.isnan(pred_arr)
     obs_arr = np.where(mask, obs_arr, np.nan)
     pred_arr = np.where(mask, pred_arr, np.nan)
-    # Reshape to [time, -1] for vectorised FFT
     T, N, E = obs_arr.shape
     obs_flat = obs_arr.reshape(T, -1)
     pred_flat = pred_arr.reshape(T, -1)
     valid_mask = ~np.isnan(obs_flat).any(axis=0) & ~np.isnan(pred_flat).any(axis=0)
+    indices = np.where(valid_mask)[0]
     lsd = np.full(obs_flat.shape[1], np.nan)
-    for idx in np.where(valid_mask)[0]:
-        obs_valid = obs_flat[:, idx]
-        pred_valid = pred_flat[:, idx]
-        if np.sum(~np.isnan(obs_valid)) < n_fft or np.sum(~np.isnan(pred_valid)) < n_fft:
-            continue
-        obs_fft = np.fft.rfft(obs_valid, n=n_fft)
-        pred_fft = np.fft.rfft(pred_valid, n=n_fft)
-        obs_log = np.log(np.abs(obs_fft) + eps)
-        pred_log = np.log(np.abs(pred_fft) + eps)
-        lsd[idx] = np.sqrt(np.mean((obs_log - pred_log) ** 2))
+    count=0
+    with ProcessPoolExecutor(max_workers=n_workers) as executor:
+        futures = {
+            executor.submit(lsd_idx, idx, obs_flat, pred_flat, n_fft, eps): idx
+            for idx in indices
+        }
+        for future in tqdm(as_completed(futures), total=len(futures), desc="LSD grid cells", miniters=1000):
+            idx, value = future.result()
+            lsd[idx] = value
+
+            count=count+1
+            if count%1000==0:
+                print(f"Processed {count} LSD grid cells")
     return np.nanmean(lsd)
 
-
-def compute_gridcell_pitd_rmse(obs, ens_pred, bins=20):
-
-
-
+def gridwise_pitd_rmse(obs, ens_pred, bins=20, n_workers=None):
     N, E = obs.shape[1], obs.shape[2]
-    pitd_grid = np.full((N, E), np.nan)
     bin_edges = np.linspace(0, 1, bins + 1)
-    for i in range(N):
-        for j in range(E):
-            obs_series = obs[:, i, j].values
-            ens_series = ens_pred[:, :, i, j]  # [ensemble, time]
-            mask = ~np.isnan(obs_series)
+    indices = [(i, j) for i in range(N) for j in range(E)]
+    pitd_grid = np.full((N, E), np.nan)
+    count=0
+    with ProcessPoolExecutor(max_workers=n_workers) as executor:
+        futures = {executor.submit(pitd_cell, i, j, obs, ens_pred, bin_edges): (i, j) for i, j in indices}
+        for future in tqdm(as_completed(futures), total=len(futures), desc="PITD grid cells", miniters=1000):
+            i, j, value = future.result()
+            pitd_grid[i, j] = value
 
 
-            if np.sum(mask) < 2:
-                continue
-
-
-            obs_valid = obs_series[mask]
-            ens_valid = ens_series[:, mask]  # [ensemble, valid_time]
-            # Pool all ensemble predictions for PIT
-            pit = []
-
-
-
-            for t in range(ens_valid.shape[1]):
-                ecdf = ECDF(obs_valid)
-                for k in range(ens_valid.shape[0]):
-                    pit.append(ecdf(ens_valid[k, t]))
-            pit = np.array(pit)
-            if pit.size == 0:
-                continue
-
-            pit_hist, _ = np.histogram(pit, bins=bin_edges, density=True)
-            pit_hist = pit_hist / pit_hist.sum()
-            uniform = np.ones_like(pit_hist) / len(pit_hist)
-            pitd_grid[i, j] = np.sqrt(np.mean((pit_hist - uniform) ** 2))
-    return pitd_grid
-
-
+            count=count+1
+            if count%1000==0:
+                print(f"Processed {count} PITD RMSE for grid cell")
+    return np.nanmean(pitd_grid)
 
 #--------------------------------------------------------------------------------------------#
 
+obs_precip = xr.open_dataset('Dataset_Setup_I_Chronological_12km/RhiresD_step1_latlon.nc')["RhiresD"].sel(time=slice("2011-01-01","2023-12-31"))
+unet_precip = xr.open_dataset("DDIM_conditional_derived/output_inference/UNet_downscaled_test_set_2011_2023.nc")["precip"].sel(time=slice("2011-01-01","2023-12-31"))
+coarse_precip = xr.open_dataset("Dataset_Setup_I_Chronological_12km/RhiresD_step2_coarse.nc")["RhiresD"].sel(time=slice("2011-01-01","2023-12-31"))
 
-
-obs_temp = xr.open_dataset('Dataset_Setup_I_Chronological_12km/TabsD_step1_latlon.nc', chunks={"time": 100})["TabsD"].sel(time=slice("2011-01-01","2023-12-31"))
-
-
-unet_temp= xr.open_dataset("DDIM_conditional_derived/output_inference/UNet_downscaled_test_set_2011_2023.nc", chunks={"time": 100})["temp"].sel(time=slice("2011-01-01","2023-12-31"))
-
-coarse_temp= xr.open_dataset("Dataset_Setup_I_Chronological_12km/TabsD_step2_coarse.nc", chunks={"time": 100})["TabsD"].sel(time=slice("2011-01-01","2023-12-31"))
-
-
-
-#only interpolating for gridwise metric calculation. For the framewise SSIM, we can use the original coarse grid to avoid interpolation artifacts.
-
-
-
-coarse_temp_interp = coarse_temp.interp(
-    N=obs_temp.N, E=obs_temp.E, method="nearest"
+# Only interpolating for gridwise metric calculation. For the framewise SSIM,  original coarse grid 
+coarse_precip_interp = coarse_precip.interp(
+    N=obs_precip.N, E=obs_precip.E, method="nearest"
 )
+bicubic_precip = xr.open_dataset("Dataset_Setup_I_Chronological_12km/RhiresD_step3_interp.nc")["RhiresD"].sel(time=slice("2011-01-01","2023-12-31"))
+ddim_precip = xr.open_dataset("DDIM_conditional_derived/output_inference/ddim_downscaled_100steps_test_set_5samples_eta_0.0.nc")["precip"].sel(time=slice("2011-01-01", "2023-12-31"))
 
-bicubic_temp= xr.open_dataset("Dataset_Setup_I_Chronological_12km/TabsD_step3_interp.nc", chunks={"time": 100})["TabsD"].sel(time=slice("2011-01-01","2023-12-31"))
 
+#--------------------------------------------------------------------#
+#Only for precip 
+obs_precip = obs_precip.where(obs_precip >= 0)
+unet_precip = unet_precip.where(unet_precip >= 0)
+coarse_precip = coarse_precip.where(coarse_precip >= 0)
+coarse_precip_interp = coarse_precip_interp.where(coarse_precip_interp >= 0)
+bicubic_precip = bicubic_precip.where(bicubic_precip >= 0)
+ddim_precip = ddim_precip.where(ddim_precip >= 0)
 
-ddim_ds = xr.open_dataset("DDIM_conditional_derived/output_inference/ddim_downscaled_100steps_test_set_5samples_eta_0.0.nc", chunks={"time": 100})
-ddim_ens_temp = ddim_ds["temp"].sel(time=slice("2011-01-01", "2023-12-31"))
-
-if "sample" in ddim_ens_temp.dims:
-    ddim_ens_temp = ddim_ens_temp.rename({"sample": "ensemble"})
+if "sample" in ddim_precip.dims:
+    ddim_ens_precip = ddim_precip.rename({"sample": "ensemble"})
+    ddim_ens_precip = ddim_ens_precip.where(ddim_ens_precip >= 0)
 
 #---------------------------------------------------------------------------------------------#
 
-
 models = {
-    "Coarse": coarse_temp_interp,  # interpolated for gridwise metrics,, not used for SSIM
-    "Bicubic": bicubic_temp,
-    "UNet": unet_temp,
-    "DDIM": ddim_ens_temp.mean(dim="ensemble")
+    "Coarse": coarse_precip_interp, #not used for SSIM
+    "Bicubic": bicubic_precip,
+    "UNet": unet_precip,
+    "DDIM": ddim_ens_precip.mean(dim="ensemble")
 }
+#--------------------------------------------------------------------#
+
+
 
 metrics = {}
+metric_names = ["CRPS", "RMSE", "SSIM", "PITD", "LSD"]
 
-metric_names = ["SSIM", "RMSE", "CRPS", "PITD", "LSD"]
 
 
+#--------------------------------------------------------------------#
 for name, pred in tqdm(models.items(), desc="Models"):
-    ssim = compute_framewise_ssim(obs_temp, pred)
-    rmse = compute_gridwise_temporal_metrics(obs_temp, pred)
-    lsd = compute_gridwise_temporal_lsd(obs_temp, pred)
+    ssim = framewise_ssim(obs_precip, pred)
+    rmse = gridwise_temporal_rmse(obs_precip, pred)
+    lsd = gridwise_temporal_lsd(obs_precip, pred, n_workers=4)
+
+
+
     if name == "DDIM":
-        crps = compute_gridwise_temporal_crps(obs_temp, ddim_ens_temp.values)
-        pitd_grid = compute_gridcell_pitd_rmse(obs_temp, ddim_ens_temp.values, bins=20)
-        pitd = np.nanmean(pitd_grid)
+        crps = gridwise_temporal_crps(obs_precip, ddim_ens_precip.values, n_workers=4)
+        pitd = gridwise_pitd_rmse(obs_precip, ddim_ens_precip.values, bins=20, n_workers=4)
     else:
-        crps = float(np.nanmean(np.abs(obs_temp.values - pred.values)))
-        pitd_grid = compute_gridcell_pitd_rmse(obs_temp, np.expand_dims(pred.values, axis=0), bins=20)
-        pitd = np.nanmean(pitd_grid)
 
-    metrics[name] = [ssim, rmse, crps, pitd, lsd]
 
+        crps = float(np.nanmean(np.abs(obs_precip.values - pred.values)))
+        pitd = gridwise_pitd_rmse(obs_precip, np.expand_dims(pred.values, axis=0), bins=20, n_workers=4)
+
+
+
+
+
+
+        
+    metrics[name] = [crps, rmse, ssim, pitd, lsd]
 
 #---------------------------------------------------------------------------------------------#
 
 for idx, metric in enumerate(metric_names):
     metric_dict = {k: v[idx] for k, v in metrics.items()}
     metric_df = pd.DataFrame.from_dict(metric_dict, orient="index", columns=[metric])
-    metric_df.to_csv(f"DDIM_conditional_derived/Metrics_Test_Set/outputs/{metric.lower()}_allmodels.csv")
-
-
+    metric_df.to_csv(f"DDIM_conditional_derived/Metrics_Test_Set/outputs/{metric.lower()}_allmodels_precip.csv")
 
 #---------------------------------------------------------------------------------------------#
