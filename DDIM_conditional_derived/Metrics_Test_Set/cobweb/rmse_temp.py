@@ -20,7 +20,7 @@ bicubic_temp = xr.open_dataset(
 )["TabsD"].sel(time=slice("2011-01-01", "2023-12-31"))
 
 ddim_temp = xr.open_dataset(
-    "DDIM_conditional_derived/output_inference/ddim_downscaled_50steps_test_set_5samples_eta_0.0.nc"
+    "DDIM_conditional_derived/output_inference/ddim_downscaled_30steps_test_set_11samples_2011_2023.nc"
 )["temp"].sel(time=slice("2011-01-01", "2023-12-31"))
 
 # Interpolate coarse to obs grid

@@ -40,7 +40,7 @@ coarse_temp_interp = coarse_temp.interp(
 )
 
 bicubic_temp = xr.open_dataset("Dataset_Setup_I_Chronological_12km/TabsD_step3_interp.nc")["TabsD"].sel(time=slice("2011-01-01","2023-12-31"))
-ddim_temp = xr.open_dataset("DDIM_conditional_derived/output_inference/ddim_downscaled_50steps_test_set_5samples_eta_0.0.nc")["temp"].sel(time=slice("2011-01-01", "2023-12-31"))
+ddim_temp = xr.open_dataset("DDIM_conditional_derived/output_inference/ddim_downscaled_30steps_test_set_11samples_2011_2023.nc")["temp"].sel(time=slice("2011-01-01", "2023-12-31"))
 #--------------------------------------------------------------------#
 
 
