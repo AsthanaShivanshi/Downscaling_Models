@@ -26,7 +26,6 @@ ddim_precip = xr.open_dataset(
 # Interpolate coarse to obs grid
 coarse_precip_interp = coarse_precip.interp_like(obs_precip, method="nearest")
 
-# Clip negatives
 obs_precip = obs_precip.clip(min=0)
 unet_precip = unet_precip.clip(min=0)
 bicubic_precip = bicubic_precip.clip(min=0)

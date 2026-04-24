@@ -28,12 +28,9 @@ def pitd_for_grid(i, j, obs_arr, ens_arr, bins):
         return np.nan
     obs_valid = obs_series[mask]
     ens_valid = ens_series[:, mask]
-    pit = []
-    for t in range(ens_valid.shape[1]):
-        ecdf = ECDF(obs_valid)
-        for k in range(ens_valid.shape[0]):
-            pit.append(ecdf(ens_valid[k, t]))
-    pit = np.array(pit)
+    ecdf = ECDF(obs_valid)
+    # Vectorized PIT calculation
+    pit = ecdf(ens_valid.ravel())
     if pit.size == 0:
         return np.nan
     bin_edges = np.linspace(0, 1, bins + 1)

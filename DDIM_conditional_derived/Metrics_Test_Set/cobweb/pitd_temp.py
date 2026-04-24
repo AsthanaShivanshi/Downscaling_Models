@@ -28,12 +28,9 @@ def pitd_for_grid(i, j, obs_arr, ens_arr, bins):
         return np.nan
     obs_valid = obs_series[mask]
     ens_valid = ens_series[:, mask]
-    pit = []
-    for t in range(ens_valid.shape[1]):
-        ecdf = ECDF(obs_valid)
-        for k in range(ens_valid.shape[0]):
-            pit.append(ecdf(ens_valid[k, t]))
-    pit = np.array(pit)
+    ecdf = ECDF(obs_valid)
+    # Vectorized PIT calculation
+    pit = ecdf(ens_valid.ravel())
     if pit.size == 0:
         return np.nan
     bin_edges = np.linspace(0, 1, bins + 1)
@@ -72,44 +69,47 @@ def gridwise_temporal_pitd(obs, ens_pred, bins=20, n_jobs=-1):
 
 #--------------------------------------------------------------------#
 
-obs_precip = xr.open_dataset(
+obs_temp = xr.open_dataset(
     'Dataset_Setup_I_Chronological_12km/TabsD_step1_latlon.nc'
 )["TabsD"].sel(time=slice("2011-01-01", "2023-12-31"))
 
-unet_precip = xr.open_dataset(
+unet_temp = xr.open_dataset(
     "DDIM_conditional_derived/output_inference/UNet_downscaled_test_set_2011_2023.nc"
 )["temp"].sel(time=slice("2011-01-01", "2023-12-31"))
 
-coarse_precip = xr.open_dataset(
+coarse_temp = xr.open_dataset(
     "Dataset_Setup_I_Chronological_12km/TabsD_step2_coarse.nc"
 )["TabsD"].sel(time=slice("2011-01-01", "2023-12-31"))
 
-bicubic_precip = xr.open_dataset(
+bicubic_temp = xr.open_dataset(
     "Dataset_Setup_I_Chronological_12km/TabsD_step3_interp.nc"
 )["TabsD"].sel(time=slice("2011-01-01", "2023-12-31"))
 
-ddim_precip = xr.open_dataset(
+ddim_temp = xr.open_dataset(
     "DDIM_conditional_derived/output_inference/ddim_downscaled_30steps_test_set_11samples_2011_2023.nc"
 )["temp"].sel(time=slice("2011-01-01", "2023-12-31"))
 
 
 
 
-coarse_precip_interp = coarse_precip.interp_like(obs_precip, method="nearest")
+coarse_temp_interp = coarse_temp.interp_like(obs_temp, method="nearest")
 
 
 
-if "sample" in ddim_precip.dims:
-    ddim_ens_precip = ddim_precip.rename({"sample": "ensemble"})
+
+
+
+if "sample" in ddim_temp.dims:
+    ddim_ens_temp = ddim_temp.rename({"sample": "ensemble"})
 else:
-    raise ValueError("Expected 'sample' dimension in ddim_precip")
-ddim_ens_precip = ensure_NE(ddim_ens_precip, obs_precip).clip(min=0)
+    raise ValueError("Expected 'sample' dimension in ddim_temp")
+ddim_ens_temp = ensure_NE(ddim_ens_temp, obs_temp).clip(min=0)
 
 models = {
-    "Coarse": coarse_precip_interp.expand_dims(ensemble=[0]).transpose("ensemble", "time", "N", "E"),
-    "Bicubic": bicubic_precip.expand_dims(ensemble=[0]).transpose("ensemble", "time", "N", "E"),
-    "UNet": unet_precip.expand_dims(ensemble=[0]).transpose("ensemble", "time", "N", "E"),
-    "DDIM": ddim_ens_precip.transpose("ensemble", "time", "N", "E")
+    "Coarse": ensure_NE(coarse_temp_interp, obs_temp).expand_dims(ensemble=[0]).transpose("ensemble", "time", "N", "E"),
+    "Bicubic": ensure_NE(bicubic_temp, obs_temp).expand_dims(ensemble=[0]).transpose("ensemble", "time", "N", "E"),
+    "UNet": ensure_NE(unet_temp, obs_temp).expand_dims(ensemble=[0]).transpose("ensemble", "time", "N", "E"),
+    "DDIM": ensure_NE(ddim_ens_temp, obs_temp).transpose("ensemble", "time", "N", "E")
 }
 
 #--------------------------------------------------------------------#
@@ -117,7 +117,7 @@ models = {
 metrics = {}
 
 for name, pred in models.items():
-    pitd_grid = gridwise_temporal_pitd(obs_precip, pred.values)
+    pitd_grid = gridwise_temporal_pitd(obs_temp, pred.values)
     metrics[name] = pitd_grid
 
 mean_pitd = {name: np.nanmean(grid) for name, grid in metrics.items()}
