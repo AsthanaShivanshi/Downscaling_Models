@@ -4,8 +4,6 @@ import json
 import sys
 from tqdm import tqdm
 import xarray as xr
-import properscoring as ps
-
 sys.path.append("..")
 sys.path.append("../..")
 
@@ -22,9 +20,10 @@ from models.diff_module import DDIMResidualContextual
 
 from concurrent.futures import ThreadPoolExecutor
 
-num_samples = 1 #Deterministic sample : single run,,,,,
+num_samples = 11 #Deterministic sample : single run,,,,,
 eta = 0.0  #For DDIM sampling : determinisitc. 
-
+base_seed = 124
+S=30
 
 def denorm_pr(x, pr_params):
     return np.exp(x * pr_params['std'] + pr_params['mean']) - pr_params['epsilon']
@@ -183,7 +182,6 @@ ddim_all = np.empty((N, num_samples, 2, *spatial_shape), dtype=np.float32)
 
 
 
-base_seed = 124
 
 
  #For parallelisation
@@ -194,7 +192,7 @@ def ddim_sample_worker(j, base_seed, sample_shape, context, sampler, eta, unet_p
      np.random.seed(base_seed + j)
      z = torch.randn((1, *sample_shape), device=device)
      residual, _ = sampler.sample(
-         S=50,
+         S=S,
          batch_size=1,
          shape=sample_shape,
          conditioning=context,
@@ -295,32 +293,9 @@ ds_ddim = xr.Dataset(
 encoding = {var: {"_FillValue": np.nan} for var in var_names}
 
 
-ds_unet.to_netcdf("DDIM_conditional_derived/output_inference/UNet_downscaled_test_set_2011_2023.nc", encoding=encoding)
-print(f"UNet downscaled test set saved with shape: {unet_preds_np.shape}")
+#ds_unet.to_netcdf("DDIM_conditional_derived/output_inference/UNet_downscaled_test_set_2011_2023.nc", encoding=encoding)
+#print(f"UNet downscaled test set saved with shape: {unet_preds_np.shape}")
 
 
-
-print(f"UNet baseline saved with shape: {unet_preds_np.shape}")
-
- #Scores
-channels = ["precip", "temp"]
-unet_crps = []
-ddim_crps = []
-
-for ch in range(2):
-     crps_unet = ps.crps_ensemble(
-         target_all[:, ch].reshape(-1),  # (N*H*W,)
-         unet_all[:, ch].reshape(-1, 1)  # (N*H*W, 1)
-     ).mean()
-     unet_crps.append(crps_unet)
-
-     crps_ddim = ps.crps_ensemble(
-         target_all[:, ch].reshape(-1),  # (N*H*W,)
-         ddim_all[:, :, ch].reshape(-1, ddim_all.shape[1])  # (N*H*W, num_samples)
-     ).mean()
-     ddim_crps.append(crps_ddim)
-
-print("\nCRPS Scores (averaged over all time, y, x):")
-print(f"{'Channel':<10} {'UNet':>10} {'DDIM (2 samples, eta=0.0, 50 steps)':>40}")
-for i, name in enumerate(channels):
-     print(f"{name:<10} {unet_crps[i]:10.4f} {ddim_crps[i]:40.4f}")
+ds_ddim.to_netcdf("DDIM_conditional_derived/output_inference/ddim_downscaled_30steps_test_set_11samples_2011_2023.nc", encoding=encoding)
+print(f"DDIM downscaled test set saved with shape: {ddim_preds_np.shape}")
