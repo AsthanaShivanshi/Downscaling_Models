@@ -52,12 +52,10 @@ ddim_temp = ddim_temp.rename({"y": "N", "x": "E"})
 
 
 
-mask = ~np.isnan(obs_temp.isel(time=0))
+mask = ~np.isnan(obs_temp).any(dim="time")
+
 mask3d = xr.DataArray(mask, dims=("N", "E")).expand_dims(time=obs_temp.time)
 
-
-obs_temp = obs_temp.where(obs_temp >= 0)
-unet_temp = unet_temp.where(unet_temp >= 0)
 
 unet_temp = unet_temp.assign_coords(N=obs_temp.N, E=obs_temp.E)
 

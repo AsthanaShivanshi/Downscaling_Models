@@ -40,13 +40,17 @@ def pitd_for_grid(i, j, obs_arr, ens_arr, bins):
     return np.sqrt(np.mean((pit_hist - uniform) ** 2))
 
 
-def gridwise_temporal_pitd(obs, ens_pred, bins=20, n_jobs=-1):
+def gridwise_temporal_pitd(obs, ens_pred, bins=20, n_jobs=-1, mask=None):
     obs_arr = obs.values  # (T, N, E)
     ens_arr = ens_pred    # (ensemble, T, N, E)
     T, N, E = obs_arr.shape
-    tasks = [(i, j) for i in range(N) for j in range(E)]
+    tasks = []
+    for i in range(N):
+        for j in range(E):
+            if mask is not None and not mask.values[i, j]:
+                continue  # skip masked-out grid cells
+            tasks.append((i, j))
     pitd_grid = np.full((N, E), np.nan)
-
 
     class TqdmBatchCompletionCallback(parallel.BatchCompletionCallBack):
         def __call__(self, *args, **kwargs):
@@ -61,10 +65,8 @@ def gridwise_temporal_pitd(obs, ens_pred, bins=20, n_jobs=-1):
             for i, j in tasks
         )
 
-    for idx, val in enumerate(results):
-        i = idx // E
-        j = idx % E
-        pitd_grid[i, j] = val
+    for idx, (i, j) in enumerate(tasks):
+        pitd_grid[i, j] = results[idx]
     return pitd_grid
 
 #--------------------------------------------------------------------#
@@ -119,10 +121,15 @@ models = {
 
 #--------------------------------------------------------------------#
 
+
+obs_temp = xr.open_dataset("Dataset_Setup_I_Chronological_12km/TabsD_step1_latlon.nc")["TabsD"].sel(time=slice("2011-01-01", "2011-01-02"))
+obs_mask_precip = ~np.isnan(obs_temp.isel(time=0))
+
+#--------------------------------------------------------------------#
 metrics = {}
 
 for name, pred in models.items():
-    pitd_grid = gridwise_temporal_pitd(obs_precip, pred.values)
+    pitd_grid = gridwise_temporal_pitd(obs_precip, pred.values, mask=obs_mask_precip)
     metrics[name] = pitd_grid
 
 mean_pitd = {name: np.nanmean(grid) for name, grid in metrics.items()}

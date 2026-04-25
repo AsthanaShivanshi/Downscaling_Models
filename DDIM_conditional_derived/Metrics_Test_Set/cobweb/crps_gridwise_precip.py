@@ -13,20 +13,22 @@ def ensure_NE(da, ref):
         da = da.assign_coords(N=ref.N, E=ref.E)
     return da
 
-def gridwise_temporal_crps(obs, ens_pred):
+def gridwise_temporal_crps(obs, ens_pred, mask=None):
     obs_arr = obs.values  # (T, N, E)
     ens_arr = ens_pred    # (ensemble, T, N, E)
     T, N, E = obs_arr.shape
     crps_grid = np.full((N, E), np.nan)
     for i in range(N):
         for j in range(E):
+            if mask is not None and not mask.values[i, j]:
+                continue  # skip masked-out grid cells
             obs_series = obs_arr[:, i, j]
             ens_series = ens_arr[:, :, i, j]
-            mask = ~np.isnan(obs_series)
-            if np.sum(mask) < 2:
+            mask_time = ~np.isnan(obs_series)
+            if np.sum(mask_time) < 2:
                 continue
-            obs_valid = obs_series[mask]
-            ens_valid = ens_series[:, mask]
+            obs_valid = obs_series[mask_time]
+            ens_valid = ens_series[:, mask_time]
             if obs_valid.shape[0] == 0:
                 continue
             crps_vals = crps_ensemble(obs_valid, ens_valid.T)
@@ -81,11 +83,15 @@ models = {
 }
 
 #--------------------------------------------------------------------#
+obs_temp = xr.open_dataset("Dataset_Setup_I_Chronological_12km/TabsD_step1_latlon.nc")["TabsD"].sel(time=slice("2011-01-01", "2011-01-02"))
+obs_mask_precip = ~np.isnan(obs_temp.isel(time=0))
+
+#--------------------------------------------------------------------#
 
 metrics = {}
 
 for name, pred in models.items():
-    crps_grid = gridwise_temporal_crps(obs_precip, pred.values)
+    crps_grid = gridwise_temporal_crps(obs_precip, pred.values, mask=obs_mask_precip)
     metrics[name] = crps_grid
 
 mean_crps = {name: np.nanmean(grid) for name, grid in metrics.items()}

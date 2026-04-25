@@ -24,11 +24,15 @@ python -c "import wandb; print(wandb.__version__)"
 
 
 python DDIM_conditional_derived/Metrics_Test_Set/cobweb/ssim_precip.py
-python DDIM_conditional_derived/Metrics_Test_Set/cobweb/ssim_temp.py
+
+
+#python DDIM_conditional_derived/Metrics_Test_Set/cobweb/ssim_temp.py
 
 
 
 python DDIM_conditional_derived/Metrics_Test_Set/cobweb/rmse_precip.py
+
+
 python DDIM_conditional_derived/Metrics_Test_Set/cobweb/rmse_temp.py
 
 

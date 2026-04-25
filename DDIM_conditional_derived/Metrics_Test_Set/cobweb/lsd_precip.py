@@ -19,15 +19,17 @@ def lsd_for_grid(i, j, obs_arr, pred_arr, n_fft=256, eps=1e-8):
 
 
 
-def gridwise_temporal_lsd(obs, pred, n_fft=256, eps=1e-8, n_jobs=-1):
+def gridwise_temporal_lsd(obs, pred, n_fft=256, eps=1e-8, n_jobs=-1, mask=None):
     obs_arr = obs.values  # (T, N, E)
     pred_arr = pred.values  # (T, N, E)
     T, N, E = obs_arr.shape
-    tasks = [(i, j) for i in range(N) for j in range(E)]
+    tasks = []
+    for i in range(N):
+        for j in range(E):
+            if mask is not None and not mask.values[i, j]:
+                continue  # skip masked-out grid cells
+            tasks.append((i, j))
     lsd_grid = np.full((N, E), np.nan)
-
-
-
 
     class TqdmBatchCompletionCallback(parallel.BatchCompletionCallBack):
         def __call__(self, *args, **kwargs):
@@ -42,11 +44,13 @@ def gridwise_temporal_lsd(obs, pred, n_fft=256, eps=1e-8, n_jobs=-1):
             for i, j in tasks
         )
 
-    for idx, val in enumerate(results):
-        i = idx // E
-        j = idx % E
-        lsd_grid[i, j] = val
+    for idx, (i, j) in enumerate(tasks):
+        lsd_grid[i, j] = results[idx]
     return lsd_grid
+
+
+
+
 
 #--------------------------------------------------------------------#
 
@@ -59,15 +63,22 @@ ddim_precip = xr.open_dataset("DDIM_conditional_derived/output_inference/ddim_do
 
 
 
-obs_precip = obs_precip.where(obs_precip >= 0)
-unet_precip = unet_precip.where(unet_precip >= 0)
-coarse_precip_interp = coarse_precip_interp.where(coarse_precip_interp >= 0)
-bicubic_precip = bicubic_precip.where(bicubic_precip >= 0)
-ddim_precip = ddim_precip.where(ddim_precip >= 0)
+obs_precip = obs_precip.clip(min=0)
+unet_precip = unet_precip.clip(min=0)
+coarse_precip_interp = coarse_precip_interp.clip(min=0)
+bicubic_precip = bicubic_precip.clip(min=0)
+ddim_precip = ddim_precip.clip(min=0)
+
+
+#--------------------------------------------------------------------#
+obs_temp = xr.open_dataset("Dataset_Setup_I_Chronological_12km/TabsD_step1_latlon.nc")["TabsD"].sel(time=slice("2011-01-01", "2011-01-02"))
+obs_mask_precip = ~np.isnan(obs_temp.isel(time=0))
+
+#--------------------------------------------------------------------#
 
 if "sample" in ddim_precip.dims:
     ddim_ens_precip = ddim_precip.rename({"sample": "ensemble"})
-    ddim_ens_precip = ddim_ens_precip.where(ddim_ens_precip >= 0)
+    ddim_ens_precip = ddim_ens_precip.clip(min=0)
 else:
     raise ValueError("Expected 'sample' dimension in ddim_precip")
 
@@ -81,7 +92,7 @@ models = {
 metrics = {}
 
 for name, pred in models.items():
-    lsd_grid = gridwise_temporal_lsd(obs_precip, pred)
+    lsd_grid = gridwise_temporal_lsd(obs_precip, pred, mask=obs_mask_precip)
     metrics[name] = np.nanmean(lsd_grid)
 
 metric_df = pd.DataFrame.from_dict(metrics, orient="index", columns=["LSD"])
