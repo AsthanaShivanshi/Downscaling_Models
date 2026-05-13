@@ -57,18 +57,45 @@ def train(cfg: DictConfig):
     #    context_encoder = hydra.utils.instantiate(cfg.model.context_encoder, autoencoder=autoencoder)
     #model = hydra.utils.instantiate(cfg.model, autoencoder=autoencoder, context_encoder=context_encoder, unet_regr=unet_model if cfg.model.get("unet_regr") else None)
     
-    wandb.finish()  # Close any previous run
+
+    wandb.finish()  
 
     run_name = f"run_{cfg.get('hydra', {}).get('job', {}).get('id', os.getpid())}" #unique for each run,,, appends job id
     logger = WandbLogger(project=cfg.wandb.project, log_model=True, name=run_name)
-    logger.experiment.config.update({
-        #"kl_weight": cfg.model.get("kl_weight"),
-        #"latent_dim": cfg.model.get("latent_dim"),
-    "huber_delta": cfg.model.get("huber_delta"),
-    "learning_rate": cfg.model.get("lr"),
-    "batch_size": cfg.experiment.get("batch_size"),
 
-})
+
+
+    wandb_config = {
+        "vae.latent_dim": cfg.vae.latent_dim,
+        "vae.kl_weight": cfg.vae.kl_weight,
+        "vae.ae_flag": cfg.vae.ae_flag,
+        "vae.beta_anneal_steps": cfg.vae.beta_anneal_steps,
+        "vae.encoder_levels": cfg.vae.encoder_levels,
+        "vae.encoder_min_ch": cfg.vae.encoder_min_ch,
+        "vae.encoder_ch_mult": cfg.vae.encoder_ch_mult,
+        "vae.decoder_levels": cfg.vae.decoder_levels,
+        "vae.decoder_min_ch": cfg.vae.decoder_min_ch,
+        "vae.lr": cfg.vae.lr,
+        "vae.batch_size": cfg.vae.batch_size,
+        "vae.num_workers": cfg.vae.num_workers,
+        "vae.scheduler_factor": cfg.vae.scheduler_factor,
+        "vae.scheduler_patience": cfg.vae.scheduler_patience,
+        "experiment.batch_size": cfg.experiment.batch_size,
+        "experiment.num_workers": cfg.experiment.num_workers,
+        "variables.input": dict(cfg.variables.input),
+        "variables.target": dict(cfg.variables.target),
+        "preprocessing.nan_to_num": cfg.preprocessing.nan_to_num,
+        "preprocessing.nan_value": cfg.preprocessing.nan_value,
+        "encoder": dict(cfg.encoder),
+        "decoder": dict(cfg.decoder),
+        "model_checkpoint_dir": cfg.callbacks.model_checkpoint.dirpath,
+        "model_checkpoint_filename": cfg.callbacks.model_checkpoint.filename,
+        "unet_regr_ckpt": cfg.model.unet_regr,
+        "lr_scheduler": dict(cfg.lr_scheduler),
+        "wandb_project": cfg.wandb.project,
+    }
+    logger.experiment.config.update(wandb_config)
+
     print("Wandb run name:", run_name)
     print("Wandb run id:", logger.experiment.id)
 
@@ -103,7 +130,7 @@ def train(cfg: DictConfig):
 
     trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
 
-@hydra.main(version_base="1.3", config_path="configs", config_name="UNet_bivariate_config_48km.yaml")
+@hydra.main(version_base="1.3", config_path="configs", config_name="VAE_bivariate_config.yaml")
 def main(cfg: DictConfig):
     train(cfg)
 

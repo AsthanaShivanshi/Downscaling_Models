@@ -2,9 +2,15 @@ defaults:
   - paths: paths_12km_bivariate.yaml
   - _self_
 
+
+
+wandb:
+  project: VAE_optim_run_12km_bivariate
+
+  
 vae:
-  latent_dim: 32
-  kl_weight: 0.01
+  latent_dim: 128
+  kl_weight: 0.001
   ae_flag: "residual"
   beta_anneal_steps: 1000
   encoder_levels: 2
@@ -19,6 +25,7 @@ vae:
   scheduler_patience: 3
 
 experiment:
+
   batch_size: ${vae.batch_size}
   num_workers: ${vae.num_workers}
 
@@ -76,6 +83,7 @@ datamodule:
     variables: ${variables}
     preprocessing: ${preprocessing}
 
+
 callbacks:
   early_stopping:
     _target_: lightning.pytorch.callbacks.EarlyStopping
@@ -83,6 +91,7 @@ callbacks:
     patience: 10
     mode: min
     
+
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: LDM_conditional/trained_ckpts_optimised/12km/VAE_ckpts/
@@ -107,11 +116,15 @@ model:
   ae_flag: ${vae.ae_flag}
   beta_anneal_steps: ${vae.beta_anneal_steps}
 
-  unet_regr: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_logtransform_lr0.01_precip_loss_weight5.0_1.0_crps[0, 1]_factor0.5_pat3.ckpt.ckpt
+
+
+  unet_regr: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_12km_logtransform_lr0.001_precip_loss_weight1.0_1.0_crps[]_factor0.5_pat3.ckpt.ckpt
+
+
 
 lr_scheduler:
   _target_: lightning.pytorch.lr_scheduler.ReduceLROnPlateau
   mode: min
-  factor: 0.50
-  patience: 3
+  factor: 0.25
+  patience: 5
   min_lr: 1e-6
