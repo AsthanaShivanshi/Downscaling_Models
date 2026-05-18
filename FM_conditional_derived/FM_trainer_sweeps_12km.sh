@@ -4,7 +4,7 @@
 #SBATCH --error=FM_conditional_derived/logs/ckpts_FM/FM_sweep_job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=3-00:00:00
+#SBATCH --time=2-00:00:00
 #SBATCH --mem=256G
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
@@ -28,7 +28,7 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 which python
 python -c "import wandb; print(wandb.__version__)"
 
-for loss in l2; do
+for loss in l2 l1 ; do
   sbatch --job-name=FM_${loss} \
     --output=FM_conditional_derived/logs/ckpts_FM/FM_${loss}_%j.out \
     --error=FM_conditional_derived/logs/ckpts_FM/FM_${loss}_%j.err \

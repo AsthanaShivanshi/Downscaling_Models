@@ -25,6 +25,9 @@ def flow_matching_sample(
     x_T: Optionally provide initial noise, else random
     integration: "euler" (default)
     """
+
+
+
     if x_T is None:
         x = torch.randn(shape, device=device)
     else:
@@ -49,6 +52,17 @@ def flow_matching_sample(
     return x
 
 
+##Temperature?? Optional use case. 
+#Controls diversity of samples. 
+#temperature = 0.8  # < 1.0 for sharper, less diverse samples
 
+#x_T = temperature * torch.randn(shape, device=device)
+
+#sample = flow_matching_sample(
+#    model=model,
+#    context=context,
+#    shape=shape,
+#    x_T=x_T,
+#    steps=steps
 # Use like:
 # samples = flow_matching_sample(model, context, (batch_size, channels, H, W), steps=2, device="cuda")
