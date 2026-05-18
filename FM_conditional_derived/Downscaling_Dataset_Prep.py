@@ -4,6 +4,8 @@ import numpy as np
 from skimage.transform import resize
 
 class DownscalingDataset(Dataset):
+
+    
     def __init__(self, input_ds, target_ds, config, elevation_path=None):
         input_var_names = list(config["variables"]["input"].keys())
         target_var_names = list(config["variables"]["target"].keys())

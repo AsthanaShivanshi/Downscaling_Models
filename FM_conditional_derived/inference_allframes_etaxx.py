@@ -1,4 +1,6 @@
 #DDPM experiment
+from pyexpat import model
+
 import numpy as np
 import torch
 import json
@@ -14,17 +16,21 @@ warnings.filterwarnings("ignore")
 from models.unet_module import DownscalingUnetLightning
 from DownscalingDataModule import DownscalingDataModule
 from models.components.diff.denoiser.unet import UNetModel
-from models.components.diff.denoiser.ddim import DDIMSampler
+from models.components.diff.denoiser.sample import flow_matching_sample
+
+
 from models.components.diff.conditioner import AFNOConditionerNetCascade
 from models.diff_module import DDIMResidualContextual
 
 
 from concurrent.futures import ThreadPoolExecutor
 
-num_samples = 5 #Deterministic sample : single run,,,,,
-eta = 1.0  #For DDIM sampling : determinisitc. 
+num_samples = 6 #Deterministic sample : single run,,,,,
+eta = 0.0  #For DDIM sampling : determinisitc. 
 base_seed = 124
-S=999
+
+S=2 #Selected basis the sensitivity analysis : AsthanaSh
+
 
 def denorm_pr(x, pr_params):
     return np.exp(x * pr_params['std'] + pr_params['mean']) - pr_params['epsilon']
@@ -32,8 +38,12 @@ def denorm_pr(x, pr_params):
 def denorm_temp(x, params):
     return x * params['std'] + params['mean']
 
+
+
 with xr.open_dataset("Dataset_Setup_I_Chronological_12km/RhiresD_target_train_scaled.nc") as ds:
     precip_mask_full = ~np.isnan(ds["RhiresD"].values[0])  # shape [H_full, W_full]
+
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -108,6 +118,7 @@ params_list = [pr_params, temp_params]
 with xr.open_dataset(test_target_paths['precip']) as ds:
     times = ds['time'].values
 
+
 unet_all = np.empty((N, 2, *spatial_shape), dtype=np.float32)
 target_all = np.empty((N, 2, *spatial_shape), dtype=np.float32)
 
@@ -129,7 +140,7 @@ unet_regr.load_state_dict(unet_regr_ckpt, strict=False)
 unet_regr = unet_regr.to(device)
 unet_regr.eval()
 
- # DDIM
+
 denoiser = UNetModel(
     model_channels=32,
      in_channels=2,
@@ -151,65 +162,48 @@ conditioner = AFNOConditionerNetCascade(
      cascade_depth=3,
      context_ch=[32, 64, 128]
  )
-ddim = DDIMResidualContextual(
-             denoiser=denoiser,
-             context_encoder=conditioner,
-             timesteps=1000,                
-             parameterization="v",
-             loss_type="l1",
-             beta_schedule="cosine",
-             linear_start=1e-4,
-             linear_end=2e-2,
-             cosine_s=8e-3,
-             use_ema=True,
-             ema_decay=0.9999,
-             lr=1e-4
-         )
-ddim_ckpt = torch.load(
-     "DDIM_conditional_derived/trained_ckpts/12km/DDIM_checkpoint_L1_cosine_schedule_loss_parameterisation_v.ckpt",
-     map_location=device
- )
 
 
-ddim.load_state_dict(ddim_ckpt["state_dict"], strict=False)
-ddim = ddim.to(device)
-ddim.eval()
-sampler = DDIMSampler(ddim, device=device)
+fm_model = DDIMResidualContextual(
+    denoiser=denoiser,
+    context_encoder=conditioner,
+    loss_type="l1",
+    use_ema=True,
+    ema_decay=0.9999,
+    lr=1e-4
+)
+fm_ckpt = torch.load(
+    "FM_conditional_derived/trained_ckpts/12km/FM_checkpoint.ckpt",  # <-- use your FM checkpoint
+    map_location=device
+)
+fm_model.load_state_dict(fm_ckpt["state_dict"], strict=False)
+fm_model = fm_model.to(device)
+fm_model.eval()
 
 
-  
-
-ddim_all = np.empty((N, num_samples, 2, *spatial_shape), dtype=np.float32)
+fm_all = np.empty((N, num_samples, 2, *spatial_shape), dtype=np.float32)
 
 
 
-
-
- #For parallelisation
-
-
-def ddim_sample_worker(j, base_seed, sample_shape, context, sampler, eta, unet_pred, pr_params, temp_params, params_list, device):
-     torch.manual_seed(base_seed + j)
-     np.random.seed(base_seed + j)
-     z = torch.randn((1, *sample_shape), device=device)
-     residual, _ = sampler.sample(
-         S=S,
-         batch_size=1,
-         shape=sample_shape,
-         conditioning=context,
-         eta=eta,
-         verbose=False,
-         x_T=z,
-         schedule="cosine",
-     )
-     final_pred = unet_pred + residual
-     final_pred_np = final_pred[0].cpu().numpy()
-     ddim_pred_denorm = np.empty_like(final_pred_np)
-     for i, params in enumerate(params_list):
-         ddim_pred_denorm[i] = denorm_pr(final_pred_np[i], pr_params) if i == 0 else denorm_temp(final_pred_np[i], params)
-     return ddim_pred_denorm
-
-
+def fm_sample_worker(j, base_seed, sample_shape, context, model, unet_pred, pr_params, temp_params, params_list, device, steps=50):
+    torch.manual_seed(base_seed + j)
+    np.random.seed(base_seed + j)
+    z = torch.randn((1, *sample_shape), device=device)
+    residual = flow_matching_sample(
+        model,
+        context,
+        shape=sample_shape,
+        steps=steps,
+        device=device,
+        x_T=z,
+        verbose=False
+    )
+    final_pred = unet_pred + residual
+    final_pred_np = final_pred[0].cpu().numpy()
+    fm_pred_denorm = np.empty_like(final_pred_np)
+    for i, params in enumerate(params_list):
+        fm_pred_denorm[i] = denorm_pr(final_pred_np[i], pr_params) if i == 0 else denorm_temp(final_pred_np[i], params)
+    return fm_pred_denorm
 
 
 for idx in tqdm(range(N), desc="Downscaling frames"):
@@ -230,16 +224,16 @@ for idx in tqdm(range(N), desc="Downscaling frames"):
         target_all[idx] = target_denorm
 
             # Parallelising over samples
-        with ThreadPoolExecutor(max_workers=num_samples) as executor:
-                futures = [
-                    executor.submit(
-                        ddim_sample_worker, j, base_seed, sample_shape, context, sampler, eta,
-                        unet_pred, pr_params, temp_params, params_list, device
-                    )
-                    for j in range(num_samples)
-                ]
-                for j, future in enumerate(futures):
-                    ddim_all[idx, j] = future.result()
+    with ThreadPoolExecutor(max_workers=num_samples) as executor:
+        futures = [
+            executor.submit(
+                fm_sample_worker, j, base_seed, sample_shape, context, fm_model,
+                unet_pred, pr_params, temp_params, params_list, device, 2
+            )
+            for j in range(num_samples)
+        ]
+        for j, future in enumerate(futures):
+            fm_all[idx, j] = future.result()
 
 
 
@@ -271,13 +265,14 @@ ds_unet = xr.Dataset(
 
 
 
- # DDIM samples
-ddim_preds_np = np.transpose(ddim_all, (0, 1, 2, 3, 4))  # (time, sample, channel, y, x)
-ddim_preds_np = np.transpose(ddim_preds_np, (0, 1, 3, 4, 2))  # (time, sample, y, x, channel)
+ #FM sample
 
-ds_ddim = xr.Dataset(
+fm_preds_np = np.transpose(fm_all, (0, 1, 2, 3, 4))
+fm_preds_np = np.transpose(fm_preds_np, (0, 1, 3, 4, 2))
+
+ds_fm = xr.Dataset(
      {
-         var: (("time", "sample", "y", "x"), ddim_preds_np[:, :, :, :, i])
+         var: (("time", "sample", "y", "x"), fm_preds_np[:, :, :, :, i])
          for i, var in enumerate(var_names)
      },
      coords={
@@ -290,13 +285,5 @@ ds_ddim = xr.Dataset(
      }
  )
 
-
-encoding = {var: {"_FillValue": np.nan} for var in var_names}
-
-
-#ds_unet.to_netcdf("DDIM_conditional_derived/output_inference/UNet_downscaled_test_set_2011_2023.nc", encoding=encoding)
-#print(f"UNet downscaled test set saved with shape: {unet_preds_np.shape}")
-
-
-ds_ddim.to_netcdf("DDIM_conditional_derived/output_inference/ddim_downscaled_DDPM_full_steps_test_set_5samples_2011_2023.nc", encoding=encoding)
-print(f"DDIM downscaled test set saved with shape: {ddim_preds_np.shape}")
+ds_fm.to_netcdf("FM_conditional_derived/output_inference/fm_downscaled_Euler_steps_test_set_6samples_2011_2023.nc", encoding=encoding)
+print(f"FM downscaled test set saved with shape: {fm_preds_np.shape}")
