@@ -68,8 +68,8 @@ callbacks:
 
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
-    dirpath: FM_conditional_derived/trained_ckpts/12km/{model.loss_type}/
-    filename: FM_{model.loss_type}_{epoch:02d}
+    dirpath: FM_conditional_derived/trained_ckpts/12km/${model.loss_type}/
+    filename: FM_${model.loss_type}_${epoch:02d}
     save_top_k: 1
     monitor: val/loss
     mode: min

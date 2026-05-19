@@ -102,8 +102,22 @@ class DDIMResidualContextual(LightningModule):
         t = torch.rand(batch_size, device=device).view(-1, 1, 1, 1)
         r0 = torch.randn_like(r1)
         r_t = (1 - t) * r0 + t * r1
+        if self.conditional and context is not None:
+            # Ensure context is processed by conditioner
+
+            
+            if isinstance(context, torch.Tensor):
+                context = [(context, None)]
+            elif isinstance(context, list):
+                if not (isinstance(context[0], tuple) and len(context[0]) == 2):
+                    context = [(c, None) for c in context]
+            context = self.context_encoder(context)
+        else:
+            context = None
         pred = self.denoiser(r_t, t, context=context)
         return self.get_loss(pred, r1 - r0)
+
+
 
 
     def shared_step(self, batch):
@@ -118,7 +132,7 @@ class DDIMResidualContextual(LightningModule):
 
 
         # UNet mean prediction as context, processed by conditioner (AFNO)
-        context = self.context_encoder([(coarse_pred, None)]) if self.conditional else None
+        context = [(coarse_pred, None)] if self.conditional else None
         return self(residual, context=context)
 
 
@@ -140,6 +154,8 @@ class DDIMResidualContextual(LightningModule):
         self.log("val/loss_ema", loss_ema, **log_params, sync_dist=True)
 
     @torch.no_grad()
+
+    
     def test_step(self, batch, batch_idx):
         loss = self.shared_step(batch)
         with self.ema_scope():
