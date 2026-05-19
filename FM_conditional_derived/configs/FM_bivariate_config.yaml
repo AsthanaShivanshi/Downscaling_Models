@@ -66,10 +66,11 @@ callbacks:
     mode: min
 
 
+
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
-    dirpath: FM_conditional_derived/trained_ckpts/12km/${model.loss_type}/
-    filename: FM_${model.loss_type}_${epoch:02d}
+    dirpath: FM_conditional_derived/trained_ckpts/12km/
+    filename: FM_{loss_type}
     save_top_k: 1
     monitor: val/loss
     mode: min
@@ -104,4 +105,4 @@ model:
   use_ema: true
   ema_decay: 0.9999
 
-  loss_type: "l1" # "l2" or "L1"
+  loss_type: "l2" # "l2" or "L1"
