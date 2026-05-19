@@ -34,7 +34,7 @@ data:
 conditioner:
   _target_: FM_conditional_derived.models.components.diff.conditioner.AFNOConditionerNetCascade
   autoencoder: null #AsthanaSh : No autoencoder, pixel space coarse Unet mean pred as context
-  input_channels: [2]   # AsthanaSh : Extra params added, change from LDM conditioner,,, Number of channels in the input context (precip, temp)m residual channels
+  input_channels: [2]   # AsthanaSh : Extra params added, changed from LDM conditioner,,, Number of channels in the input context (precip, temp)m residual channels
   embed_dim: [32,64,128]
   analysis_depth: 3
   cascade_depth: 3
@@ -69,7 +69,7 @@ callbacks:
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: FM_conditional_derived/trained_ckpts/12km/{model.loss_type}/
-    filename: FM_{model.loss_type}_bs{experiment.batch_size}_lr{model.lr}_ep{epoch:02d}_vloss{val/loss:.4f}_{hydra:job.num}
+    filename: FM_{model.loss_type}_{epoch:02d}
     save_top_k: 1
     monitor: val/loss
     mode: min
