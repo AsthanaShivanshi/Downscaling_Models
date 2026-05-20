@@ -8,7 +8,6 @@
 #SBATCH --mem=64G
 #SBATCH --partition=gpu #Using GPU while CFM sampling
 #SBATCH --gres=gpu:1
-##SBATCH --array=0-29 Commented out for now #For every N_steps,, N_sample combo (for experiemnt_Nsteps_Nsamples.py) : 30 combos in total.
 
 source diffscaler.sh
 

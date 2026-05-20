@@ -75,7 +75,9 @@ class FMContextual(LightningModule):
 
     def apply_denoiser(self, x_noisy, t, cond=None, return_ids=False):
         if self.conditional:
+
             # Ensure cond is a list of (tensor, t_relative) tuples
+            
             if isinstance(cond, torch.Tensor):
                 cond = [(cond, None)]
             elif isinstance(cond, list):
@@ -131,6 +133,7 @@ class FMContextual(LightningModule):
             context = None
 
         pred = self.denoiser(x_t, t, context=context)
+
         return self.get_loss(pred, target)
 
 
@@ -180,10 +183,9 @@ class FMContextual(LightningModule):
         return loss
 
 
-
     @torch.no_grad()
 
-    
+
     def validation_step(self, batch, batch_idx):
         loss = self.shared_step(batch)
         with self.ema_scope():
