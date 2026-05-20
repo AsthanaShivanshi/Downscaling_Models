@@ -34,7 +34,7 @@ data:
 conditioner:
   _target_: FM_conditional_derived.models.components.diff.conditioner.AFNOConditionerNetCascade
   autoencoder: null #AsthanaSh : No autoencoder, pixel space coarse Unet mean pred as context
-  input_channels: [2]   # AsthanaSh : Extra params added, changed from LDM conditioner,,, Number of channels in the input context (precip, temp)m residual channels
+  input_channels: [2]   # AsthanaSh : Extra params added, changed from LDM conditioner,,, Number of channels in the input context (precip, temp)
   embed_dim: [32,64,128]
   analysis_depth: 3
   cascade_depth: 3
@@ -70,7 +70,7 @@ callbacks:
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: FM_conditional_derived/trained_ckpts/12km/
-    filename: FM_{loss_type}
+    filename: FM_{L2}
     save_top_k: 1
     monitor: val/loss
     mode: min
@@ -78,11 +78,11 @@ callbacks:
 
 
 model:
-  _target_: FM_conditional_derived.models.diff_module.DDIMResidualContextual
+  _target_: FM_conditional_derived.models.diff_module.FMContextual
 
   denoiser:
     _target_: FM_conditional_derived.models.components.diff.denoiser.unet.UNetModel
-    in_channels: 2         # residual channels (precip, temp)
+    in_channels: 2         # channels (precip, temp)
     out_channels: 2
     model_channels: 32
     num_res_blocks: 2
@@ -105,4 +105,4 @@ model:
   use_ema: true
   ema_decay: 0.9999
 
-  loss_type: "l2" # "l2" or "L1"
+  loss_type: "l2" # "l2" or "l1"

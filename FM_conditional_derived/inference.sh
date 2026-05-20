@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --time=00:15:00
 #SBATCH --mem=64G
-#SBATCH --partition=gpu #Using GPU while DDIM sampling tbs. 
+#SBATCH --partition=gpu #Using GPU while CFM sampling
 #SBATCH --gres=gpu:1
 ##SBATCH --array=0-29 Commented out for now #For every N_steps,, N_sample combo (for experiemnt_Nsteps_Nsamples.py) : 30 combos in total.
 
@@ -27,4 +27,4 @@ python -c "import wandb; print(wandb.__version__)"
 #For normal infernece on test set
 #python DDIM_conditional_derived/inference_allframes_etaxx.py
 
-python FM_conditional_derived/inference_single_frame_hierarchy.py --idx 25 --steps 10 --num_samples 1
+python FM_conditional_derived/inference_single_frame_hierarchy.py --idx 25 --num_steps 10 --num_samples 1

@@ -69,6 +69,9 @@ class AFNOConditionerNetBase(nn.Module):
             afno_fusion=afno_fusion, dim_out=embed_dim_out)
 
     def forward(self, x):
+        print("Conditioner input:", type(x), getattr(x, "shape", None)) #Debug
+
+
         (x, t_relative) = list(zip(*x))
 
         def process_input(i):

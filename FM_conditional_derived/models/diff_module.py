@@ -7,19 +7,24 @@ https://github.com/lucidrains/denoising-diffusion-pytorch/blob/7706bdfc6f527f58d
 https://github.com/openai/improved-diffusion/blob/e94489283bb876ac1477d5dd7709bbbd2d9902ce/improved_diffusion/gaussian_diffusion.py
 https://github.com/CompVis/taming-transformers
 
+FULL Credits to torchcfm library source code : https://github.com/atong01/conditional-flow-matching
+"""
 
-This is converted from LDM to DDPM to then FM,, subsequently: AsthanaSh"""
+
+
 
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
 from lightning import LightningModule
 from contextlib import contextmanager
+import torchcfm
+from torchcfm import ConditionalFlowMatcher
 from FM_conditional_derived.models.components.diff.denoiser.ema import LitEma
 
 
 
-class DDIMResidualContextual(LightningModule):
+class FMContextual(LightningModule):
     def __init__(self,
         denoiser,
         context_encoder=None,
@@ -32,7 +37,12 @@ class DDIMResidualContextual(LightningModule):
     ):
         super().__init__()
         self.denoiser = denoiser
+
         self.unet_regr = unet_regr
+
+        self.cfm= ConditionalFlowMatcher(sigma=10e-8)
+
+
         self.conditional = (context_encoder is not None)
         self.context_encoder = context_encoder
         self.lr = lr
@@ -47,6 +57,8 @@ class DDIMResidualContextual(LightningModule):
         self.loss_type = loss_type
 
     @contextmanager
+
+
     def ema_scope(self, context=None):
         if self.use_ema:
             self.denoiser_ema.store(self.denoiser.parameters())
@@ -93,19 +105,22 @@ class DDIMResidualContextual(LightningModule):
         return loss
 
 
-#Flow matching forward and training steps : AsthanaSh
+#Flow matching forward and training steps : in OG space .,.. no residuals : AsthanaSh
 
-
-    def forward(self, r1, context=None):
-        batch_size = r1.shape[0]
-        device = r1.device
+    def forward(self, coarse_pred, target, sigma=0.0, context=None):
+        batch_size = coarse_pred.shape[0]
+        device = coarse_pred.device
         t = torch.rand(batch_size, device=device).view(-1, 1, 1, 1)
-        r0 = torch.randn_like(r1)
-        r_t = (1 - t) * r0 + t * r1
-        if self.conditional and context is not None:
-            # Ensure context is processed by conditioner
 
-            
+
+        eps = torch.randn_like(coarse_pred) if sigma > 0 else 0.0
+
+
+        mu_t = t * target + (1 - t) * coarse_pred
+        
+        x_t = mu_t + sigma * eps
+
+        if self.conditional and context is not None:
             if isinstance(context, torch.Tensor):
                 context = [(context, None)]
             elif isinstance(context, list):
@@ -114,30 +129,52 @@ class DDIMResidualContextual(LightningModule):
             context = self.context_encoder(context)
         else:
             context = None
-        pred = self.denoiser(r_t, t, context=context)
-        return self.get_loss(pred, r1 - r0)
+
+        pred = self.denoiser(x_t, t, context=context)
+        return self.get_loss(pred, target)
 
 
 
+
+#Changed for paired flow matching,,, no use of OT : AsthanaSh
 
     def shared_step(self, batch):
-        (x, y) = batch  # input, target
+        (x, y) = batch  # x: LR input, y: HR target: AsthanaSh,,, no OT pairing, pairing indexwise. 
         assert not torch.any(torch.isnan(x)).item(), 'input data has NaNs'
         assert not torch.any(torch.isnan(y)).item(), 'target has NaNs'
 
-
         with torch.no_grad():
-            coarse_pred = self.unet_regr(x)  # UNet regression output
-        residual = y - coarse_pred  # Pixel-space residual
+
+            coarse_pred = self.unet_regr(x)  # x0
 
 
-        # UNet mean prediction as context, processed by conditioner (AFNO)
+
+        t, xt, ut = self.cfm.sample_location_and_conditional_flow(coarse_pred, y)
+
+
+
         context = [(coarse_pred, None)] if self.conditional else None
-        return self(residual, context=context)
 
+
+        if self.conditional and context is not None:
+
+
+            if isinstance(context, torch.Tensor):
+                context = [(context, None)]
+            elif isinstance(context, list):
+                if not (isinstance(context[0], tuple) and len(context[0]) == 2):
+                    context = [(c, None) for c in context]
+            context = self.context_encoder(context)
+        else:
+            context = None
+
+        v_pred = self.denoiser(xt, t.view(-1, 1, 1, 1), context=context)
+
+        return self.get_loss(v_pred, ut)
 
 
     def training_step(self, batch, batch_idx):
+
         loss = self.shared_step(batch)
         self.log("train/loss", loss, sync_dist=True)
         return loss
@@ -145,6 +182,8 @@ class DDIMResidualContextual(LightningModule):
 
 
     @torch.no_grad()
+
+    
     def validation_step(self, batch, batch_idx):
         loss = self.shared_step(batch)
         with self.ema_scope():

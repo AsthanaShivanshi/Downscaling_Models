@@ -171,7 +171,11 @@ def main(idx, sampling_steps_list=[250, 500, 750, 999]):
     channel_names = ["Precip", "Temp"]
     params_list = [pr_params, temp_params]
 
+
+
     with torch.no_grad():
+
+        
         input_sample = test_inputs[idx].unsqueeze(0).to(device)
         unet_pred = unet_regr(input_sample)
         context = [(unet_pred, None)]

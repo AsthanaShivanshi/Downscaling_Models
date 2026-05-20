@@ -31,13 +31,18 @@ def flow_matching_sample(
         x = torch.randn(shape, device=device)
     else:
         x = x_T.to(device)
+
     t_vals = torch.linspace(1, 0, steps, device=device)  # Integrate from t=1 to t=0
     dt = -1.0 / steps
+
+
 
     if verbose:
         iterator = tqdm(range(steps), desc="CFM Sampler")
     else:
         iterator = range(steps)
+
+
 
 
     for i in iterator:
@@ -50,14 +55,19 @@ def flow_matching_sample(
 
 
 
+
+
         elif integration == "heun":
             # Predictor step
             x_pred = x + v * dt
             t_next = t_vals[i + 1]
             t_next_tensor = torch.full((x.shape[0], 1, 1, 1), t_next, device=device)
             v_next = model.apply_denoiser(x_pred, t_next_tensor, cond=conditioning)
-            # Corrector step
+
+
             x = x + 0.5 * (v + v_next) * dt
+
+
 
 
             
