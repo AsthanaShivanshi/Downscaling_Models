@@ -4,7 +4,7 @@
 #SBATCH --error=FM_conditional_derived/logs/ckpts_FM/FM_L2loss_sweep_job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=02-00:00:00
+#SBATCH --time=03-00:00:00
 #SBATCH --mem=256G
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1

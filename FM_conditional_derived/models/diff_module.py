@@ -8,6 +8,8 @@ https://github.com/openai/improved-diffusion/blob/e94489283bb876ac1477d5dd7709bb
 https://github.com/CompVis/taming-transformers
 
 FULL Credits to torchcfm library source code : https://github.com/atong01/conditional-flow-matching
+
+Usage of base class for CFM adapted- AsthanaSh
 """
 
 
@@ -17,8 +19,10 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 from lightning import LightningModule
-from contextlib import contextmanager
 import torchcfm
+import torchdiffeq
+from contextlib import contextmanager, nullcontext
+from torchdiffeq import odeint
 from torchcfm import ConditionalFlowMatcher
 from FM_conditional_derived.models.components.diff.denoiser.ema import LitEma
 
@@ -40,10 +44,13 @@ class FMContextual(LightningModule):
 
         self.unet_regr = unet_regr
 
+
         self.cfm= ConditionalFlowMatcher(sigma=10e-8)
 
 
         self.conditional = (context_encoder is not None)
+
+        
         self.context_encoder = context_encoder
         self.lr = lr
         self.lr_warmup = lr_warmup
@@ -184,8 +191,6 @@ class FMContextual(LightningModule):
 
 
     @torch.no_grad()
-
-
     def validation_step(self, batch, batch_idx):
         loss = self.shared_step(batch)
         with self.ema_scope():
@@ -195,8 +200,6 @@ class FMContextual(LightningModule):
         self.log("val/loss_ema", loss_ema, **log_params, sync_dist=True)
 
     @torch.no_grad()
-
-    
     def test_step(self, batch, batch_idx):
         loss = self.shared_step(batch)
         with self.ema_scope():
@@ -241,3 +244,34 @@ class FMContextual(LightningModule):
             epoch, batch_idx, optimizer, optimizer_closure,
             **kwargs
         )
+
+
+
+    
+    @torch.no_grad()
+    def sample(self, x, num_steps=1, use_ema=True, coarse_pred=None):
+        if coarse_pred is None:
+            coarse_pred = self.unet_regr(x)   # x0
+
+        context = [(coarse_pred, None)] if getattr(self, "conditional", False) else None
+
+
+        if getattr(self, "conditional", False) and context is not None and hasattr(self, "context_encoder"):
+
+            
+            context = self.context_encoder(context)
+
+        def ode_fn(t, xt):
+            t_batch = t.expand(xt.shape[0]).view(-1, 1, 1, 1)
+            return self.denoiser(xt, t_batch, context=context)
+
+        with self.ema_scope() if use_ema and hasattr(self, "ema_scope") else nullcontext():
+            trajectory = odeint(
+                ode_fn,
+                coarse_pred,                          
+                torch.linspace(0, 1, num_steps).to(x.device),  
+                method="euler",                       
+                atol=1e-4,
+                rtol=1e-4,
+            )
+        return trajectory[-1]
