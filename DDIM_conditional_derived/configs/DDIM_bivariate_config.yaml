@@ -110,4 +110,4 @@ model:
   use_ema: true
   ema_decay: 0.9999
   parameterization: "v"
-  loss_type: "l1" # "l2" or "L1"
+  loss_type: "l2" # "l2" or "L1"

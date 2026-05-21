@@ -3,7 +3,7 @@ defaults:
   - _self_
 
 experiment:
-  batch_size: 8 #AsthanaSh : Note ::: Any higher gives CUDA OOM 
+  batch_size: 8 #AsthanaSh : Note ::: Any higher gives CUDA OOM basis the Curnagl experiments (REMBA!!!)
   num_workers: 2
 
 variables:
@@ -15,6 +15,7 @@ variables:
     temp: TabsD
 
 preprocessing:
+
   nan_to_num: true
   nan_value : 0.0
 
@@ -70,7 +71,7 @@ callbacks:
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: FM_conditional_derived/trained_ckpts/12km/
-    filename: FM_{L2}
+    filename: VPFM_L2
     save_top_k: 1
     monitor: val/loss
     mode: min
@@ -106,3 +107,6 @@ model:
   ema_decay: 0.9999
 
   loss_type: "l2" # "l2" or "l1"
+
+  fm_type: "vpfm" # "cfm" or "vpfm" (Albergo et al. 2023)... torchcfm : AsthanaSh
+  fm_sigma: 1e-7 #AsthanaSh : Very small sigma for CFM/VCFM for stability. , matching clean flows for comparison with DDIM later. 

@@ -22,6 +22,7 @@ from models.diff_module import FMContextual
 # ------------------------------------------------------------------------------------#
 
 base_seed = 124
+
 DEFAULT_NUM_STEPS = [10]
 DEFAULT_NUM_SAMPLES = 1
 
@@ -270,14 +271,23 @@ def main(idx, num_steps=None, num_samples=DEFAULT_NUM_SAMPLES):
         for j in range(num_samples):
             set_seed(base_seed + j)
 
+
+
             with torch.no_grad():
                 unet_pred = unet_regr(input_sample)
+
+
                 fm_pred = fm_model.sample(
                     x=input_sample,
                     num_steps=step,
                     use_ema=True,
+                    solver="heun2",
+                    init_noise_std=0.00,
                     coarse_pred=unet_pred,
                 )
+
+
+
 
             final_pred_np = fm_pred[0].detach().cpu().numpy()
             fm_pred_denorm = np.empty_like(final_pred_np)

@@ -7,23 +7,17 @@ https://github.com/lucidrains/denoising-diffusion-pytorch/blob/7706bdfc6f527f58d
 https://github.com/openai/improved-diffusion/blob/e94489283bb876ac1477d5dd7709bbbd2d9902ce/improved_diffusion/gaussian_diffusion.py
 https://github.com/CompVis/taming-transformers
 
-FULL Credits to torchcfm library source code : https://github.com/atong01/conditional-flow-matching
+FULL Credits to torchcfm library from which two FM approaches have been adopted. : https://github.com/atong01/conditional-flow-matching
 
 Usage of base class for CFM adapted- AsthanaSh
 """
 
-
-
-
 import torch
-import torch.nn.functional as F
-import torch.nn as nn
 from lightning import LightningModule
-import torchcfm
 import torchdiffeq
 from contextlib import contextmanager, nullcontext
 from torchdiffeq import odeint
-from torchcfm import ConditionalFlowMatcher
+from torchcfm import ConditionalFlowMatcher, VariancePreservingConditionalFlowMatcher
 from FM_conditional_derived.models.components.diff.denoiser.ema import LitEma
 
 
@@ -38,22 +32,36 @@ class FMContextual(LightningModule):
         loss_type="l2",
         use_ema=True,
         ema_decay=0.9999,
+        fm_type="cfm",
+        fm_sigma=1e-7, #Training deterministically 
     ):
         super().__init__()
         self.denoiser = denoiser
-
         self.unet_regr = unet_regr
 
+        self.fm_type = fm_type.lower()
+        self.fm_sigma = fm_sigma
 
-        self.cfm= ConditionalFlowMatcher(sigma=10e-8)
+        if self.fm_type == "cfm":
+            self.cfm = ConditionalFlowMatcher(sigma=self.fm_sigma)
 
+
+
+        elif self.fm_type == "vpfm":
+            self.cfm = VariancePreservingConditionalFlowMatcher(sigma=self.fm_sigma)
+        else:
+
+
+            raise ValueError(
+                f"Unsupported fm_type='{fm_type}'. Expected one of: "
+                f"['cfm', 'vpfm']"
+            )
 
         self.conditional = (context_encoder is not None)
-
-        
         self.context_encoder = context_encoder
         self.lr = lr
         self.lr_warmup = lr_warmup
+
 
         #Parameterisation removed : AsthaanSh
 
@@ -63,9 +71,8 @@ class FMContextual(LightningModule):
             self.denoiser_ema = LitEma(self.denoiser, decay=ema_decay)
         self.loss_type = loss_type
 
+
     @contextmanager
-
-
     def ema_scope(self, context=None):
         if self.use_ema:
             self.denoiser_ema.store(self.denoiser.parameters())
@@ -80,11 +87,13 @@ class FMContextual(LightningModule):
                 if context is not None:
                     print(f"{context}: Restored training weights")
 
+
+
     def apply_denoiser(self, x_noisy, t, cond=None, return_ids=False):
         if self.conditional:
 
             # Ensure cond is a list of (tensor, t_relative) tuples
-            
+
             if isinstance(cond, torch.Tensor):
                 cond = [(cond, None)]
             elif isinstance(cond, list):
@@ -96,7 +105,7 @@ class FMContextual(LightningModule):
             cond = None
         return self.denoiser(x_noisy, t, context=cond)
 
-    
+
 
     def get_loss(self, pred, target, mean=True):
 
@@ -114,20 +123,10 @@ class FMContextual(LightningModule):
         return loss
 
 
-#Flow matching forward and training steps : in OG space .,.. no residuals : AsthanaSh
+#Flow matching forward and trainibg steps : in OG space .,.. no residuals : AsthanaSh
 
-    def forward(self, coarse_pred, target, sigma=0.0, context=None):
-        batch_size = coarse_pred.shape[0]
-        device = coarse_pred.device
-        t = torch.rand(batch_size, device=device).view(-1, 1, 1, 1)
-
-
-        eps = torch.randn_like(coarse_pred) if sigma > 0 else 0.0
-
-
-        mu_t = t * target + (1 - t) * coarse_pred
-        
-        x_t = mu_t + sigma * eps
+    def forward(self, coarse_pred, target, context=None):
+        t, x_t, u_t = self.cfm.sample_location_and_conditional_flow(coarse_pred, target)
 
         if self.conditional and context is not None:
             if isinstance(context, torch.Tensor):
@@ -139,36 +138,26 @@ class FMContextual(LightningModule):
         else:
             context = None
 
-        pred = self.denoiser(x_t, t, context=context)
-
-        return self.get_loss(pred, target)
-
+        pred = self.denoiser(x_t, t.view(-1, 1, 1, 1), context=context)
+        return self.get_loss(pred, u_t)
 
 
 
-#Changed for paired flow matching,,, no use of OT : AsthanaSh
+#Changed for CFM,,, no use of OT : AsthanaSh
 
     def shared_step(self, batch):
-        (x, y) = batch  # x: LR input, y: HR target: AsthanaSh,,, no OT pairing, pairing indexwise. 
+        (x, y) = batch  # x: LR input, y: HR target: AsthanaSh,,, no OT pairing, pairing indexwise.
         assert not torch.any(torch.isnan(x)).item(), 'input data has NaNs'
         assert not torch.any(torch.isnan(y)).item(), 'target has NaNs'
 
         with torch.no_grad():
-
             coarse_pred = self.unet_regr(x)  # x0
-
-
 
         t, xt, ut = self.cfm.sample_location_and_conditional_flow(coarse_pred, y)
 
-
-
         context = [(coarse_pred, None)] if self.conditional else None
 
-
         if self.conditional and context is not None:
-
-
             if isinstance(context, torch.Tensor):
                 context = [(context, None)]
             elif isinstance(context, list):
@@ -181,6 +170,8 @@ class FMContextual(LightningModule):
         v_pred = self.denoiser(xt, t.view(-1, 1, 1, 1), context=context)
 
         return self.get_loss(v_pred, ut)
+
+
 
 
     def training_step(self, batch, batch_idx):
@@ -249,29 +240,46 @@ class FMContextual(LightningModule):
 
     
     @torch.no_grad()
-    def sample(self, x, num_steps=1, use_ema=True, coarse_pred=None):
+    def sample(
+        self,
+        x,
+        num_steps=10,
+        use_ema=True,
+        coarse_pred=None,
+        init_noise_std=0.0,
+        solver="heun2",
+    ):
         if coarse_pred is None:
-            coarse_pred = self.unet_regr(x)   # x0
+            coarse_pred = self.unet_regr(x)
 
-        context = [(coarse_pred, None)] if getattr(self, "conditional", False) else None
+        x0 = coarse_pred
+        if init_noise_std > 0:
+            x0 = x0 + init_noise_std * torch.randn_like(x0)
 
-
-        if getattr(self, "conditional", False) and context is not None and hasattr(self, "context_encoder"):
-
-            
+        context = [(coarse_pred, None)] if self.conditional else None
+        if self.conditional and context is not None:
             context = self.context_encoder(context)
 
         def ode_fn(t, xt):
             t_batch = t.expand(xt.shape[0]).view(-1, 1, 1, 1)
             return self.denoiser(xt, t_batch, context=context)
 
-        with self.ema_scope() if use_ema and hasattr(self, "ema_scope") else nullcontext():
+        if num_steps < 1:
+            raise ValueError("num_steps must be >= 1")
+
+        # num_steps = number of solver intervals
+        t_span = torch.linspace(0.0, 1.0, num_steps + 1, device=x.device, dtype=x.dtype)
+
+        with self.ema_scope() if use_ema else nullcontext():
             trajectory = odeint(
                 ode_fn,
-                coarse_pred,                          
-                torch.linspace(0, 1, num_steps).to(x.device),  
-                method="euler",                       
+                x0,
+                t_span,
+                method=solver,
                 atol=1e-4,
                 rtol=1e-4,
             )
+
         return trajectory[-1]
+
+
