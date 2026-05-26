@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=VPFM_sweep_12km
-#SBATCH --output=FM_conditional_derived/logs/ckpts_FM/VPFM_sweep_job_output-%j.txt
-#SBATCH --error=FM_conditional_derived/logs/ckpts_FM/VPFM_sweep_job_error-%j.txt
+#SBATCH --job-name=L1_VPFM_sweep_12km
+#SBATCH --output=FM_conditional_derived/logs/ckpts_FM/L1_VPFM_sweep_job_output-%j.txt
+#SBATCH --error=FM_conditional_derived/logs/ckpts_FM/L1_VPFM_sweep_job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --time=02-00:00:00
@@ -19,9 +19,6 @@ export PYTHONUNBUFFERED=1
 export HYDRA_FULL_ERROR=1
 export WANDB_PROJECT=FM_sweep_12km
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-
-
-
 
 
 

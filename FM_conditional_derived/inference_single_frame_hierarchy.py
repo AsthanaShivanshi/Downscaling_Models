@@ -23,8 +23,8 @@ from models.diff_module import FMContextual
 
 base_seed = 124
 
-DEFAULT_NUM_STEPS = [10]
-DEFAULT_NUM_SAMPLES = 1
+DEFAULT_NUM_STEPS = [30]
+DEFAULT_NUM_SAMPLES = 6
 
 
 # ------------------------------------------------------------------------------------#
@@ -91,6 +91,24 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 # ------------------------------------------------------------------------------------#
+
+
+def crps_ensemble(ensemble, truth):
+    """
+    ensemble: [num_samples, H, W] or [num_samples, ...]
+    truth: [H, W] or [...]
+    Returns: [H, W] or [...]
+    """
+    ensemble = np.asarray(ensemble)
+    truth = np.asarray(truth)
+    n = ensemble.shape[0]
+    # First term: mean absolute error between ensemble and truth
+    term1 = np.mean(np.abs(ensemble - truth), axis=0)
+    # Second term: mean absolute difference between ensemble members
+    term2 = 0.5 * np.mean(np.abs(ensemble[:, None] - ensemble[None, :]), axis=(0, 1))
+    return term1 - term2
+
+#------------------------------------------------------------------------------------#
 
 def main(idx, num_steps=None, num_samples=DEFAULT_NUM_SAMPLES):
     if num_steps is None:
@@ -193,6 +211,9 @@ def main(idx, num_steps=None, num_samples=DEFAULT_NUM_SAMPLES):
         cascade_depth=3,
         context_ch=[32, 64, 128],
     )
+
+
+
     fm_model = FMContextual(
         denoiser=denoiser,
         context_encoder=conditioner,
@@ -200,9 +221,12 @@ def main(idx, num_steps=None, num_samples=DEFAULT_NUM_SAMPLES):
         use_ema=True,
         ema_decay=0.9999,
         lr=1e-4,
+        source_init="noise",
     )
+
+
     fm_ckpt = torch.load(
-        "FM_conditional_derived/trained_ckpts/12km/FM_L2=0.ckpt",
+        "FM_conditional_derived/trained_ckpts/12km/VPFM_L2.ckpt",
         map_location=device,
     )
     fm_model.load_state_dict(fm_ckpt["state_dict"], strict=False)
@@ -274,16 +298,16 @@ def main(idx, num_steps=None, num_samples=DEFAULT_NUM_SAMPLES):
 
 
             with torch.no_grad():
-                unet_pred = unet_regr(input_sample)
+                unet_pred = unet_regr(input_sample) 
 
 
                 fm_pred = fm_model.sample(
-                    x=input_sample,
+                    x=input_sample[:, :2],
                     num_steps=step,
                     use_ema=True,
                     solver="heun2",
-                    init_noise_std=0.00,
-                    coarse_pred=unet_pred,
+                    init_noise_std=1.0,
+                    coarse_pred=unet_pred
                 )
 
 
@@ -325,7 +349,7 @@ def main(idx, num_steps=None, num_samples=DEFAULT_NUM_SAMPLES):
         for j in range(len(params_list))
     ]
 
-    fig, axes = plt.subplots(4, len(params_list), figsize=(5 * len(params_list), 12), dpi=300)
+    fig, axes = plt.subplots(4, len(params_list), figsize=(5 * len(params_list), 12), dpi=1000)
     if len(params_list) == 1:
         axes = axes[:, np.newaxis]
 
@@ -352,6 +376,21 @@ def main(idx, num_steps=None, num_samples=DEFAULT_NUM_SAMPLES):
     plt.close(fig)
     print(f"Plot saved as {save_path}")
 
+
+        # After fm_pred_denorm_list is filled (shape: [num_samples, channels, H, W])
+    fm_pred_denorm_arr = np.stack(fm_pred_denorm_list, axis=0)  # [num_samples, channels, H, W]
+
+    crps_scores = {}
+    for i, name in enumerate(channel_names):
+        mask = precip_mask if name.lower().startswith("precip") else np.ones_like(target_denorm[i], dtype=bool)
+        # [num_samples, H, W] for this channel
+        ensemble = fm_pred_denorm_arr[:, i]
+        truth = target_denorm[i]
+        crps_map = crps_ensemble(ensemble, truth)
+        crps_scores[name] = np.nanmean(crps_map[mask])
+    print(f"\nCRPS Scores for Frame idx = {idx}")
+    for name in channel_names:
+        print(f"{name:>10}: {crps_scores[name]:.4f}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -380,3 +419,4 @@ if __name__ == "__main__":
         print(f"Total frames to downscale: {n_frames}")
         for idx in tqdm(range(n_frames), desc="Downscaling frames"):
             main(idx, args.num_steps, args.num_samples)
+

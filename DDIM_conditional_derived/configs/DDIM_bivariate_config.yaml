@@ -68,10 +68,11 @@ callbacks:
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: DDIM_conditional_derived/trained_ckpts/12km/
-    filename: DDIM_checkpoint_L1_quadratic_schedule_loss_parameterisation_v
+    filename: DDIM_checkpoint_L2_quadratic_schedule_loss_parameterisation_v
     save_top_k: 1
     monitor: val/loss
     mode: min
+
 
 model:
   _target_: DDIM_conditional_derived.models.diff_module.DDIMResidualContextual
