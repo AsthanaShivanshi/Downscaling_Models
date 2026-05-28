@@ -192,30 +192,35 @@ class FMContextual(LightningModule):
 
 
 
+
     @torch.no_grad()
     def sample(
         self,
-        x_lr,
+        x_lr_3ch,      # [B, 3, H, W] for unet_regr, [B, 2, H, W] for diffusion
         num_steps=10,
         use_ema=True,
         init_noise_std=None,
         solver="rk4",
     ):
-        coarse_pred = self.unet_regr(x_lr)
+        coarse_pred = self.unet_regr(x_lr_3ch)
+
+        
+        # Use only the first 2 channels for diffusion
+        x_lr_2ch = x_lr_3ch[:, :2]
         if self.source_init == "encoder+noise":
             enc = self.context_encoder([(coarse_pred, None)])
             std = self.source_noise_std if init_noise_std is None else init_noise_std
             x0 = enc + std * torch.randn_like(enc)
             context = None
         else:
-            x0 = self._make_source(x_lr, coarse_pred=None, noise_std=init_noise_std)
+            x0 = self._make_source(x_lr_2ch, coarse_pred=None, noise_std=init_noise_std)
             context = self.context_encoder([(coarse_pred, None)]) if self.conditional else None
 
         def ode_fn(t, xt):
             t_batch = t.expand(xt.shape[0]).view(-1, 1, 1, 1)
             return self.denoiser(xt, t_batch, context=context)
 
-        t_span = torch.linspace(0.0, 1.0, num_steps + 1, device=x_lr.device, dtype=x_lr.dtype)
+        t_span = torch.linspace(0.0, 1.0, num_steps + 1, device=x_lr_2ch.device, dtype=x_lr_2ch.dtype)
         with self.ema_scope() if use_ema else nullcontext():
             trajectory = odeint(
                 ode_fn,

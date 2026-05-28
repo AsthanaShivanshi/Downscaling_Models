@@ -217,6 +217,7 @@ def main(idx, num_steps=None, num_samples=DEFAULT_NUM_SAMPLES):
     fm_model = FMContextual(
         denoiser=denoiser,
         context_encoder=conditioner,
+        unet_regr=unet_regr,
         loss_type="l2",
         use_ema=True,
         ema_decay=0.9999,
@@ -226,7 +227,7 @@ def main(idx, num_steps=None, num_samples=DEFAULT_NUM_SAMPLES):
 
 
     fm_ckpt = torch.load(
-        "FM_conditional_derived/trained_ckpts/12km/VPFM_L2_noise.ckpt",
+        "FM_conditional_derived/trained_ckpts/12km/VPFM_L2_noise-v1.ckpt",
         map_location=device,
     )
     fm_model.load_state_dict(fm_ckpt["state_dict"], strict=False)
@@ -292,23 +293,25 @@ def main(idx, num_steps=None, num_samples=DEFAULT_NUM_SAMPLES):
     for step in num_steps:
         fm_pred_denorm_list = []
 
+
         for j in range(num_samples):
+
+
             set_seed(base_seed + j)
 
-
-
             with torch.no_grad():
-                unet_pred = unet_regr(input_sample) 
+
+                unet_pred= unet_regr(input_sample)
 
 
                 fm_pred = fm_model.sample(
-                    x=input_sample[:, :2],
-                    num_steps=step,
-                    use_ema=True,
-                    solver="heun2",
-                    init_noise_std=1.0,
-                    coarse_pred=unet_pred
-                )
+                x_lr_3ch=input_sample,  # 3 channels: precip, temp, additional
+                num_steps=step,
+                use_ema=True,
+                solver="heun2",
+                init_noise_std=1.0,
+            )
+
 
 
 

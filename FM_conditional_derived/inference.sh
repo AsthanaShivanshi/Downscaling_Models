@@ -4,7 +4,7 @@
 #SBATCH --error=FM_conditional_derived/logs/inference/_Single_Frame_Inference_Test_Set_CFM-job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=00:15:00
+#SBATCH --time=00:05:00
 #SBATCH --mem=32G
 #SBATCH --partition=gpu #Using GPU while CFM/VPFM sampling
 #SBATCH --gres=gpu:1
@@ -28,6 +28,6 @@ python -c "import wandb; print(wandb.__version__)"
 #python FM_conditional_derived/inference_allframes_fm.py
 
 
-#experiemntal : single frame tests 
+#experiemntal : single frame testset inf
 python FM_conditional_derived/inference_single_frame_hierarchy.py --idx 15 --num_steps 30 --num_samples 1
 

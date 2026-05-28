@@ -74,7 +74,7 @@ callbacks:
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: FM_conditional_derived/trained_ckpts/12km/
-    filename: VPFM_L2_noise
+    filename: CFM_L2_noise
     save_top_k: 1
     monitor: val/loss
     mode: min
@@ -111,6 +111,6 @@ model:
 
   loss_type: "l2" # "l2" or "l1"
 
-  fm_type: "vpfm" # "cfm" or "vpfm" (Albergo et al. 2023)... torchcfm : AsthanaSh
+  fm_type: "cfm" # "cfm" or "vpfm" (Albergo et al. 2023)... torchcfm : AsthanaSh
   source_init: "noise" #One of noise, encoder+noise: AsthanaSh
   fm_sigma: 1e-7 #AsthanaSh : Very small sigma for CFM/VCFM for stability. , matching clean flows for comparison with DDIM later. 
