@@ -18,8 +18,9 @@ Variance Presevring FM added as an option : AsthanaSh
 
 import torch
 from lightning import LightningModule
-import torchdiffeq
 from contextlib import contextmanager, nullcontext
+
+
 from torchdiffeq import odeint
 from torchcfm import ConditionalFlowMatcher, VariancePreservingConditionalFlowMatcher
 from FM_conditional_derived.models.components.diff.denoiser.ema import LitEma
@@ -50,10 +51,10 @@ class FMContextual(LightningModule):
         self.source_init = source_init.lower()
         self.source_noise_std = source_noise_std
 
-        if self.source_init not in {"noise", "coarse", "coarse+noise"}:
+        if self.source_init not in {"noise", "encoder+noise"}:
             raise ValueError(
                 f"Unsupported source_init='{source_init}'. Expected one of: "
-                f"['noise', 'coarse', 'coarse+noise']"
+                f"['noise', 'encoder+noise']"
             )
 
         if self.fm_type == "cfm":
@@ -137,110 +138,84 @@ class FMContextual(LightningModule):
 
         if self.source_init == "noise":
             return std * torch.randn_like(ref_tensor)
+        
 
-        if coarse_pred is None:
-            raise ValueError("coarse_pred is required for source_init='coarse' or 'coarse+noise'.")
-#because it is the conditioner. 
-        if self.source_init == "coarse":
-            return coarse_pred
 
-        if self.source_init == "coarse+noise":
+
+        elif self.source_init == "encoder+noise":
+            if coarse_pred is None:
+                raise ValueError("coarse_pred is required for source_init='encoder+noise'.")
+            
+
             return coarse_pred + std * torch.randn_like(coarse_pred)
-
-        raise RuntimeError(f"Unhandled source_init='{self.source_init}'")
-
-
-
-
-    def forward(self, coarse_pred, target, context=None):
-        x0 = self._make_source(target, coarse_pred=coarse_pred)
-        t, x_t, u_t = self.cfm.sample_location_and_conditional_flow(x0, target)
-
-        if self.conditional and context is not None:
-            if isinstance(context, torch.Tensor):
-                context = [(context, None)]
-            elif isinstance(context, list):
-                if not (isinstance(context[0], tuple) and len(context[0]) == 2):
-                    context = [(c, None) for c in context]
-            context = self.context_encoder(context)
         else:
-            context = None
+            raise RuntimeError(f"Unhandled source_init='{self.source_init}'")
 
+
+
+
+
+
+    def forward(self, x_lr, target):
+        coarse_pred = self.unet_regr(x_lr)
+        if self.source_init == "encoder+noise":
+            # Only use encoding for source, not as context
+            enc = self.context_encoder([(coarse_pred, None)])
+            x0 = enc + self.source_noise_std * torch.randn_like(enc)
+            context = None
+        else:
+            x0 = self._make_source(target, coarse_pred=coarse_pred)
+            context = self.context_encoder([(coarse_pred, None)]) if self.conditional else None
+
+        t, x_t, u_t = self.cfm.sample_location_and_conditional_flow(x0, target)
         pred = self.denoiser(x_t, t.view(-1, 1, 1, 1), context=context)
         return self.get_loss(pred, u_t)
-
+    
 
 
 
     def shared_step(self, batch):
-        (x, y) = batch
-        assert not torch.any(torch.isnan(x)).item(), 'input data has NaNs'
-        assert not torch.any(torch.isnan(y)).item(), 'target has NaNs'
-
-        with torch.no_grad():
-            coarse_pred = self.unet_regr(x)
-
-        x0 = self._make_source(y, coarse_pred=coarse_pred)
-        t, xt, ut = self.cfm.sample_location_and_conditional_flow(x0, y)
-
-        context = [(coarse_pred, None)] if self.conditional else None
-
-        if self.conditional and context is not None:
-            if isinstance(context, torch.Tensor):
-                context = [(context, None)]
-            elif isinstance(context, list):
-                if not (isinstance(context[0], tuple) and len(context[0]) == 2):
-                    context = [(c, None) for c in context]
-            context = self.context_encoder(context)
-        else:
+        x_lr, y = batch
+        coarse_pred = self.unet_regr(x_lr)
+        if self.source_init == "encoder+noise":
+            enc = self.context_encoder([(coarse_pred, None)])
+            x0 = enc + self.source_noise_std * torch.randn_like(enc)
             context = None
+        else:
+            x0 = self._make_source(y, coarse_pred=coarse_pred)
+            context = self.context_encoder([(coarse_pred, None)]) if self.conditional else None
 
+        t, xt, ut = self.cfm.sample_location_and_conditional_flow(x0, y)
         v_pred = self.denoiser(xt, t.view(-1, 1, 1, 1), context=context)
-
         return self.get_loss(v_pred, ut)
 
 
-        
+
 
     @torch.no_grad()
     def sample(
         self,
-        x,
+        x_lr,
         num_steps=10,
         use_ema=True,
-        coarse_pred=None,
         init_noise_std=None,
         solver="rk4",
     ):
-        # Only use unet_regr if source_init is not "noise"
-        if self.source_init == "noise":
-            # For noise init, ignore coarse_pred and unet_regr
-            x0 = self._make_source(x, coarse_pred=None, noise_std=init_noise_std)
+        coarse_pred = self.unet_regr(x_lr)
+        if self.source_init == "encoder+noise":
+            enc = self.context_encoder([(coarse_pred, None)])
+            std = self.source_noise_std if init_noise_std is None else init_noise_std
+            x0 = enc + std * torch.randn_like(enc)
             context = None
-            if self.conditional:
-                if coarse_pred is None: 
-                    coarse_pred= self.unet_regr(x)
-                context = self.context_encoder([(coarse_pred, None)])
         else:
-            # For coarse or coarse+noise, get coarse_pred if not provided
-            if coarse_pred is None:
-                if self.unet_regr is None:
-                    raise ValueError("unet_regr is required for source_init='coarse' or 'coarse+noise'.")
-                coarse_pred = self.unet_regr(x)
-            x0 = self._make_source(coarse_pred, coarse_pred=coarse_pred, noise_std=init_noise_std)
-            context = None
-            if self.conditional:
-                context = self.context_encoder([(coarse_pred, None)])
+            x0 = self._make_source(x_lr, coarse_pred=None, noise_std=init_noise_std)
+            context = self.context_encoder([(coarse_pred, None)]) if self.conditional else None
 
         def ode_fn(t, xt):
             t_batch = t.expand(xt.shape[0]).view(-1, 1, 1, 1)
             return self.denoiser(xt, t_batch, context=context)
 
-        if num_steps < 1:
-            raise ValueError("num_steps must be >= 1")
-
-        t_span = torch.linspace(0.0, 1.0, num_steps + 1, device=x.device, dtype=x.dtype)
-
+        t_span = torch.linspace(0.0, 1.0, num_steps + 1, device=x_lr.device, dtype=x_lr.dtype)
         with self.ema_scope() if use_ema else nullcontext():
             trajectory = odeint(
                 ode_fn,
@@ -250,10 +225,7 @@ class FMContextual(LightningModule):
                 atol=1e-4,
                 rtol=1e-4,
             )
-
         return trajectory[-1]
-
-
 
 #------------------------------------------------------------------------------------
 
@@ -320,7 +292,6 @@ class FMContextual(LightningModule):
             epoch, batch_idx, optimizer, optimizer_closure,
             **kwargs
         )
-
 
 
 

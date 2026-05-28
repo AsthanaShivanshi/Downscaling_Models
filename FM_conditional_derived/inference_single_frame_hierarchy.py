@@ -226,7 +226,7 @@ def main(idx, num_steps=None, num_samples=DEFAULT_NUM_SAMPLES):
 
 
     fm_ckpt = torch.load(
-        "FM_conditional_derived/trained_ckpts/12km/VPFM_L2.ckpt",
+        "FM_conditional_derived/trained_ckpts/12km/VPFM_L2_noise.ckpt",
         map_location=device,
     )
     fm_model.load_state_dict(fm_ckpt["state_dict"], strict=False)
@@ -392,6 +392,10 @@ def main(idx, num_steps=None, num_samples=DEFAULT_NUM_SAMPLES):
     for name in channel_names:
         print(f"{name:>10}: {crps_scores[name]:.4f}")
 
+
+
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--idx", type=int, default=None, help="index to plot (if None, run all)")
@@ -408,6 +412,9 @@ if __name__ == "__main__":
         default=DEFAULT_NUM_SAMPLES,
         help="Number of FM samples to average",
     )
+
+
+    
     args = parser.parse_args()
 
     if args.idx is not None:

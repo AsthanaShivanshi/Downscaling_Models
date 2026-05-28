@@ -6,6 +6,8 @@ experiment:
   batch_size: 8 #AsthanaSh : Note ::: Any higher gives CUDA OOM basis the Curnagl experiments (REMBA!!!)
   num_workers: 2
 
+
+
 variables:
   input:
     precip: RhiresD
@@ -13,6 +15,7 @@ variables:
   target:
     precip: RhiresD
     temp: TabsD
+
 
 preprocessing:
 
@@ -71,7 +74,7 @@ callbacks:
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: FM_conditional_derived/trained_ckpts/12km/
-    filename: VPFM_L1
+    filename: VPFM_L2_noise
     save_top_k: 1
     monitor: val/loss
     mode: min
@@ -106,8 +109,8 @@ model:
   use_ema: true
   ema_decay: 0.9999
 
-  loss_type: "l1" # "l2" or "l1"
+  loss_type: "l2" # "l2" or "l1"
 
   fm_type: "vpfm" # "cfm" or "vpfm" (Albergo et al. 2023)... torchcfm : AsthanaSh
-  source_init: "noise" #Ome of noise, coarse, coarse+noise: AsthanSh
+  source_init: "noise" #One of noise, encoder+noise: AsthanaSh
   fm_sigma: 1e-7 #AsthanaSh : Very small sigma for CFM/VCFM for stability. , matching clean flows for comparison with DDIM later. 

@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=L1_VPFM_sweep_12km
-#SBATCH --output=FM_conditional_derived/logs/ckpts_FM/L1_VPFM_sweep_job_output-%j.txt
-#SBATCH --error=FM_conditional_derived/logs/ckpts_FM/L1_VPFM_sweep_job_error-%j.txt
+#SBATCH --job-name=L2_VPFM_noise_sweep_12km
+#SBATCH --output=FM_conditional_derived/logs/ckpts_FM/L2_VPFM_noise_sweep_job_output-%j.txt
+#SBATCH --error=FM_conditional_derived/logs/ckpts_FM/L2_VPFM_noise_sweep_job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=02-00:00:00
-#SBATCH --mem=256G
+#SBATCH --time=01-23:00:00
+#SBATCH --mem=128G
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
 
