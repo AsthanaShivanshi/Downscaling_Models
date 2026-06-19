@@ -61,7 +61,7 @@ callbacks:
 
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
-    dirpath: LDM_conditional/trained_ckpts_optimised/12km/UNet_ckpts/
+    dirpath: LDM_conditional/trained_ckpts/12km/
 
 
     filename: ${model._target_}_12km_logtransform_lr${model.lr}_precip_loss_weight${model.precip_loss_weight}_${model.huber_delta}_factor${model.lr_scheduler_factor}_pat${model.lr_scheduler_patience}.ckpt
