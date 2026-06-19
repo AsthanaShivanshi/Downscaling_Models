@@ -63,10 +63,8 @@ callbacks:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: LDM_conditional/trained_ckpts_optimised/12km/UNet_ckpts/
 
-    #For sweep without CRPS
-    #filename: ${model._target_}_bs${experiment.batch_size}_lr${model.lr}_delta${model.huber_delta}_factor${lr_scheduler.factor}_pat${lr_scheduler.patience}.ckpt
-    #For sweep with CRPS
-    filename: ${model._target_}_12km_logtransform_lr${model.lr}_precip_loss_weight${model.precip_loss_weight}_${model.huber_delta}_crps${model.use_crps_channels}_factor${lr_scheduler.factor}_pat${lr_scheduler.patience}.ckpt
+
+    filename: ${model._target_}_12km_logtransform_lr${model.lr}_precip_loss_weight${model.precip_loss_weight}_${model.huber_delta}_factor${model.lr_scheduler_factor}_pat${model.lr_scheduler_patience}.ckpt
     save_top_k: 1
     monitor: val/loss
     mode: min
@@ -75,17 +73,25 @@ model:
   _target_: LDM_conditional.models.unet_module.DownscalingUnetLightning
   in_ch: 3
   out_ch: 2
-  features: [64,128,256,512]
+  features: [64, 128, 256, 512]
   channel_names: ["precip", "temp"]
+  precip_channel_idx: 0
   lr: 1e-3
-  huber_delta: 1.0  #used only for precip channel. 
-  use_crps_channels: [] #Not used when left empty. 
-  precip_loss_weight: 1.0 #Customisable impotance in sweep. 
+  huber_delta: 1.0
+  precip_loss_weight: 1.0
+  use_crps_channels: []
   precip_scaling_json: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/RhiresD_scaling_params.json
+  
+  
+  
+  lr_scheduler_factor: 0.50
+  lr_scheduler_patience: 3
+  lr_scheduler_min_lr: 1e-6
+
 
 lr_scheduler:
   _target_: lightning.pytorch.lr_scheduler.ReduceLROnPlateau
   mode: min
-  factor: 0.50
-  patience: 3
-  min_lr: 1e-6
+  factor: ${model.lr_scheduler_factor}
+  patience: ${model.lr_scheduler_patience}
+  min_lr: ${model.lr_scheduler_min_lr}
