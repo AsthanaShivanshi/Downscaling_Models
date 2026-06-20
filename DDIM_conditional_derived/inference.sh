@@ -4,31 +4,30 @@
 #SBATCH --error=DDIM_conditional_derived/logs/ckpts_DDPM/Inference_Test_Set_DDPM-job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --time=03-00:00:00
-#SBATCH --mem=256G
-#SBATCH --partition=gpu #Using GPU while DDIM sampling tbs. 
+#SBATCH --time=15:00:00
+#SBATCH --mem=128G
+#SBATCH --partition=gpu 
 #SBATCH --gres=gpu:1
-##SBATCH --array=0-29 #For every N_steps,, N_sample combo (for experiemnt_Nsteps_Nsamples.py) : 30 combos in total.
+#SBATCH --array=0-47 #For every N_steps,, N_sample combo (for experiemnt_Nsteps_Nsamples.py) : 48 combos in total.
 
 source diffscaler.sh
 export PYTHONPATH="$PROJECT_DIR"
 
-export WANDB_MODE=online
-export PYTHONUNBUFFERED=1
-export HYDRA_FULL_ERROR=1
 
 
-which python
 python -c "import wandb; print(wandb.__version__)"
 
 
-#  S and num_samples from param_grid.txt 
-#PARAMS=$(sed -n "$((SLURM_ARRAY_TASK_ID+1))p" DDIM_conditional_derived/param_grid.txt)
-#S=$(echo $PARAMS | awk '{print $1}')
-#NUM_SAMPLES=$(echo $PARAMS | awk '{print $2}')
+PARAMS=$(sed -n "$((SLURM_ARRAY_TASK_ID+1))p" DDIM_conditional_derived/param_grid.txt)
+S=$(echo "$PARAMS" | awk '{print $1}')
+NUM_SAMPLES=$(echo "$PARAMS" | awk '{print $2}')
 
-#python DDIM_conditional_derived/experiment_Nsteps_Nsamples.py --S $S --num_samples $NUM_SAMPLES
+echo "SLURM_ARRAY_TASK_ID=$SLURM_ARRAY_TASK_ID"
+echo "S=$S NUM_SAMPLES=$NUM_SAMPLES"
 
 
-#For normal infernece on test set
-python DDIM_conditional_derived/inference_allframes_etaxx.py
+python DDIM_conditional_derived/experiment_Nsteps_Nsamples.py --S $S --num_samples $NUM_SAMPLES
+
+
+#Normal infernece
+#python DDIM_conditional_derived/inference_allframes_etaxx.py

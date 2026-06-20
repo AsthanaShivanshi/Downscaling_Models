@@ -33,12 +33,15 @@ data:
 
 conditioner:
   _target_: DDIM_conditional_derived.models.components.diff.conditioner.AFNOConditionerNetCascade
-  autoencoder: null #AsthanaSh : No autoencoder, pixel space coarse Unet mean pred as context
-  input_channels: [2]   # AsthanaSh : Extra params added, change from LDM conditioner,,, Number of channels in the input context (precip, temp)m residual channels
+  autoencoder: null
+  input_channels: [3] #channel concatenation of precip, temp, elev
   embed_dim: [32,64,128]
   analysis_depth: 3
   cascade_depth: 3
-  context_ch: [32,64,128]  #Must match the denoiser context_ch : AsthanaSh
+  context_ch: [32,64,128]
+
+
+
 
 
 datamodule:
@@ -92,22 +95,27 @@ model:
     num_heads: 2
 
   sampler_cfg:
-    schedule: "linear"
+    schedule: "quadratic"
     device: "cuda"
-    ddim_num_steps: 250
+    ddim_num_steps: 30
     ddim_eta: 0.0
 
 
   context_encoder: ${conditioner}
+
+
   unet_regr:
     _target_: DDIM_conditional_derived.models.unet_module.DownscalingUnetLightning
-    checkpoint: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/UNet_ckpts/LDM_conditional.models.unet_module.DownscalingUnetLightning_12km_logtransform_lr0.001_precip_loss_weight1.0_1.0_crps[]_factor0.5_pat3.ckpt.ckpt
+    checkpoint: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts/12km/mixedloss_unet_12km_logtransform_lr0.001_precip_loss_weight1.0.ckpt
   timesteps: 1000
   beta_schedule: "quadratic"
   linear_start: 1e-4
   linear_end: 2e-2
+
+
+
   lr: 1e-4
   use_ema: true
   ema_decay: 0.9999
   parameterization: "v"
-  loss_type: "l2" # "l2" or "L1"
+  loss_type: "l1" # "l2" or "l1"

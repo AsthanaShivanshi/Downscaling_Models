@@ -3,7 +3,7 @@ defaults:
   - _self_
 
 wandb:
-  project: UNet_optim_run_12km_bivariate
+  project: UNet_12km_bivariate
   name: ${hydra.job.override_dirname}
 
 experiment:
@@ -14,15 +14,13 @@ variables:
   input:
     precip: RhiresD
     temp: TabsD
-
   target:
     precip: RhiresD
     temp: TabsD
 
-
 preprocessing:
   nan_to_num: true
-  nan_value : 0.0
+  nan_value: 0.0
 
 data:
   train:
@@ -62,9 +60,7 @@ callbacks:
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: LDM_conditional/trained_ckpts/12km/
-
-
-    filename: ${model._target_}_12km_logtransform_lr${model.lr}_precip_loss_weight${model.precip_loss_weight}_${model.huber_delta}_factor${model.lr_scheduler_factor}_pat${model.lr_scheduler_patience}.ckpt
+    filename: mixedloss_unet_12km_logtransform_lr${model.lr}_precip_loss_weight${model.precip_loss_weight}
     save_top_k: 1
     monitor: val/loss
     mode: min
@@ -77,21 +73,5 @@ model:
   channel_names: ["precip", "temp"]
   precip_channel_idx: 0
   lr: 1e-3
-  huber_delta: 1.0
   precip_loss_weight: 1.0
-  use_crps_channels: []
   precip_scaling_json: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/Dataset_Setup_I_Chronological_12km/RhiresD_scaling_params.json
-  
-  
-  
-  lr_scheduler_factor: 0.50
-  lr_scheduler_patience: 3
-  lr_scheduler_min_lr: 1e-6
-
-
-lr_scheduler:
-  _target_: lightning.pytorch.lr_scheduler.ReduceLROnPlateau
-  mode: min
-  factor: ${model.lr_scheduler_factor}
-  patience: ${model.lr_scheduler_patience}
-  min_lr: ${model.lr_scheduler_min_lr}

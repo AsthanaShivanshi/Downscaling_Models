@@ -10,7 +10,8 @@ from models.components.unet import DownscalingUnet
 import wandb
 
 def train(cfg: DictConfig):
-    # Set seed if specified
+
+
     if cfg.get("seed"):
         torch.manual_seed(cfg.seed)
 
@@ -35,10 +36,12 @@ def train(cfg: DictConfig):
         unet_model.load_state_dict(new_state_dict, strict=False)
         print("Loaded UNet mean regression model from:", cfg.model.unet_regr.checkpoint)
 
-    # Instantiate DDIM 
+
+
+    # Instantiating DDIM,,,,
     model: LightningModule = hydra.utils.instantiate(cfg.model, unet_regr=unet_model)
 
-    # Debugging prints for val 
+    # prints for val : DEBUG (AsthanaSh)
     print("DataModule val files", datamodule.val_input, datamodule.val_target)
     if isinstance(datamodule.val_input, dict):
         for k, v in datamodule.val_input.items():
@@ -70,6 +73,8 @@ def train(cfg: DictConfig):
     "parameterization": cfg.model.get("parameterization"),
     "use_ema": cfg.model.get("use_ema"),
     "ema_decay": cfg.model.get("ema_decay"),
+
+
     # Denoiser
     "denoiser_in_channels": cfg.model.denoiser.get("in_channels"),
     "denoiser_out_channels": cfg.model.denoiser.get("out_channels"),
@@ -81,19 +86,18 @@ def train(cfg: DictConfig):
     "denoiser_num_heads": cfg.model.denoiser.get("num_heads"),
     "denoiser_dims": cfg.model.denoiser.get("dims"),
     "denoiser_use_fp16": cfg.model.denoiser.get("use_fp16"),
-    # UNet regression
+
+
+    # regr unet
     "unet_regr_ckpt": cfg.model.unet_regr.get("checkpoint") if cfg.model.get("unet_regr") else None,
-    # Sampler
     "sampler_schedule": cfg.model.sampler_cfg.get("schedule"),
     "sampler_device": cfg.model.sampler_cfg.get("device"),
     "sampler_ddim_num_steps": cfg.model.sampler_cfg.get("ddim_num_steps"),
     "sampler_ddim_eta": cfg.model.sampler_cfg.get("ddim_eta"),
     
-    # Experiment
     "batch_size": cfg.experiment.get("batch_size"),
     "num_workers": cfg.experiment.get("num_workers"),
     
-    # Callbacks
     "early_stopping_patience": cfg.callbacks.early_stopping.get("patience"),
     "early_stopping_monitor": cfg.callbacks.early_stopping.get("monitor"),
     "model_checkpoint_monitor": cfg.callbacks.model_checkpoint.get("monitor"),
@@ -125,7 +129,6 @@ def train(cfg: DictConfig):
     # Train
     trainer.fit(model=model, datamodule=datamodule, ckpt_path=cfg.get("ckpt_path"))
 
-    # Test best checkpoint
     ckpt_path = trainer.checkpoint_callback.best_model_path if hasattr(trainer, "checkpoint_callback") else None
     trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
 
