@@ -2,6 +2,10 @@ defaults:
   - paths: paths_12km_bivariate.yaml
   - _self_
 
+wandb:
+  project: DDIM_residual_run_12km_bivariate
+  name: ${hydra.job.override_dirname}
+
 experiment:
   batch_size: 8 #AsthanaSh : Note ::: Any higher gives CUDA OOM 
   num_workers: 2
@@ -10,6 +14,7 @@ variables:
   input:
     precip: RhiresD
     temp: TabsD
+
   target:
     precip: RhiresD
     temp: TabsD
@@ -39,8 +44,6 @@ conditioner:
   analysis_depth: 3
   cascade_depth: 3
   context_ch: [32,64,128]
-
-
 
 
 
@@ -118,4 +121,4 @@ model:
   use_ema: true
   ema_decay: 0.9999
   parameterization: "v"
-  loss_type: "l1" # "l2" or "l1"
+  loss_type: "l2" # "l2" or "l1"
