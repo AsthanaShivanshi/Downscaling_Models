@@ -122,23 +122,14 @@ def main(idx, sampling_steps_list=[250, 500, 750, 999]):
         use_fp16=False,
         num_heads=2
     )
-
-
-
-
     conditioner = AFNOConditionerNetCascade(
         autoencoder=None,
-        input_channels=[3],
+        input_channels=[2],
         embed_dim=[32, 64, 128],
         analysis_depth=3,
         cascade_depth=3,
         context_ch=[32, 64, 128]
     )
-
-
-
-
-
     ddim = DDIMResidualContextual(
         denoiser=denoiser,
         context_encoder=conditioner,
@@ -180,23 +171,11 @@ def main(idx, sampling_steps_list=[250, 500, 750, 999]):
     channel_names = ["Precip", "Temp"]
     params_list = [pr_params, temp_params]
 
-
-
     with torch.no_grad():
-
-        
         input_sample = test_inputs[idx].unsqueeze(0).to(device)
         unet_pred = unet_regr(input_sample)
-
-        elevation = input_sample[:, -1:, ...]
-        context_input = torch.cat([unet_pred, elevation], dim=1)
-
-        
-        context = conditioner([(context_input, None)])
-
+        context = [(unet_pred, None)]
         sample_shape = unet_pred.shape[1:]
-
-
         target_np = test_targets[idx][:unet_pred.shape[1]].cpu().numpy()
 
         # Denormalize target for MAE computation

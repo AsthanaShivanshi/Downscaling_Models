@@ -6,9 +6,7 @@ The original file acknowledges:
 https://github.com/lucidrains/denoising-diffusion-pytorch/blob/7706bdfc6f527f58d33f84b7b522e61e6e3164b3/denoising_diffusion_pytorch/denoising_diffusion_pytorch.py
 https://github.com/openai/improved-diffusion/blob/e94489283bb876ac1477d5dd7709bbbd2d9902ce/improved_diffusion/gaussian_diffusion.py
 https://github.com/CompVis/taming-transformers
-This is converted from LDM to DDIM by removing the VAE,,,, context encoder retained,  """
-
-
+This is converted from LDM to DDPM"""
 
 import torch
 import torch.nn as nn
@@ -24,15 +22,7 @@ def extract_into_tensor(a, t, x_shape):
     out = a.gather(-1, t)
     return out.reshape(b, *((1,) * (len(x_shape) - 1)))
 
-
-
-
-
 def make_beta_schedule(schedule, n_timestep, linear_start=1e-4, linear_end=2e-2, cosine_s=8e-3):
-
-    #different options retained. 
-
-
     if schedule == "linear":
         betas = (
             torch.linspace(linear_start ** 0.5, linear_end ** 0.5, n_timestep, dtype=torch.float64) ** 2
@@ -48,12 +38,23 @@ def make_beta_schedule(schedule, n_timestep, linear_start=1e-4, linear_end=2e-2,
         betas = 1 - alphas[1:] / alphas[:-1]
         betas = torch.clamp(betas, min=0, max=0.999)
 
+
+
+
     elif schedule == "quadratic":
         betas = torch.linspace(linear_start, linear_end, n_timestep, dtype=torch.float64) ** 2
     else:
         raise ValueError(f"schedule '{schedule}' unknown.")
     return betas.cpu().numpy()
 
+
+
+#For CRPS support 
+def empirical_crps(samples, target):
+    n = samples.shape[0]
+    term1 = torch.mean(torch.abs(samples - target.unsqueeze(0)), dim=0)
+    term2 = 0.5 * torch.mean(torch.abs(samples.unsqueeze(0) - samples.unsqueeze(1)), dim=(0,1))
+    return torch.mean(term1 - term2)
 
 
 
@@ -63,7 +64,7 @@ class DDIMResidualContextual(LightningModule):
         context_encoder=None,
         timesteps=1000,
         unet_regr=None,
-        beta_schedule="quadratic",
+        beta_schedule="linear",
         loss_type="l2",
         use_ema=True,
         lr=1e-4,
@@ -71,7 +72,7 @@ class DDIMResidualContextual(LightningModule):
         linear_start=1e-4,
         linear_end=2e-2,
         cosine_s=8e-3,
-        parameterization="v",  # all assuming fixed variance schedules
+        parameterization="eps",  # all assuming fixed variance schedules
         sampler_cfg=None,
         ema_decay=0.9999,
     ):
@@ -136,9 +137,6 @@ class DDIMResidualContextual(LightningModule):
         self.register_buffer('sqrt_alphas_cumprod', to_torch(np.sqrt(alphas_cumprod)))
         self.register_buffer('sqrt_one_minus_alphas_cumprod', to_torch(np.sqrt(1. - alphas_cumprod)))
 
-
-
-
     @contextmanager
     def ema_scope(self, context=None):
         if self.use_ema:
@@ -195,12 +193,14 @@ class DDIMResidualContextual(LightningModule):
         )
 
     def get_loss(self, pred, target, mean=True):
-
-        if self.loss_type == 'l1':
+        if self.loss_type == 'crps':
+            # pred: [n_samples, batch, channels, ...]
+            # target: [batch, channels, ...]
+            return empirical_crps(pred, target)
+        elif self.loss_type == 'l1':
             loss = (target - pred).abs()
             if mean:
                 loss = loss.mean()
-
         elif self.loss_type == 'l2':
             if mean:
                 loss = torch.nn.functional.mse_loss(target, pred)
@@ -221,12 +221,8 @@ class DDIMResidualContextual(LightningModule):
                 x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
                 denoiser_out = self.denoiser(x_noisy, t, context=context)
                 samples.append(denoiser_out)
-
-
             samples = torch.stack(samples)  # [n_samples, batch, channels, ...]
-            # Target depends on parameterisation.
-
-            
+            # Target depends on parameterization
             if self.parameterization == "eps":
                 target = noise
             elif self.parameterization == "x0":
@@ -258,37 +254,16 @@ class DDIMResidualContextual(LightningModule):
         t = torch.randint(0, self.num_timesteps, (x.shape[0],), device=self.device).long()
         return self.p_losses(x, t, *args, **kwargs)
 
-
-
     def shared_step(self, batch):
-        x, y = batch  # x already contains elevation as the last input channel
-
+        (x, y) = batch  # input, target
         assert not torch.any(torch.isnan(x)).item(), 'input data has NaNs'
         assert not torch.any(torch.isnan(y)).item(), 'target has NaNs'
-        assert x.shape[1] >= 3, "Expected input channels [precip, temp, elevation]"
-
-        elevation = x[:, -1:, ...]  # [B, 1, H, W]. #Extracting elevation frominput vchanells
-
         with torch.no_grad():
-            coarse_pred = self.unet_regr(x)  # UNet uses the same input, including elevation
-
-        residual = y - coarse_pred  # Pixel residal
-
-        if elevation.shape[-2:] != coarse_pred.shape[-2:]:
-            elevation = torch.nn.functional.interpolate(
-                elevation,
-                size=coarse_pred.shape[-2:],
-                mode="bilinear",
-                align_corners=False,
-            )
-
-        context_input = torch.cat([coarse_pred, elevation], dim=1)  # [B, 3, H, W]
-        context = self.context_encoder([(context_input, None)]) if self.conditional else None
-
+            coarse_pred = self.unet_regr(x)  # UNet regression output
+        residual = y - coarse_pred  # Pixel-space residual
+        # Use UNet mean prediction as context, processed by conditioner (AFNO)
+        context = self.context_encoder([(coarse_pred, None)]) if self.conditional else None
         return self(residual, context=context)
-
-
-
 
     def training_step(self, batch, batch_idx):
         loss = self.shared_step(batch)

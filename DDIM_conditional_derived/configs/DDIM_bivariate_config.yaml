@@ -2,19 +2,20 @@ defaults:
   - paths: paths_12km_bivariate.yaml
   - _self_
 
+
 wandb:
   project: DDIM_residual_run_12km_bivariate
   name: ${hydra.job.override_dirname}
 
+
 experiment:
-  batch_size: 8 #AsthanaSh : Note ::: Any higher gives CUDA OOM 
+  batch_size: 1 #AsthanaSh : Note ::: Any higher gives CUDA OOM 
   num_workers: 2
 
 variables:
   input:
     precip: RhiresD
     temp: TabsD
-
   target:
     precip: RhiresD
     temp: TabsD
@@ -38,13 +39,12 @@ data:
 
 conditioner:
   _target_: DDIM_conditional_derived.models.components.diff.conditioner.AFNOConditionerNetCascade
-  autoencoder: null
-  input_channels: [3] #channel concatenation of precip, temp, elev
+  autoencoder: null #AsthanaSh : No autoencoder, pixel space coarse Unet mean pred as context
+  input_channels: [2]   # AsthanaSh : Extra params added, change from LDM conditioner,,, Number of channels in the input context (precip, temp)m residual channels
   embed_dim: [32,64,128]
   analysis_depth: 3
   cascade_depth: 3
-  context_ch: [32,64,128]
-
+  context_ch: [32,64,128]  #Must match the denoiser context_ch : AsthanaSh
 
 
 datamodule:
@@ -79,7 +79,6 @@ callbacks:
     monitor: val/loss
     mode: min
 
-
 model:
   _target_: DDIM_conditional_derived.models.diff_module.DDIMResidualContextual
 
@@ -105,20 +104,16 @@ model:
 
 
   context_encoder: ${conditioner}
-
-
   unet_regr:
     _target_: DDIM_conditional_derived.models.unet_module.DownscalingUnetLightning
-    checkpoint: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts/12km/mixedloss_unet_12km_logtransform_lr0.001_precip_loss_weight1.0.ckpt
+    checkpoint: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts/12km/unet_12km_logtransform_lr0.001_precip_loss_weight1.0.ckpt
   timesteps: 1000
   beta_schedule: "quadratic"
   linear_start: 1e-4
   linear_end: 2e-2
-
-
-
+  #cosine_s: 8e-3
   lr: 1e-4
   use_ema: true
   ema_decay: 0.9999
   parameterization: "v"
-  loss_type: "l2" # "l2" or "l1"
+  loss_type: "l2" # "l2" or "L1"

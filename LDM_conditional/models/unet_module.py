@@ -39,7 +39,7 @@ class DownscalingUnetLightning(LightningModule):
         self.unet = DownscalingUnet(in_ch, out_ch, features)
 
         self.precip_channel_idx = precip_channel_idx
-        self.loss_fn_precip = torch.nn.HuberLoss(reduction='mean')
+        self.loss_fn_precip = torch.nn.MSELoss(reduction='mean')
         self.loss_fn_temp = torch.nn.MSELoss(reduction='mean')
         self.channel_names = channel_names if channel_names is not None else [f"channel_{i}" for i in range(out_ch)]
         self.unet_regr = unet_regr
@@ -98,8 +98,8 @@ class DownscalingUnetLightning(LightningModule):
 
         for i, name in enumerate(self.channel_names):
             if i == self.precip_channel_idx:
-                huber = self.loss_fn_precip(y_hat[:, i, ...], y[:, i, ...])
-                self.log(f"train/{name}_huber", huber, on_epoch=True)
+                mse = self.loss_fn_precip(y_hat[:, i, ...], y[:, i, ...])
+                self.log(f"train/{name}_mse", mse, on_epoch=True)
             else:
                 mse = self.loss_fn_temp(y_hat[:, i, ...], y[:, i, ...])
                 self.log(f"train/{name}_mse", mse, on_epoch=True)
@@ -113,8 +113,8 @@ class DownscalingUnetLightning(LightningModule):
 
         for i, name in enumerate(self.channel_names):
             if i == self.precip_channel_idx:
-                huber = self.loss_fn_precip(y_hat[:, i, ...], y[:, i, ...])
-                self.log(f"val/{name}_huber", huber, on_epoch=True)
+                mse = self.loss_fn_precip(y_hat[:, i, ...], y[:, i, ...])
+                self.log(f"val/{name}_mse", mse, on_epoch=True)
             else:
                 mse = self.loss_fn_temp(y_hat[:, i, ...], y[:, i, ...])
                 self.log(f"val/{name}_mse", mse, on_epoch=True)

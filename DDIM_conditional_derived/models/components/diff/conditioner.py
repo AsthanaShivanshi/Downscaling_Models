@@ -188,4 +188,3 @@ class FusionBlock2d(nn.Module):
             # x = torch.cat(x, axis = -1)    
         return x
 
-
