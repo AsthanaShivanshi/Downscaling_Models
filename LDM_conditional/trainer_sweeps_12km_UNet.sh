@@ -3,7 +3,7 @@
 config="UNet_bivariate_config_12km"
 mkdir -p logs/UNet/
 
-for weight in 1.0; do
+for weight in 1.0 3.0 5.0; do
   sbatch <<EOF
 #!/bin/bash
 #SBATCH --job-name=${config}_Log_UNet_MixedLoss_Sweep_${weight}
@@ -17,9 +17,6 @@ for weight in 1.0; do
 #SBATCH --gres=gpu:1
 
 source ../diffscaler.sh
-
-
-
 
 cd "/work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models"
 

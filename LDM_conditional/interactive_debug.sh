@@ -11,7 +11,4 @@ export PYTHONUNBUFFERED=1
 export HYDRA_FULL_ERROR=1
 export CUDA_LAUNCH_BLOCKING=1
 
-python LDM_conditional/train.py --config-name UNet_bivariate_config_12km \
-  experiment.num_workers=1 \
-  experiment.batch_size=2 \
-  +trainer.fast_dev_run=true
+python LDM_conditional/train.py --config-name UNet_bivariate_config_12km 

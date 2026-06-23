@@ -219,4 +219,3 @@ class AFNOBlock2d(nn.Module):
             x = x.permute(0, 3, 1, 2)
 
         return x
-

@@ -38,9 +38,6 @@ def make_beta_schedule(schedule, n_timestep, linear_start=1e-4, linear_end=2e-2,
         betas = 1 - alphas[1:] / alphas[:-1]
         betas = torch.clamp(betas, min=0, max=0.999)
 
-
-
-
     elif schedule == "quadratic":
         betas = torch.linspace(linear_start, linear_end, n_timestep, dtype=torch.float64) ** 2
     else:

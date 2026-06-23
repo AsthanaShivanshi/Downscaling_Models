@@ -2,14 +2,8 @@ defaults:
   - paths: paths_12km_bivariate.yaml
   - _self_
 
-
-wandb:
-  project: DDIM_residual_run_12km_bivariate
-  name: ${hydra.job.override_dirname}
-
-
 experiment:
-  batch_size: 1 #AsthanaSh : Note ::: Any higher gives CUDA OOM 
+  batch_size: 8 #AsthanaSh : Note ::: Any higher gives CUDA OOM 
   num_workers: 2
 
 variables:
@@ -74,7 +68,7 @@ callbacks:
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: DDIM_conditional_derived/trained_ckpts/12km/
-    filename: DDIM_checkpoint_L2_quadratic_schedule_loss_parameterisation_v
+    filename: DDIM_checkpoint_L1_quadratic_schedule_loss_parameterisation_v
     save_top_k: 1
     monitor: val/loss
     mode: min
@@ -99,14 +93,14 @@ model:
   sampler_cfg:
     schedule: "quadratic"
     device: "cuda"
-    ddim_num_steps: 30
+    ddim_num_steps: 50
     ddim_eta: 0.0
 
 
   context_encoder: ${conditioner}
   unet_regr:
     _target_: DDIM_conditional_derived.models.unet_module.DownscalingUnetLightning
-    checkpoint: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts/12km/unet_12km_logtransform_lr0.001_precip_loss_weight1.0.ckpt
+    checkpoint: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts/12km/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_12km_logtransform_lr0.001_precip_loss_weight1.0_1.0_crps[]_factor0.5_pat3.ckpt.ckpt
   timesteps: 1000
   beta_schedule: "quadratic"
   linear_start: 1e-4
@@ -116,4 +110,4 @@ model:
   use_ema: true
   ema_decay: 0.9999
   parameterization: "v"
-  loss_type: "l2" # "l2" or "L1"
+  loss_type: "l1" # "l2" or "L1"
