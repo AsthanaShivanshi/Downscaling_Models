@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=L2_DDIM_sweep_12km_quadratic
-#SBATCH --output=logs/ckpts_DDIM/L2_DDIM_sweep_job_output-%j.txt
-#SBATCH --error=logs/ckpts_DDIM/L2_DDIM_sweep_job_error-%j.txt
+#SBATCH --job-name=L1_DDIM_sweep_12km_quadratic
+#SBATCH --output=logs/ckpts_DDIM/L1_DDIM_sweep_job_output-%j.txt
+#SBATCH --error=logs/ckpts_DDIM/L1_DDIM_sweep_job_error-%j.txt
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=2-00:00:00
@@ -25,9 +25,9 @@ which python
 python -c "import wandb; print(wandb.__version__)"
 
 for beta_schedule in quadratic; do
-  sbatch --job-name=L2_DDIM_${beta_schedule} \
-    --output=logs/ckpts_DDIM/L2_DDIM_${beta_schedule}_%j.out \
-    --error=logs/ckpts_DDIM/L2_DDIM_${beta_schedule}_%j.err \
+  sbatch --job-name=L1_DDIM_${beta_schedule} \
+    --output=logs/ckpts_DDIM/L1_DDIM_${beta_schedule}_%j.out \
+    --error=logs/ckpts_DDIM/L1_DDIM_${beta_schedule}_%j.err \
     --ntasks=1 --cpus-per-task=4 --time=2-00:00:00 --mem=256G --partition=gpu --gres=gpu:1 \
     --wrap="source ../diffscaler.sh && export PYTHONPATH='$PROJECT_DIR' && cd '$PROJECT_DIR' && \
       export WANDB_MODE=online && export WANDB_START_METHOD=thread && export PYTHONUNBUFFERED=1 && export HYDRA_FULL_ERROR=1 && \
