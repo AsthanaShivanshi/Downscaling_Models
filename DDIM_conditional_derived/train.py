@@ -35,10 +35,10 @@ def train(cfg: DictConfig):
         unet_model.load_state_dict(new_state_dict, strict=False)
         print("Loaded UNet mean regression model from:", cfg.model.unet_regr.checkpoint)
 
-    # Instantiate DDIM 
     model: LightningModule = hydra.utils.instantiate(cfg.model, unet_regr=unet_model)
 
-    # Debugging prints for val 
+
+
     print("DataModule val files", datamodule.val_input, datamodule.val_target)
     if isinstance(datamodule.val_input, dict):
         for k, v in datamodule.val_input.items():
@@ -117,7 +117,7 @@ def train(cfg: DictConfig):
     trainer = Trainer(
         callbacks=callbacks,
         logger=logger,
-        max_epochs=100,
+        max_epochs=50,
         accelerator=cfg.get("trainer", {}).get("accelerator", "cuda"),
         devices=cfg.get("trainer", {}).get("devices", 1),
     )

@@ -85,7 +85,7 @@ def train(cfg: DictConfig):
     trainer_kwargs = {
         "callbacks": callbacks,
         "logger": logger,
-        "max_epochs": 200,
+        "max_epochs": 50,
         "accelerator": "cuda",
         "devices": 1,
     }
@@ -106,7 +106,7 @@ def train(cfg: DictConfig):
     trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
 
 
-@hydra.main(version_base="1.3", config_path="configs", config_name="UNet_bivariate_config_12km")
+@hydra.main(version_base="1.3", config_path="configs", config_name="UNet_bivariate_config_12km_bilinear")
 def main(cfg: DictConfig):
     train(cfg)
 

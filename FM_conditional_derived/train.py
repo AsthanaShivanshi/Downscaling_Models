@@ -116,7 +116,7 @@ def train(cfg: DictConfig):
     trainer = Trainer(
         callbacks=callbacks,
         logger=logger,
-        max_epochs=100,
+        max_epochs=50,
         accelerator=cfg.get("trainer", {}).get("accelerator", "cuda"),
         devices=cfg.get("trainer", {}).get("devices", 1),
     )

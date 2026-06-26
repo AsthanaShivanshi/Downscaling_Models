@@ -74,7 +74,7 @@ callbacks:
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: FM_conditional_derived/trained_ckpts/12km/
-    filename: CFM_L2_noise
+    filename: CFM_L2_noise_std_noise_0.4
     save_top_k: 1
     monitor: val/loss
     mode: min
@@ -103,7 +103,7 @@ model:
 
   unet_regr:
     _target_: FM_conditional_derived.models.unet_module.DownscalingUnetLightning
-    checkpoint: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts_optimised/12km/UNet_ckpts/LDM_conditional.models.unet_module.DownscalingUnetLightning_12km_logtransform_lr0.001_precip_loss_weight1.0_1.0_crps[]_factor0.5_pat3.ckpt.ckpt
+    checkpoint: LDM_conditional/trained_ckpts/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_bs32_lr0.001_delta1.0_factor0.5_pat3.ckpt.ckpt
   lr: 1e-4
 
   use_ema: true
@@ -113,4 +113,5 @@ model:
 
   fm_type: "cfm" # "cfm" or "vpfm" (Albergo et al. 2023)... torchcfm : AsthanaSh
   source_init: "noise" #One of noise, encoder+noise: AsthanaSh
-  fm_sigma: 1e-7 #AsthanaSh : Very small sigma for CFM/VCFM for stability. , matching clean flows for comparison with DDIM later. 
+  source_noise_std: 0.4
+  fm_sigma: 1e-8 #AsthanaSh : Very small sigma for CFM/VCFM for stability. , matching clean flows for comparison with DDIM later. 

@@ -182,7 +182,7 @@ def main(idx, num_steps=None, num_samples=DEFAULT_NUM_SAMPLES):
         precip_scaling_json="Dataset_Setup_I_Chronological_12km/RhiresD_scaling_params.json",
     )
     unet_regr_ckpt = torch.load(
-        "LDM_conditional/trained_ckpts_optimised/12km/UNet_ckpts/LDM_conditional.models.unet_module.DownscalingUnetLightning_12km_logtransform_lr0.001_precip_loss_weight1.0_1.0_crps[]_factor0.5_pat3.ckpt.ckpt",
+        "LDM_conditional/trained_ckpts/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_bs32_lr0.001_delta1.0_factor0.5_pat3.ckpt.ckpt",
         map_location="cpu",
         weights_only=False,
     )["state_dict"]
@@ -223,11 +223,12 @@ def main(idx, num_steps=None, num_samples=DEFAULT_NUM_SAMPLES):
         ema_decay=0.9999,
         lr=1e-4,
         source_init="noise",
+        source_noise_std=0.4,
     )
 
 
     fm_ckpt = torch.load(
-        "FM_conditional_derived/trained_ckpts/12km/VPFM_L2_noise-v1.ckpt",
+        "FM_conditional_derived/trained_ckpts/12km/CFM_L2_noise_std_noise_0.4.ckpt",
         map_location=device,
     )
     fm_model.load_state_dict(fm_ckpt["state_dict"], strict=False)
@@ -309,7 +310,7 @@ def main(idx, num_steps=None, num_samples=DEFAULT_NUM_SAMPLES):
                 num_steps=step,
                 use_ema=True,
                 solver="heun2",
-                init_noise_std=1.0,
+                init_noise_std=0.4,
             )
 
 
@@ -333,6 +334,8 @@ def main(idx, num_steps=None, num_samples=DEFAULT_NUM_SAMPLES):
             mask = precip_mask if name.lower().startswith("precip") else np.ones_like(target_denorm[i], dtype=bool)
             mae = np.nanmean(np.abs(fm_pred_denorm_mean[i][mask] - target_denorm[i][mask]))
             maes[step][name] = mae
+
+
 
     print(f"\nMAE Table for Frame idx = {idx}")
     print(f"{'Steps':>8} | {'Precip':>10} | {'Temp':>10}")
