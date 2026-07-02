@@ -138,7 +138,7 @@ def train(cfg: DictConfig):
             logger.experiment.summary["best_checkpoint_path"] = ckpt_path
 
     wandb.finish() 
-@hydra.main(version_base="1.3", config_path="configs", config_name="DDIM_bivariate_config.yaml")
+@hydra.main(version_base="1.3", config_path="configs", config_name="DDIM_bivariate_config_bilinear.yaml")
 def main(cfg: DictConfig):
     train(cfg)
 

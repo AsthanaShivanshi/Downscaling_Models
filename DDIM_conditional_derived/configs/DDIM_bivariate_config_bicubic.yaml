@@ -1,0 +1,113 @@
+defaults:
+  - paths: paths_12km_bivariate_bicubic.yaml
+  - _self_
+
+experiment:
+  batch_size: 8 #AsthanaSh : Note ::: Any higher gives CUDA OOM 
+  num_workers: 2
+
+variables:
+  input:
+    precip: RhiresD
+    temp: TabsD
+  target:
+    precip: RhiresD
+    temp: TabsD
+
+preprocessing:
+  nan_to_num: true
+  nan_value : 0.0
+
+data:
+  train:
+    input: ${paths.data.train.input}
+    target: ${paths.data.train.target}
+  val:
+    input: ${paths.data.val.input}
+    target: ${paths.data.val.target}
+  test:
+    input: ${paths.data.test.input}
+    target: ${paths.data.test.target}
+  static:
+    elevation: ${paths.data.static.elevation}
+
+conditioner:
+  _target_: DDIM_conditional_derived.models.components.diff.conditioner.AFNOConditionerNetCascade
+  autoencoder: null #AsthanaSh : No autoencoder, pixel space coarse Unet mean pred as context
+  input_channels: [2]   # AsthanaSh : Extra params added, change from LDM conditioner,,, Number of channels in the input context (precip, temp)m residual channels
+  embed_dim: [32,64,128]
+  analysis_depth: 3
+  cascade_depth: 3
+  context_ch: [32,64,128]  #Must match the denoiser context_ch : AsthanaSh
+
+
+datamodule:
+  _target_: DDIM_conditional_derived.DownscalingDataModule.DownscalingDataModule
+  train_input: ${data.train.input}
+  train_target: ${data.train.target}
+  val_input: ${data.val.input}
+  val_target: ${data.val.target}
+  test_input: ${data.test.input}
+  test_target: ${data.test.target}
+  elevation: ${data.static.elevation}
+  batch_size: ${experiment.batch_size}
+  num_workers: ${experiment.num_workers}
+  preprocessing:
+    variables: ${variables}
+    preprocessing: ${preprocessing}
+
+
+callbacks:
+  early_stopping:
+    _target_: lightning.pytorch.callbacks.EarlyStopping
+    monitor: val/loss
+    patience: 3
+    mode: min
+
+
+  model_checkpoint:
+    _target_: lightning.pytorch.callbacks.ModelCheckpoint
+    dirpath: DDIM_conditional_derived/trained_ckpts/12km/
+    filename: BICUBIC_DDIM_L1_quadratic_loss_parameterisation_v
+    save_top_k: 2
+    monitor: val/loss
+    mode: min
+
+model:
+  _target_: DDIM_conditional_derived.models.diff_module.DDIMResidualContextual
+
+  denoiser:
+    _target_: DDIM_conditional_derived.models.components.diff.denoiser.unet.UNetModel
+    in_channels: 2         # residual channels (precip, temp)
+    out_channels: 2
+    model_channels: 32
+    num_res_blocks: 2
+    attention_resolutions: [1,2,4]
+    context_ch: [32,64,128]  #Must match the conditioner embed_dim : AsthanaSh
+    channel_mult: [1,2,4]
+    conv_resample: true
+    dims: 2
+    use_fp16: false
+    num_heads: 2
+
+  sampler_cfg:
+    schedule: "quadratic"
+    device: "cuda"
+    ddim_num_steps: 50
+    ddim_eta: 0.0
+
+
+  context_encoder: ${conditioner}
+  unet_regr:
+    _target_: DDIM_conditional_derived.models.unet_module.DownscalingUnetLightning
+    checkpoint: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/LDM_conditional/trained_ckpts/12km/BICUBIC_LDM_conditional.models.unet_module.DownscalingUnetLightning_bs32_lr0.001_delta1.0_factor0.5_pat3.ckpt
+  timesteps: 1000
+  beta_schedule: "quadratic"
+  linear_start: 1e-4
+  linear_end: 2e-2
+  #cosine_s: 8e-3 :: Not in use. 
+  lr: 1e-4
+  use_ema: true
+  ema_decay: 0.9999
+  parameterization: "v"
+  loss_type: "l1" # "l2" or "L1"

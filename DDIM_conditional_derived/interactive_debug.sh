@@ -11,6 +11,6 @@ export HYDRA_FULL_ERROR=1
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 python DDIM_conditional_derived/train.py \
-  --config-name DDIM_bivariate_config.yaml \
+  --config-name DDIM_bivariate_config_bilinear.yaml \
   model.parameterization=v \
   model.beta_schedule=quadratic

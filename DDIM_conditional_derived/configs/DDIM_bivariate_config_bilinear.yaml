@@ -1,5 +1,5 @@
 defaults:
-  - paths: paths_12km_bivariate.yaml
+  - paths: paths_12km_bivariate_bilinear.yaml
   - _self_
 
 experiment:
@@ -68,8 +68,8 @@ callbacks:
   model_checkpoint:
     _target_: lightning.pytorch.callbacks.ModelCheckpoint
     dirpath: DDIM_conditional_derived/trained_ckpts/12km/
-    filename: DDIM_checkpoint_L2_cosine_schedule_loss_parameterisation_v
-    save_top_k: 1
+    filename: BILINEAR_DDIM_L1_quadratic_loss_parameterisation_v
+    save_top_k: 2
     monitor: val/loss
     mode: min
 
@@ -91,7 +91,7 @@ model:
     num_heads: 2
 
   sampler_cfg:
-    schedule: "cosine"
+    schedule: "quadratic"
     device: "cuda"
     ddim_num_steps: 50
     ddim_eta: 0.0
@@ -100,14 +100,14 @@ model:
   context_encoder: ${conditioner}
   unet_regr:
     _target_: DDIM_conditional_derived.models.unet_module.DownscalingUnetLightning
-    checkpoint: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts/12km/LDM_conditional.models.unet_module.DownscalingUnetLightning_bs32_lr0.001_delta1.0_factor0.5_pat3.ckpt.ckpt
+    checkpoint: /work/FAC/FGSE/IDYST/tbeucler/downscaling/sasthana/Downscaling/Downscaling_Models/LDM_conditional/trained_ckpts/12km/BILINEAR_LDM_conditional.models.unet_module.DownscalingUnetLightning_bs32_lr0.001_delta1.0_factor0.5_pat3.ckpt
   timesteps: 1000
-  beta_schedule: "cosine"
+  beta_schedule: "quadratic"
   linear_start: 1e-4
-  linear_end: 1e-2
-  cosine_s: 4e-3
+  linear_end: 2e-2
+  #cosine_s: 4e-3: Not in use. 
   lr: 1e-4
   use_ema: true
   ema_decay: 0.9999
   parameterization: "v"
-  loss_type: "l2" # "l2" or "L1"
+  loss_type: "l1" # "l2" or "L1"
